@@ -35,7 +35,8 @@
 <body>
 <div class="wrap">
   <h1>New round</h1>
-  <p>Wood Ranch Golf Club, Scorecard rev 09/2025. Return moves to the next field. Box is off until tapped.</p>
+  <p>Wood Ranch Golf Club, Scorecard rev 09/2025.</p>
+  <p>Return moves to the next field.</p>
   <div class="card">
     <h2>Players</h2>
     <table id="players"></table>
@@ -64,7 +65,7 @@
     <h1 id="holeTitle">Hole 1</h1>
     <p>Tap the gross score, or + or − to change it, or X if the player picked up.</p>
     <div class="card" id="scores"></div>
-    <div class="card"><h2>Junk on this hole</h2><div id="holeJunk"></div></div>
+    <div class="card"><h2>Junk on this hole</h2><p>Tap Birdie once for a birdie, twice for Eagle, three times for Dbl Eagle, four times for Albatross. Tap Junk up to four times for sand saves and other side bets.</p><div id="holeJunk"></div></div>
     <p><button type="button" id="back">Back a hole</button> <button type="button" id="post">Post hole</button> <button type="button" id="newCard">Reset Scores</button> <button type="button" id="toSetup">Back to setup</button></p>
     <div class="card"><h2>Standing</h2><div id="standing"></div></div>
     <div class="card"><h2>Manual press</h2><div id="manual"></div></div>
@@ -104,7 +105,10 @@ function syncBets() {
 }
 function drawBets() {
   const m = matchNames();
-  document.getElementById('status').textContent = m.box.length === 2 ? 'Box is ' + m.box.join(' and ') + '. ' + m.team.length + ' box matches.' : 'Box is off. Tap two players.';
+  const nPlayers = players.filter(p => p.initials).length;
+  document.getElementById('status').textContent = nPlayers >= 5
+    ? (m.box.length === 2 ? 'Box is ' + m.box.join(' and ') + '. ' + m.team.length + ' box matches.' : 'Five players. Tap two for the Box.')
+    : '';
   const names = m.team.concat(m.side);
   const ids = players.filter(p => p.initials).map(p => String(p.initials).toUpperCase());
   document.getElementById('bets').innerHTML = names.length ? '<tr><th>Match</th><th></th><th>First</th><th>Second</th><th>Overall</th><th>Press</th>' + ids.map(id => '<th>Junk ' + id + '</th>').join('') + '</tr>' + names.map(name => {
@@ -292,12 +296,12 @@ function startHole() {
         holeNo = saved.hole || 0;
       } else {
         holeScores = holePlayers.map(() => Array(18).fill(null));
-        holeMarks = holePlayers.map(() => Array.from({ length: 18 }, () => ({ KP: 0, Birdie: false, Eagle: 0, Junk: 0 })));
+        holeMarks = holePlayers.map(() => Array.from({ length: 18 }, () => ({ KP: 0, Birdie: 0, Junk: 0 })));
         holeNo = 0;
       }
     } catch (e) {
       holeScores = holePlayers.map(() => Array(18).fill(null));
-      holeMarks = holePlayers.map(() => Array.from({ length: 18 }, () => ({ KP: 0, Birdie: false, Eagle: 0, Junk: 0 })));
+      holeMarks = holePlayers.map(() => Array.from({ length: 18 }, () => ({ KP: 0, Birdie: 0, Junk: 0 })));
       holeNo = 0;
     }
   }
@@ -478,7 +482,7 @@ function holeStanding() {
   const i = holePlayers.findIndex(p => p.id === id);
   if (i < 0) return 0;
   const rate = (bet.player && bet.player[id]) || 3;
-  const base = holeMarks[i].reduce((n, m) => n + (m.Birdie ? 1 : 0) + (m.Eagle || 0) + (m.Junk || 0), 0);
+  const base = holeMarks[i].reduce((n, m) => n + (Number(m.Birdie) || 0) + (m.Junk || 0), 0);
   const kp = matchIds ? (kpForMatch(matchIds)[id] || 0) : holeMarks[i].reduce((n, m) => n + (m.KP || 0), 0);
   return (base + kp) * rate;
 }
@@ -542,7 +546,7 @@ function settle() {
       const i = holePlayers.findIndex(p => p.id === id);
       if (i < 0) return 0;
       const rate = (bet.player && bet.player[id]) || 3;
-      const base = holeMarks[i].reduce((n, mk) => n + (mk.Birdie ? 1 : 0) + (mk.Eagle || 0) + (mk.Junk || 0), 0);
+      const base = holeMarks[i].reduce((n, mk) => n + (Number(mk.Birdie) || 0) + (mk.Junk || 0), 0);
       return (base + (kp[id] || 0)) * rate;
     };
     const junk = b.reduce((n, id) => n + junkOf(id), 0) - a.reduce((n, id) => n + junkOf(id), 0);
@@ -610,15 +614,16 @@ function drawHole() {
     const v = holeVal(i);
     return '<div class="grid"><b>' + p.id + '</b><span>' + String(p.tee).slice(0,2) + '</span><span>' + (getsStroke(p) ? '•' : '') + '</span><button data-i="' + i + '" data-d="-1">−</button><button data-i="' + i + '" data-set="1" class="score ' + (holeScores[i][holeNo] == null ? 'open' : 'set') + '">' + (v === 'X' ? 'X' : v) + '</button><button data-i="' + i + '" data-d="1">+</button><button data-i="' + i + '" data-x="1">X</button></div>';
   }).join('');
-  const kinds = [2,6,12,16].includes(holeNo) ? ['KP','Birdie','Eagle','Junk'] : ['Birdie','Eagle','Junk'];
+  const kinds = [2,6,12,16].includes(holeNo) ? ['KP','Birdie','Junk'] : ['Birdie','Junk'];
   document.getElementById('holeJunk').innerHTML = holePlayers.map((p, i) => '<p><b>' + p.id + '</b> ' + kinds.map(k => {
     const n = holeMarks[i][holeNo][k];
-    const label = k === 'Eagle' && n === 2 ? 'Dbl Eagle' : (k === 'KP' || k === 'Junk') && n > 1 ? k + '-' + n : k;
+    const label = k === 'Birdie'
+      ? (n === 1 ? 'Birdie' : n === 2 ? 'Eagle' : n === 3 ? 'Dbl Eagle' : n === 4 ? 'Albatross' : 'Birdie')
+      : (n > 1 ? k + '-' + n : k);
     return '<button data-i="' + i + '" data-k="' + k + '" class="' + (n ? 'on' : '') + '">' + label + '</button>';
   }).join('') + '</p>').join('');
-  const posted = [];
-  for (let h = 0; h < 18; h++) if (holeScores.some(s => s[h] != null)) posted.push(h);
-  document.getElementById('card').innerHTML = posted.length ? '<table><tr><th></th>' + posted.map(h => '<th>' + (h+1) + '</th>').join('') + '</tr>' + holePlayers.map((p,i) => '<tr><td>' + p.id + '</td>' + posted.map(h => '<td>' + (holeScores[i][h] == null ? '' : holeScores[i][h]) + '</td>').join('') + '</tr>').join('') + '</table>' : '<p>No holes posted yet.</p>';
+  const holes = [0,1,2,3,4,5,6,7,8];
+  document.getElementById('card').innerHTML = '<table><tr><th></th>' + holes.map(h => '<th>' + (h+1) + '</th>').join('') + '</tr>' + holePlayers.map((p,i) => '<tr><td>' + p.id + '</td>' + holes.map(h => '<td>' + (holeScores[i][h] == null ? '' : holeScores[i][h]) + '</td>').join('') + '</tr>').join('') + '</table>';
   try { document.getElementById('standing').innerHTML = holeStanding(); }
   catch (err) { document.getElementById('standing').innerHTML = '<p>' + err.message + '</p>'; }
   try { settle(); } catch (err) { document.getElementById('settle').innerHTML = '<p>' + err.message + '</p>'; }
@@ -648,9 +653,7 @@ document.getElementById('holeJunk').onclick = e => {
   const btn = e.target.closest('button');
   if (!btn) return;
   const i = Number(btn.dataset.i), k = btn.dataset.k;
-  if (k === 'KP' || k === 'Junk') holeMarks[i][holeNo][k] = (holeMarks[i][holeNo][k] + 1) % 5;
-  else if (k === 'Eagle') holeMarks[i][holeNo].Eagle = (holeMarks[i][holeNo].Eagle + 1) % 3;
-  else holeMarks[i][holeNo][k] = !holeMarks[i][holeNo][k];
+  if (k === 'Birdie' || k === 'KP' || k === 'Junk') holeMarks[i][holeNo][k] = (Number(holeMarks[i][holeNo][k]) + 1) % 5;
   drawHole();
 };
 document.getElementById('toSetup').onclick = () => {
@@ -660,7 +663,7 @@ document.getElementById('toSetup').onclick = () => {
 document.getElementById('post').onclick = () => { if (holeNo < 17) holeNo += 1; drawHole(); };
 document.getElementById('newCard').onclick = () => {
   holeScores = holePlayers.map(() => Array(18).fill(null));
-  holeMarks = holePlayers.map(() => Array.from({ length: 18 }, () => ({ KP: 0, Birdie: false, Eagle: 0, Junk: 0 })));
+  holeMarks = holePlayers.map(() => Array.from({ length: 18 }, () => ({ KP: 0, Birdie: 0, Junk: 0 })));
   holeNo = 0;
   Object.keys(amounts).forEach(k => { if (amounts[k].manual) amounts[k].manual = []; });
   drawHole();
