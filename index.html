@@ -25,6 +25,9 @@
   .defaults .ctrl { display:flex; align-items:center; gap:2px; }
   .defaults button { min-height:28px; padding:0 6px; font-size:13px; }
   .defaults input[type="number"] { width:36px; font-size:13px; padding:2px; text-align:center; }
+  .file { display:inline-block; }
+  .file input { display:none; }
+  .file { padding:6px 10px; border:1px solid #c5d1c8; border-radius:8px; background:#fff; }
   .grid { display:grid; grid-template-columns:42px 28px 16px 36px 48px 36px 36px 1fr; align-items:center; gap:4px; margin:6px 0; }
   .junkbtns { display:flex; gap:4px; justify-content:flex-start; }
   .grid button { min-width:36px; }
@@ -62,6 +65,12 @@
     <p><button type="button" id="save" tabindex="-1">Start Round</button> <button type="button" id="resume" tabindex="-1">Resume</button> <button type="button" id="newRound" tabindex="-1">New Round</button></p>
     <p id="saveNote"></p>
   </div>
+  <div class="card">
+    <h2>Saved rounds</h2>
+    <p>Saved on this device. Export downloads a file you can keep or send.</p>
+    <div id="savedList"></div>
+    <p><button type="button" id="exportRound" tabindex="-1">Export current</button> <label class="file"><input type="file" id="importRound" accept="application/json"> Import file</label></p>
+  </div>
   <div id="holeView">
     <h1 id="holeTitle">Hole 1</h1>
     <p>Tap the gross score, or + or − to change it, or X if the player picked up.</p>
@@ -71,7 +80,7 @@
       <div id="scores"></div>
       <div id="holeJunk"></div>
     </div>
-    <p><button type="button" id="back">Back a hole</button> <button type="button" id="post">Post hole</button> <button type="button" id="newCard">Reset Scores</button> <button type="button" id="toSetup">Back to setup</button></p>
+    <p><button type="button" id="back">Back a hole</button> <button type="button" id="post">Post hole</button> <button type="button" id="saveRound">Save round</button> <button type="button" id="newCard">Reset Scores</button> <button type="button" id="toSetup">Back to setup</button></p>
     <div class="card"><h2>Standing</h2><div id="standing"></div></div>
     <div class="card"><h2>Manual press</h2><div id="manual"></div></div>
     <div class="card"><h2>Card</h2><div id="card"></div></div>
@@ -692,6 +701,83 @@ document.addEventListener('keydown', e => {
   if (next) { next.focus(); setTimeout(() => { try { next.select(); } catch (err) {} }, 10); }
 }, true);
 draw();
+
+function roundArchive() {
+  try { return JSON.parse(localStorage.getItem('golf-rounds') || '[]'); } catch (e) { return []; }
+}
+function saveRoundArchive(list) {
+  try { localStorage.setItem('golf-rounds', JSON.stringify(list)); } catch (e) {}
+}
+function snapshot() {
+  return { players: holePlayers, scores: holeScores, marks: holeMarks, hole: holeNo, amounts, when: new Date().toISOString() };
+}
+function drawSaved() {
+  const el = document.getElementById('savedList');
+  if (!el) return;
+  const list = roundArchive();
+  el.innerHTML = list.length ? list.map((r, i) => {
+    const who = (r.players || []).map(p => p.id).join(', ');
+    const when = new Date(r.when).toLocaleString();
+    return '<p>' + when + ' · ' + who + ' <button type="button" data-open="' + i + '">Open</button> <button type="button" data-del="' + i + '">Delete</button></p>';
+  }).join('') : '<p>No saved rounds.</p>';
+}
+document.getElementById('savedList').onclick = e => {
+  const open = e.target.closest('button[data-open]');
+  const del = e.target.closest('button[data-del]');
+  const list = roundArchive();
+  if (open) {
+    const r = list[Number(open.dataset.open)];
+    if (!r) return;
+    holePlayers = r.players;
+    holeScores = r.scores;
+    holeMarks = r.marks;
+    holeNo = r.hole || 0;
+    amounts = r.amounts || {};
+    players = r.players.map(p => ({ name: p.id, initials: p.id, tee: p.tee || 'Blue', hcp: p.hcp || '0', box: !!p.box }));
+    drawPlayers();
+    drawBets();
+    document.querySelectorAll('.wrap > h1, .wrap > p, .wrap > .card').forEach(el => el.style.display = 'none');
+    document.getElementById('holeView').style.display = '';
+    drawHole();
+  }
+  if (del) {
+    list.splice(Number(del.dataset.del), 1);
+    saveRoundArchive(list);
+    drawSaved();
+  }
+};
+document.getElementById('saveRound').onclick = () => {
+  const list = roundArchive();
+  list.unshift(snapshot());
+  saveRoundArchive(list.slice(0, 20));
+  document.getElementById('saveNote').textContent = 'Round saved on this device.';
+  drawSaved();
+};
+document.getElementById('exportRound').onclick = () => {
+  const blob = new Blob([JSON.stringify(snapshot(), null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'golf-round-' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+};
+document.getElementById('importRound').onchange = e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const r = JSON.parse(reader.result);
+      if (!r.players || !r.scores) throw new Error('Not a round file');
+      const list = roundArchive();
+      list.unshift(r);
+      saveRoundArchive(list.slice(0, 20));
+      drawSaved();
+      document.getElementById('saveNote').textContent = 'File imported. Tap Open to load it.';
+    } catch (err) { document.getElementById('saveNote').textContent = 'Could not read that file.'; }
+  };
+  reader.readAsText(file);
+};
+drawSaved();
 </script>
 </body>
 </html>
