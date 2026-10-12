@@ -25,7 +25,8 @@
   .defaults .ctrl { display:flex; align-items:center; gap:2px; }
   .defaults button { min-height:28px; padding:0 6px; font-size:13px; }
   .defaults input[type="number"] { width:36px; font-size:13px; padding:2px; text-align:center; }
-  .grid { display:grid; grid-template-columns:42px 28px 16px 36px 44px 36px 36px; align-items:center; gap:4px; margin:6px 0; }
+  .grid { display:flex; align-items:center; gap:4px; margin:6px 0; flex-wrap:wrap; }
+  .junkbtns { display:flex; gap:4px; margin-left:6px; }
   .score { font-size:22px; font-weight:700; min-width:44px; }
   .score.open { color:#9aa89e; }
   .score.set { color:#1f6b45; }
@@ -44,7 +45,6 @@
   </div>
   <div class="card">
     <h2>Default bet</h2>
-    <p>Copies into every match. A match left alone stays at $0. Eagle is two times that player's birdie amount.</p>
     <div class="defaults" id="defaults">
       <div class="col"><div class="lab">First</div><div class="ctrl"><button type="button" data-step="-1" data-id="dFirst">−</button><input id="dFirst" type="number" inputmode="numeric" value="0"><button type="button" data-step="1" data-id="dFirst">+</button></div></div>
       <div class="col"><div class="lab">Second</div><div class="ctrl"><button type="button" data-step="-1" data-id="dSecond">−</button><input id="dSecond" type="number" inputmode="numeric" value="0"><button type="button" data-step="1" data-id="dSecond">+</button></div></div>
@@ -64,8 +64,12 @@
   <div id="holeView">
     <h1 id="holeTitle">Hole 1</h1>
     <p>Tap the gross score, or + or − to change it, or X if the player picked up.</p>
-    <div class="card" id="scores"></div>
-    <div class="card"><h2>Junk on this hole</h2><p>Tap Birdie once for a birdie, twice for Eagle, three times for Dbl Eagle, four times for Albatross. Tap Junk up to four times for sand saves and other side bets.</p><div id="holeJunk"></div></div>
+    <div class="card">
+      <h2>Scores and junk</h2>
+      <p>Tap Birdie once for a birdie, twice for Eagle, three for Dbl Eagle, four for Albatross. Tap Junk up to four times.</p>
+      <div id="scores"></div>
+      <div id="holeJunk"></div>
+    </div>
     <p><button type="button" id="back">Back a hole</button> <button type="button" id="post">Post hole</button> <button type="button" id="newCard">Reset Scores</button> <button type="button" id="toSetup">Back to setup</button></p>
     <div class="card"><h2>Standing</h2><div id="standing"></div></div>
     <div class="card"><h2>Manual press</h2><div id="manual"></div></div>
@@ -107,8 +111,8 @@ function drawBets() {
   const m = matchNames();
   const nPlayers = players.filter(p => p.initials).length;
   document.getElementById('status').textContent = nPlayers >= 5
-    ? (m.box.length === 2 ? 'Box is ' + m.box.join(' and ') + '. ' + m.team.length + ' box matches.' : 'Five players. Tap two for the Box.')
-    : '';
+    ? (m.box.length === 2 ? 'Box is ' + m.box.join(' and ') + '. Tap a match On to play it.' : 'Five players. Set Box On for two players, then tap each match On.')
+    : 'Tap a match On to play it.';
   const names = m.team.concat(m.side);
   const ids = players.filter(p => p.initials).map(p => String(p.initials).toUpperCase());
   document.getElementById('bets').innerHTML = names.length ? '<tr><th>Match</th><th></th><th>First</th><th>Second</th><th>Overall</th><th>Press</th>' + ids.map(id => '<th>Junk ' + id + '</th>').join('') + '</tr>' + names.map(name => {
@@ -555,7 +559,7 @@ function settle() {
     const bits = ['Front ' + who(front)].concat(frontPress.map((v, i) => 'Press ' + (i + 1) + ' ' + who(v)));
     if (backPlayed) bits.push('Back ' + who(back), ...backPress.map((v, i) => 'Press ' + (i + 1) + ' ' + who(v)), 'Overall ' + who(overall));
     if (junk) bits.push('Junk ' + who(junk));
-    if (!dollars && !front && !junk) return '<p><b>' + name + '</b> even. Bet on this match is $' + (bet.first || 0) + '.</p>';
+    if (!dollars && !front && !junk) return '<p><b>' + name + '</b> even. First $' + (bet.first || 0) + ', Second $' + (bet.second || 0) + ', Overall $' + (bet.overall || 0) + '.</p>';
     const winners = dollars < 0 ? a : b;
     const losers = dollars < 0 ? b : a;
     const amt = Math.abs(dollars);
@@ -610,18 +614,19 @@ function getsStroke(p) {
 }
 function drawHole() {
   document.getElementById('holeTitle').textContent = 'Hole ' + (holeNo + 1) + ' · Par ' + par[holeNo] + ' · Handicap ' + blueIndex[holeNo];
+  const kinds = [2,6,12,16].includes(holeNo) ? ['KP','Birdie','Junk'] : ['Birdie','Junk'];
   document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     const v = holeVal(i);
-    return '<div class="grid"><b>' + p.id + '</b><span>' + String(p.tee).slice(0,2) + '</span><span>' + (getsStroke(p) ? '•' : '') + '</span><button data-i="' + i + '" data-d="-1">−</button><button data-i="' + i + '" data-set="1" class="score ' + (holeScores[i][holeNo] == null ? 'open' : 'set') + '">' + (v === 'X' ? 'X' : v) + '</button><button data-i="' + i + '" data-d="1">+</button><button data-i="' + i + '" data-x="1">X</button></div>';
+    const junkBtns = kinds.map(k => {
+      const n = holeMarks[i][holeNo][k];
+      const label = k === 'Birdie'
+        ? (n === 1 ? 'Birdie' : n === 2 ? 'Eagle' : n === 3 ? 'Dbl Eagle' : n === 4 ? 'Albatross' : 'Birdie')
+        : (n > 1 ? k + '-' + n : k);
+      return '<button data-i="' + i + '" data-k="' + k + '" class="' + (n ? 'on' : '') + '">' + label + '</button>';
+    }).join('');
+    return '<div class="grid"><b>' + p.id + '</b><span>' + String(p.tee).slice(0,2) + '</span><span>' + (getsStroke(p) ? '•' : '') + '</span><button data-i="' + i + '" data-d="-1">−</button><button data-i="' + i + '" data-set="1" class="score ' + (holeScores[i][holeNo] == null ? 'open' : 'set') + '">' + (v === 'X' ? 'X' : v) + '</button><button data-i="' + i + '" data-d="1">+</button><button data-i="' + i + '" data-x="1">X</button><span class="junkbtns">' + junkBtns + '</span></div>';
   }).join('');
-  const kinds = [2,6,12,16].includes(holeNo) ? ['KP','Birdie','Junk'] : ['Birdie','Junk'];
-  document.getElementById('holeJunk').innerHTML = holePlayers.map((p, i) => '<p><b>' + p.id + '</b> ' + kinds.map(k => {
-    const n = holeMarks[i][holeNo][k];
-    const label = k === 'Birdie'
-      ? (n === 1 ? 'Birdie' : n === 2 ? 'Eagle' : n === 3 ? 'Dbl Eagle' : n === 4 ? 'Albatross' : 'Birdie')
-      : (n > 1 ? k + '-' + n : k);
-    return '<button data-i="' + i + '" data-k="' + k + '" class="' + (n ? 'on' : '') + '">' + label + '</button>';
-  }).join('') + '</p>').join('');
+  document.getElementById('holeJunk').innerHTML = '';
   const holes = [0,1,2,3,4,5,6,7,8];
   document.getElementById('card').innerHTML = '<table><tr><th></th>' + holes.map(h => '<th>' + (h+1) + '</th>').join('') + '</tr>' + holePlayers.map((p,i) => '<tr><td>' + p.id + '</td>' + holes.map(h => '<td>' + (holeScores[i][h] == null ? '' : holeScores[i][h]) + '</td>').join('') + '</tr>').join('') + '</table>';
   try { document.getElementById('standing').innerHTML = holeStanding(); }
