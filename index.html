@@ -649,9 +649,15 @@ document.getElementById('scores').onclick = e => {
   const btn = e.target.closest('button');
   if (!btn) return;
   const i = Number(btn.dataset.i);
+  if (btn.dataset.k) {
+    const k = btn.dataset.k;
+    if (k === 'Birdie' || k === 'KP' || k === 'Junk') holeMarks[i][holeNo][k] = (Number(holeMarks[i][holeNo][k]) + 1) % 5;
+    drawHole();
+    return;
+  }
   if (btn.dataset.x) holeScores[i][holeNo] = 'X';
   else if (btn.dataset.set) holeScores[i][holeNo] = holeVal(i);
-  else holeScores[i][holeNo] = Math.max(1, (holeVal(i) === 'X' ? par[holeNo] : Number(holeVal(i))) + Number(btn.dataset.d));
+  else if (btn.dataset.d) holeScores[i][holeNo] = Math.max(1, (holeVal(i) === 'X' ? par[holeNo] : Number(holeVal(i))) + Number(btn.dataset.d));
   drawHole();
 };
 document.getElementById('holeJunk').onclick = e => {
