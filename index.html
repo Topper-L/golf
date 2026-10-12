@@ -23,7 +23,8 @@
   input[type="number"] { width:40px; font-size:13px; padding:2px; text-align:center; }
   input.name { width:90px; }
   input.initials { text-transform:uppercase; width:36px; text-align:center; }
-  input.hcp { width:36px; text-align:center; }
+  input.hcp { width:42px; text-align:center; }
+  input.hcp.plus { background:#1f6b45; color:white; font-weight:700; }
   .defaults { display:grid; grid-template-columns:repeat(5, 1fr); gap:6px; align-items:end; }
   .defaults .col { display:flex; flex-direction:column; align-items:center; gap:2px; }
   .defaults .lab { font-size:11px; color:#5e6f64; font-weight:600; }
@@ -152,7 +153,7 @@ function draw() {
   document.getElementById('players').innerHTML = '<tr><th>Name</th><th>Initials</th><th>Tee</th><th>HCP</th><th>Box</th><th></th></tr>' +
     players.map((p, i) => '<tr><td><input class="name" data-i="' + i + '" data-f="name" value="' + p.name + '"></td><td><input class="initials" data-i="' + i + '" data-f="initials" value="' + p.initials + '" maxlength="3" autocapitalize="characters"></td><td><select data-i="' + i + '">' +
       tees.map(t => '<option' + (t === p.tee ? ' selected' : '') + '>' + t + '</option>').join('') +
-      '</select></td><td><input class="hcp" data-i="' + i + '" data-f="hcp" value="' + p.hcp + '" maxlength="3" inputmode="numeric"></td><td><button type="button" tabindex="-1" data-plus="' + i + '" class="' + (String(p.hcp).startsWith('+') ? 'plus' : '') + '">' + (String(p.hcp).startsWith('+') ? 'Plus' : '+') + '</button></td><td><button type="button" tabindex="-1" data-box="' + i + '" class="' + (p.box ? 'on' : '') + '">' + (p.box ? 'In' : 'Off') + '</button></td><td><button type="button" tabindex="-1" data-remove="' + i + '">Remove</button></td></tr>').join('');
+      '</select></td><td><input class="hcp' + (String(p.hcp).startsWith('+') ? ' plus' : '') + '" data-i="' + i + '" data-f="hcp" value="' + p.hcp + '" maxlength="3" inputmode="numeric"></td><td><button type="button" tabindex="-1" data-plus="' + i + '" class="' + (String(p.hcp).startsWith('+') ? 'plus' : '') + '">' + (String(p.hcp).startsWith('+') ? 'Plus' : '+') + '</button></td><td><button type="button" tabindex="-1" data-box="' + i + '" class="' + (p.box ? 'on' : '') + '">' + (p.box ? 'In' : 'Off') + '</button></td><td><button type="button" tabindex="-1" data-remove="' + i + '">Remove</button></td></tr>').join('');
   drawBets();
   document.querySelectorAll('#players input').forEach(el => {
     el.oninput = () => {
@@ -180,9 +181,11 @@ function syncPlayers() {
 document.getElementById('players').onclick = e => {
   const plus = e.target.closest('button[data-plus]');
   if (plus) {
+    syncPlayers();
     const i = Number(plus.dataset.plus);
-    const cur = String(players[i].hcp || '').replace('+', '');
-    players[i].hcp = String(players[i].hcp || '').startsWith('+') ? cur : '+' + cur;
+    const raw = String(players[i].hcp || '').replace('+', '').replace(/\D/g, '');
+    const isPlus = String(players[i].hcp || '').startsWith('+');
+    players[i].hcp = isPlus ? raw : (raw ? '+' + raw : '+');
     drawPlayers();
     return;
   }
