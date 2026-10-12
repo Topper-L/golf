@@ -178,17 +178,21 @@ function syncPlayers() {
   document.querySelectorAll('#players input').forEach(el => { players[el.dataset.i][el.dataset.f] = el.value; });
   document.querySelectorAll('#players select').forEach(el => { players[el.dataset.i].tee = el.value; });
 }
+function togglePlus(btn) {
+  syncPlayers();
+  const i = Number(btn.dataset.plus);
+  const raw = String(players[i].hcp || '').replace('+', '').replace(/\D/g, '');
+  const isPlus = String(players[i].hcp || '').startsWith('+');
+  players[i].hcp = isPlus ? raw : (raw ? '+' + raw : '+');
+  drawPlayers();
+}
+document.getElementById('players').addEventListener('touchend', e => {
+  const plus = e.target.closest('button[data-plus]');
+  if (plus) { e.preventDefault(); togglePlus(plus); }
+}, { passive: false });
 document.getElementById('players').onclick = e => {
   const plus = e.target.closest('button[data-plus]');
-  if (plus) {
-    syncPlayers();
-    const i = Number(plus.dataset.plus);
-    const raw = String(players[i].hcp || '').replace('+', '').replace(/\D/g, '');
-    const isPlus = String(players[i].hcp || '').startsWith('+');
-    players[i].hcp = isPlus ? raw : (raw ? '+' + raw : '+');
-    drawPlayers();
-    return;
-  }
+  if (plus) { togglePlus(plus); return; }
   const box = e.target.closest('button[data-box]');
   const remove = e.target.closest('button[data-remove]');
   if (box) {
