@@ -184,7 +184,7 @@ function togglePlus(btn) {
   const raw = String(players[i].hcp || '').replace('+', '').replace(/\D/g, '');
   const isPlus = String(players[i].hcp || '').startsWith('+');
   players[i].hcp = isPlus ? raw : (raw ? '+' + raw : '+');
-  drawPlayers();
+  draw();
 }
 document.getElementById('players').addEventListener('touchend', e => {
   const plus = e.target.closest('button[data-plus]');
@@ -783,7 +783,7 @@ document.getElementById('savedList').onclick = e => {
     holeNo = r.hole || 0;
     amounts = Object.assign({}, r.amounts || {});
     players = holePlayers.map(p => ({ name: p.id, initials: p.id, tee: p.tee || 'Blue', hcp: p.hcp || '0', box: !!p.box }));
-    drawPlayers();
+    draw();
     drawBets();
     document.querySelectorAll('.wrap > h1, .wrap > p, .wrap > .card').forEach(el => el.style.display = 'none');
     document.getElementById('holeView').style.display = '';
