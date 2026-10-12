@@ -20,7 +20,8 @@
   th, td { border-bottom:1px solid #d5e0d4; padding:6px; text-align:left; }
   button { min-height:36px; touch-action:manipulation; }
   button.on { background:#1f6b45; color:white; border-color:#1f6b45; }
-  input[type="number" inputmode="numeric"] { width:52px; font-size:13px; padding:4px; }
+  input[type="number"] { width:40px; font-size:13px; padding:2px; text-align:center; }
+  input.name { width:90px; }
   input.initials { text-transform:uppercase; width:36px; text-align:center; }
   input.hcp { width:36px; text-align:center; }
   .defaults { display:grid; grid-template-columns:repeat(5, 1fr); gap:6px; align-items:end; }
@@ -28,7 +29,8 @@
   .defaults .lab { font-size:11px; color:#5e6f64; font-weight:600; }
   .defaults .ctrl { display:flex; align-items:center; gap:2px; }
   .defaults button { min-height:28px; padding:0 6px; font-size:13px; }
-  .defaults input[type="number" inputmode="numeric"] { width:36px; font-size:13px; padding:2px; text-align:center; }
+  .defaults input[type="number"] { width:32px; font-size:13px; padding:1px; text-align:center; }
+  button.plus { background:#1f6b45; color:white; border-color:#1f6b45; }
   .file { display:inline-block; }
   .file input { display:none; }
   .file { padding:6px 10px; border:1px solid #c5d1c8; border-radius:8px; background:#fff; }
@@ -148,9 +150,9 @@ function drawBets() {
 }
 function draw() {
   document.getElementById('players').innerHTML = '<tr><th>Name</th><th>Initials</th><th>Tee</th><th>HCP</th><th>Box</th><th></th></tr>' +
-    players.map((p, i) => '<tr><td><input data-i="' + i + '" data-f="name" value="' + p.name + '"></td><td><input class="initials" data-i="' + i + '" data-f="initials" value="' + p.initials + '" maxlength="3" autocapitalize="characters"></td><td><select data-i="' + i + '">' +
+    players.map((p, i) => '<tr><td><input class="name" data-i="' + i + '" data-f="name" value="' + p.name + '"></td><td><input class="initials" data-i="' + i + '" data-f="initials" value="' + p.initials + '" maxlength="3" autocapitalize="characters"></td><td><select data-i="' + i + '">' +
       tees.map(t => '<option' + (t === p.tee ? ' selected' : '') + '>' + t + '</option>').join('') +
-      '</select></td><td><input class="hcp" data-i="' + i + '" data-f="hcp" value="' + p.hcp + '" maxlength="3" inputmode="numeric"></td><td><button type="button" tabindex="-1" data-plus="' + i + '">' + (String(p.hcp).startsWith('+') ? 'Plus' : '+') + '</button></td><td><button type="button" tabindex="-1" data-box="' + i + '" class="' + (p.box ? 'on' : '') + '">' + (p.box ? 'In' : 'Off') + '</button></td><td><button type="button" tabindex="-1" data-remove="' + i + '">Remove</button></td></tr>').join('');
+      '</select></td><td><input class="hcp" data-i="' + i + '" data-f="hcp" value="' + p.hcp + '" maxlength="3" inputmode="numeric"></td><td><button type="button" tabindex="-1" data-plus="' + i + '" class="' + (String(p.hcp).startsWith('+') ? 'plus' : '') + '">' + (String(p.hcp).startsWith('+') ? 'Plus' : '+') + '</button></td><td><button type="button" tabindex="-1" data-box="' + i + '" class="' + (p.box ? 'on' : '') + '">' + (p.box ? 'In' : 'Off') + '</button></td><td><button type="button" tabindex="-1" data-remove="' + i + '">Remove</button></td></tr>').join('');
   drawBets();
   document.querySelectorAll('#players input').forEach(el => {
     el.oninput = () => {
