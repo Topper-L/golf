@@ -19,8 +19,12 @@
   input[type="number"] { width:52px; font-size:13px; padding:4px; }
   input.initials { text-transform:uppercase; width:36px; text-align:center; }
   input.hcp { width:36px; text-align:center; }
-  .defaults { display:grid; grid-template-columns:repeat(5, 1fr); gap:8px; align-items:end; }
-  .defaults label { display:flex; flex-direction:column; font-size:12px; color:#5e6f64; }
+  .defaults { display:grid; grid-template-columns:repeat(5, 1fr); gap:6px; align-items:end; }
+  .defaults .col { display:flex; flex-direction:column; align-items:center; gap:2px; }
+  .defaults .lab { font-size:11px; color:#5e6f64; font-weight:600; }
+  .defaults .ctrl { display:flex; align-items:center; gap:2px; }
+  .defaults button { min-height:28px; padding:0 6px; font-size:13px; }
+  .defaults input[type="number"] { width:36px; font-size:13px; padding:2px; text-align:center; }
   .grid { display:grid; grid-template-columns:42px 28px 16px 36px 44px 36px 36px; align-items:center; gap:4px; margin:6px 0; }
   .score { font-size:22px; font-weight:700; min-width:44px; }
   .score.open { color:#9aa89e; }
@@ -41,11 +45,11 @@
     <h2>Default bet</h2>
     <p>Copies into every match. A match left alone stays at $0. Eagle is two times that player's birdie amount.</p>
     <div class="defaults" id="defaults">
-      <div>First <button type="button" data-step="-1" data-id="dFirst">−</button><input id="dFirst" type="number" inputmode="numeric" value="0"><button type="button" data-step="1" data-id="dFirst">+</button></div>
-      <div>Second <button type="button" data-step="-1" data-id="dSecond">−</button><input id="dSecond" type="number" inputmode="numeric" value="0"><button type="button" data-step="1" data-id="dSecond">+</button></div>
-      <div>Overall <button type="button" data-step="-1" data-id="dOverall">−</button><input id="dOverall" type="number" inputmode="numeric" value="20"><button type="button" data-step="1" data-id="dOverall">+</button></div>
-      <div>Press <button type="button" data-step="-1" data-id="dPress">−</button><input id="dPress" type="number" inputmode="numeric" value="0"><button type="button" data-step="1" data-id="dPress">+</button></div>
-      <div>Junk <button type="button" data-step="-1" data-id="dJunk">−</button><input id="dJunk" type="number" inputmode="numeric" value="3"><button type="button" data-step="1" data-id="dJunk">+</button></div>
+      <div class="col"><div class="lab">First</div><div class="ctrl"><button type="button" data-step="-1" data-id="dFirst">−</button><input id="dFirst" type="number" inputmode="numeric" value="0"><button type="button" data-step="1" data-id="dFirst">+</button></div></div>
+      <div class="col"><div class="lab">Second</div><div class="ctrl"><button type="button" data-step="-1" data-id="dSecond">−</button><input id="dSecond" type="number" inputmode="numeric" value="0"><button type="button" data-step="1" data-id="dSecond">+</button></div></div>
+      <div class="col"><div class="lab">Overall</div><div class="ctrl"><button type="button" data-step="-1" data-id="dOverall">−</button><input id="dOverall" type="number" inputmode="numeric" value="20"><button type="button" data-step="1" data-id="dOverall">+</button></div></div>
+      <div class="col"><div class="lab">Press</div><div class="ctrl"><button type="button" data-step="-1" data-id="dPress">−</button><input id="dPress" type="number" inputmode="numeric" value="0"><button type="button" data-step="1" data-id="dPress">+</button></div></div>
+      <div class="col"><div class="lab">Junk</div><div class="ctrl"><button type="button" data-step="-1" data-id="dJunk">−</button><input id="dJunk" type="number" inputmode="numeric" value="3"><button type="button" data-step="1" data-id="dJunk">+</button></div></div>
     </div>
     <p><button type="button" id="saveDefault" tabindex="-1">Save as Default</button> <button type="button" id="apply" tabindex="-1" onclick="copyBets()">Copy to matches</button></p>
   </div>
