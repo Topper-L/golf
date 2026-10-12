@@ -97,7 +97,7 @@ const tees = ['Gold','Blue','White','White tournament','Red','Silver','Blue/Whit
 const lastHcp = { TL:'4', KM:'12', DK:'+5', AC:'3', DH:'5' };
 let defaultPlayer = { name:'Topper Larsen', initials:'TL', tee:'Blue' };
 let players = [{ name:'Topper Larsen', initials:'TL', tee:'Blue', hcp:'', box:false }];
-const amounts = {};
+let amounts = {};
 function pairs(list) {
   const out = [];
   for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) out.push(list[i] + '+' + list[j]);
@@ -760,12 +760,12 @@ document.getElementById('savedList').onclick = e => {
   if (open) {
     const r = list[Number(open.dataset.open)];
     if (!r) return;
-    holePlayers = r.players;
-    holeScores = r.scores;
-    holeMarks = r.marks;
+    holePlayers = r.players || [];
+    holeScores = r.scores || [];
+    holeMarks = r.marks || [];
     holeNo = r.hole || 0;
-    amounts = r.amounts || {};
-    players = r.players.map(p => ({ name: p.id, initials: p.id, tee: p.tee || 'Blue', hcp: p.hcp || '0', box: !!p.box }));
+    amounts = Object.assign({}, r.amounts || {});
+    players = holePlayers.map(p => ({ name: p.id, initials: p.id, tee: p.tee || 'Blue', hcp: p.hcp || '0', box: !!p.box }));
     drawPlayers();
     drawBets();
     document.querySelectorAll('.wrap > h1, .wrap > p, .wrap > .card').forEach(el => el.style.display = 'none');
