@@ -12,6 +12,10 @@
   .card { background:#f7faf6; border:1px solid #d5e0d4; border-radius:14px; padding:12px; margin-bottom:12px; overflow-x:auto; }
   h2 { margin:0 0 8px; font-size:12px; letter-spacing:.04em; text-transform:uppercase; color:#5e6f64; }
   table { border-collapse:collapse; width:100%; font-size:14px; }
+  #card, #card table, #card td, #card th, #junkSummary, #junkSummary table, #junkSummary td, #junkSummary th { font-size:12px !important; }
+  #card td, #card th, #junkSummary td, #junkSummary th { padding:1px 2px; text-align:center; min-width:18px; }
+  #card td:first-child, #card th:first-child, #junkSummary td:first-child, #junkSummary th:first-child { text-align:left; min-width:28px; }
+  #card .tot, #junkSummary .tot { font-weight:700; background:#f3f6f4; }
   #standing, #standing p, #standing table, #standing td, #standing th { font-size:12px !important; }
   th, td { border-bottom:1px solid #d5e0d4; padding:6px; text-align:left; }
   button { min-height:36px; touch-action:manipulation; }
@@ -81,9 +85,10 @@
       <div id="holeJunk"></div>
     </div>
     <p><button type="button" id="back">Back a hole</button> <button type="button" id="post">Post hole</button> <button type="button" id="saveRound">Save round</button> <button type="button" id="newCard">Reset Scores</button> <button type="button" id="toSetup">Back to setup</button></p>
+    <div class="card"><h2>Card</h2><div id="card"></div></div>
+    <div class="card"><h2>Junk</h2><div id="junkSummary"></div></div>
     <div class="card"><h2>Standing</h2><div id="standing"></div></div>
     <div class="card"><h2>Manual press</h2><div id="manual"></div></div>
-    <div class="card"><h2>Card</h2><div id="card"></div></div>
     <div class="card"><h2>Settle</h2><div id="settle"></div></div>
   </div>
 </div>
@@ -637,8 +642,35 @@ function drawHole() {
     return '<div class="grid"><b>' + p.id + '</b><span>' + String(p.tee).slice(0,2) + '</span><span>' + (getsStroke(p) ? '•' : '') + '</span><button data-i="' + i + '" data-d="-1">−</button><button data-i="' + i + '" data-set="1" class="score ' + (holeScores[i][holeNo] == null ? 'open' : 'set') + '">' + (v === 'X' ? 'X' : v) + '</button><button data-i="' + i + '" data-d="1">+</button><button data-i="' + i + '" data-x="1">X</button><span class="junkbtns">' + junkBtns + '</span></div>';
   }).join('');
   document.getElementById('holeJunk').innerHTML = '';
-  const holes = [0,1,2,3,4,5,6,7,8];
-  document.getElementById('card').innerHTML = '<table><tr><th></th>' + holes.map(h => '<th>' + (h+1) + '</th>').join('') + '</tr>' + holePlayers.map((p,i) => '<tr><td>' + p.id + '</td>' + holes.map(h => '<td>' + (holeScores[i][h] == null ? '' : holeScores[i][h]) + '</td>').join('') + '</tr>').join('') + '</table>';
+  const nine = (start, label) => {
+    const holes = Array.from({ length: 9 }, (_, i) => start + i);
+    const head = '<tr><th></th>' + holes.map(h => '<th>' + (h+1) + '</th>').join('') + '<th class="tot">' + label + '</th></tr>';
+    const body = holePlayers.map((p, i) => {
+      const cells = holes.map(h => '<td>' + (holeScores[i][h] == null ? '' : holeScores[i][h]) + '</td>').join('');
+      const tot = holes.reduce((n, h) => n + (typeof holeScores[i][h] === 'number' ? holeScores[i][h] : 0), 0);
+      const any = holes.some(h => holeScores[i][h] != null);
+      return '<tr><td>' + p.id + '</td>' + cells + '<td class="tot">' + (any ? tot : '') + '</td></tr>';
+    }).join('');
+    return '<table>' + head + body + '</table>';
+  };
+  document.getElementById('card').innerHTML = nine(0, '1st 9') + nine(9, '2nd 9');
+  const markName = (mk) => {
+    const b = Number(mk.Birdie) || 0;
+    const bits = [];
+    if (b === 1) bits.push('B');
+    else if (b === 2) bits.push('E');
+    else if (b === 3) bits.push('DE');
+    else if (b === 4) bits.push('Alb');
+    if (mk.KP) bits.push(mk.KP > 1 ? 'KP-' + mk.KP : 'KP');
+    if (mk.Junk) bits.push(mk.Junk > 1 ? 'J-' + mk.Junk : 'J');
+    return bits.join(' ');
+  };
+  const junkHoles = [];
+  for (let h = 0; h < 18; h++) if (holeMarks.some(row => row[h] && (row[h].Birdie || row[h].KP || row[h].Junk))) junkHoles.push(h);
+  const junkEl = document.getElementById('junkSummary');
+  junkEl.innerHTML = junkHoles.length
+    ? '<table><tr><th></th>' + junkHoles.map(h => '<th>' + (h+1) + '</th>').join('') + '</tr>' + holePlayers.map((p, i) => '<tr><td>' + p.id + '</td>' + junkHoles.map(h => '<td>' + markName(holeMarks[i][h] || {}) + '</td>').join('') + '</tr>').join('') + '</table>'
+    : '<p>No junk posted.</p>';
   try { document.getElementById('standing').innerHTML = holeStanding(); }
   catch (err) { document.getElementById('standing').innerHTML = '<p>' + err.message + '</p>'; }
   try { settle(); } catch (err) { document.getElementById('settle').innerHTML = '<p>' + err.message + '</p>'; }
