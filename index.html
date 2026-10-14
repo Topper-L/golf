@@ -851,7 +851,7 @@ function drawSaved() {
   const list = roundArchive();
   el.innerHTML = list.length ? list.map((r, i) => {
     const who = (r.players || []).map(p => p.id).join(', ');
-    const when = new Date(r.when).toLocaleString();
+    const when = new Date(r.when).toLocaleDateString();
     return '<p>' + when + ' · ' + who + ' <button type="button" data-open="' + i + '">Open</button> <button type="button" data-del="' + i + '">Delete</button></p>';
   }).join('') : '<p>No saved rounds.</p>';
 }
