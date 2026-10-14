@@ -267,7 +267,9 @@ document.getElementById('resume').onclick = () => {
   });
   document.querySelectorAll('.wrap > h1, .wrap > p, .wrap > .card').forEach(el => el.style.display = 'none');
   document.getElementById('holeView').style.display = 'block';
-  drawHole();
+  try { drawHole(); }
+  catch (err) { document.getElementById('standing').innerHTML = '<p>Score page opened. Standing: ' + err.message + '</p>'; }
+  if (missing) document.getElementById('saveNote').textContent = 'A handicap is blank. Scores and junk work. Betting stays off for that player until a handicap is entered.';
 };
 document.getElementById('newRound').onclick = () => {
   players = [];
@@ -359,7 +361,6 @@ function startHole() {
     el.classList.toggle('missing', empty);
     if (empty) missing = true;
   });
-  if (missing && !confirm('A handicap is missing. Scores and junk will work. Betting stays off until a handicap is entered. Start anyway?')) return;
   const next = players.filter(p => p.initials).map(p => ({ id: String(p.initials).toUpperCase(), tee: p.tee || 'Blue', hcp: p.hcp || '0', box: !!p.box }));
   if (!next.length) { document.getElementById('saveNote').textContent = 'Add a player first.'; return; }
   const same = holePlayers.length === next.length && holePlayers.every((p, i) => p.id === next[i].id);
