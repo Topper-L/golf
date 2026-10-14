@@ -20,6 +20,8 @@
   th, td { border-bottom:1px solid #d5e0d4; padding:6px; text-align:left; }
   button { min-height:36px; touch-action:manipulation; }
   button.on { background:#1f6b45; color:white; border-color:#1f6b45; }
+  #savedPlayers .plist { display:grid; grid-template-rows:repeat(5, auto); grid-auto-flow:column; grid-auto-columns:max-content; gap:4px 16px; overflow-x:auto; padding:6px 0; }
+  #savedPlayers label { white-space:nowrap; font-size:13px; }
   input[type="number"] { width:40px; font-size:13px; padding:2px; text-align:center; }
   input.name { width:90px; }
   input.initials { text-transform:uppercase; width:36px; text-align:center; }
@@ -327,18 +329,23 @@ function syncStartButton() {
   const btn = document.getElementById('startHole');
   if (!btn) return;
   btn.textContent = startAt === 9 ? '10' : '1';
-  btn.className = startAt === 9 ? 'on' : '';
+  btn.className = 'on';
 }
 function drawSavedPlayers() {
   const box = document.getElementById('savedPlayers');
   if (!box) return;
-  const book = playerBook();
+  const book = playerBook().slice().sort((a, b) => {
+    const owner = n => /topper larsen/i.test(n) || n.trim().startsWith('_');
+    if (owner(a.name) && !owner(b.name)) return -1;
+    if (!owner(a.name) && owner(b.name)) return 1;
+    return a.name.localeCompare(b.name);
+  });
   if (!book.length) { box.innerHTML = ''; return; }
   const used = players.map(p => String(p.name || '').toLowerCase());
-  box.innerHTML = '<b>Saved players</b><br>' + book.map(b => {
+  box.innerHTML = '<b>Saved players</b><div class="plist">' + book.map(b => {
     const inRound = used.includes(b.name.toLowerCase());
     return '<label><input type="checkbox" data-add="' + b.name.replace(/"/g, '') + '"' + (inRound ? ' checked' : '') + '> ' + b.name + ' · ' + b.initials + ' · ' + (b.hcp || '') + '</label>';
-  }).join('<br>');
+  }).join('') + '</div>';
 }
 function startHole() {
   syncPlayers();
