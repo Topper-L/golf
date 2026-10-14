@@ -20,6 +20,8 @@
   th, td { border-bottom:1px solid #d5e0d4; padding:6px; text-align:left; }
   button { min-height:36px; touch-action:manipulation; }
   button.on { background:#1f6b45; color:white; border-color:#1f6b45; }
+  button.press-off { background:#b42318; color:white; border-color:#b42318; }
+  sup { font-size:9px; }
   #savedPlayers .plist { display:grid; grid-template-rows:repeat(5, auto); grid-auto-flow:column; grid-auto-columns:max-content; gap:4px 16px; overflow-x:auto; padding:6px 0; }
   #savedPlayers label { white-space:nowrap; font-size:13px; }
   input[type="number"] { width:40px; font-size:13px; padding:2px; text-align:center; }
@@ -145,7 +147,7 @@ function drawBets() {
     const mode = a.pressMode === 'off' ? 'Off' : a.pressMode === 'manual' ? 'Manual' : 'Auto';
     return '<tr><td>' + name + '</td><td><button type="button" tabindex="-1" data-bet="' + name + '" class="' + (a.on ? 'on' : '') + '">' + (a.on ? 'On' : 'Off') +
       '</button></td>' + ['first','second','overall'].map(f => '<td><input data-bet="' + name + '" data-f="' + f + '" type="number" inputmode="numeric" value="' + a[f] + '"></td>').join('') +
-      '<td><button type="button" tabindex="-1" data-mode="' + name + '">' + mode + '</button>' + (a.pressMode === 'off' ? '' : '<input data-bet="' + name + '" data-f="press" type="number" inputmode="numeric" value="' + a.press + '">') + '</td>' +
+      '<td><button type="button" tabindex="-1" data-mode="' + name + '" class="' + (a.pressMode === 'off' ? 'press-off' : 'on') + '">' + mode + '</button>' + (a.pressMode === 'off' ? '' : '<input data-bet="' + name + '" data-f="press" type="number" inputmode="numeric" value="' + a.press + '">') + '</td>' +
       ids.map(id => '<td><input data-bet="' + name + '" data-p="' + id + '" type="number" inputmode="numeric" value="' + (a.player[id] || 0) + '"></td>').join('') + '</tr>';
   }).join('') : '';
   document.querySelectorAll('#bets input').forEach(el => el.oninput = () => {
@@ -709,12 +711,23 @@ function drawHole() {
       const cells = holes.map(h => '<td>' + (holeScores[i][h] == null ? '' : holeScores[i][h]) + '</td>').join('');
       const tot = holes.reduce((n, h) => n + (typeof holeScores[i][h] === 'number' ? holeScores[i][h] : 0), 0);
       const any = holes.some(h => holeScores[i][h] != null);
-      return '<tr><td>' + p.id + '</td>' + cells + '<td class="tot">' + (any ? tot : '') + '</td></tr>';
+      const picked = holes.some(h => holeScores[i][h] === 'X');
+      return '<tr><td>' + p.id + '</td>' + cells + '<td class="tot">' + (any ? tot + (picked ? '<sup>x</sup>' : '') : '') + '</td></tr>';
     }).join('');
     return '<table>' + head + body + '</table>';
   };
   const ss = sideStarts();
-  document.getElementById('card').innerHTML = nine(ss[0], '1st 9') + nine(ss[1], '2nd 9');
+  const eighteen = () => {
+    const head = '<tr><th></th><th class="tot">18</th></tr>';
+    const body = holePlayers.map((p, i) => {
+      const tot = holeScores[i].reduce((n, s) => n + (typeof s === 'number' ? s : 0), 0);
+      const any = holeScores[i].some(s => s != null);
+      const picked = holeScores[i].some(s => s === 'X');
+      return '<tr><td>' + p.id + '</td><td class="tot">' + (any ? tot + (picked ? '<sup>x</sup>' : '') : '') + '</td></tr>';
+    }).join('');
+    return '<table>' + head + body + '</table>';
+  };
+  document.getElementById('card').innerHTML = nine(ss[0], '1st 9') + nine(ss[1], '2nd 9') + eighteen();
   const markName = (mk) => {
     const b = Number(mk.Birdie) || 0;
     const bits = [];
