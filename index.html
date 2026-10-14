@@ -156,7 +156,7 @@ function drawBets() {
   });
 }
 function draw() {
-  document.getElementById('players').innerHTML = '<tr><th>Name</th><th>Initials</th><th>Tee</th><th>HCP</th><th>Box</th><th></th></tr>' +
+  document.getElementById('players').innerHTML = '<tr><th>Name</th><th>Initials</th><th>Tee</th><th>HCP</th><th></th><th>Box</th><th></th></tr>' +
     players.map((p, i) => '<tr><td><input class="name" data-i="' + i + '" data-f="name" value="' + p.name + '"></td><td><input class="initials" data-i="' + i + '" data-f="initials" value="' + p.initials + '" maxlength="3" autocapitalize="characters"></td><td><select data-i="' + i + '">' +
       tees.map(t => '<option' + (t === p.tee ? ' selected' : '') + '>' + t + '</option>').join('') +
       '</select></td><td><input class="hcp' + (String(p.hcp).startsWith('+') ? ' plus' : '') + '" data-i="' + i + '" data-f="hcp" value="' + p.hcp + '" maxlength="3" inputmode="numeric"></td><td><button type="button" tabindex="-1" data-plus="' + i + '" class="' + (String(p.hcp).startsWith('+') ? 'plus' : '') + '">' + (String(p.hcp).startsWith('+') ? 'Plus' : '+') + '</button></td><td><button type="button" tabindex="-1" data-box="' + i + '" class="' + (p.box ? 'on' : '') + '">' + (p.box ? 'In' : 'Off') + '</button></td><td><button type="button" tabindex="-1" data-remove="' + i + '">Remove</button></td></tr>').join('');
@@ -168,6 +168,7 @@ function draw() {
       if (el.dataset.f === 'initials') drawBets();
     };
     el.onfocus = () => { setTimeout(() => { try { el.select(); } catch (e) {} }, 10); };
+    el.onblur = () => { if (el.dataset.f === 'hcp' || el.dataset.f === 'name' || el.dataset.f === 'initials') { rememberPlayers(); drawSavedPlayers(); } };
     el.onkeydown = e => {
       if (e.key === 'Enter') {
         e.preventDefault();
