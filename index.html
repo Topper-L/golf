@@ -52,8 +52,8 @@
   <div class="card">
     <h2>Players</h2>
     <table id="players"></table>
-    <p id="suggest"></p>
     <p><button type="button" id="add" tabindex="-1">Add player</button></p>
+    <p id="savedPlayers"></p>
   </div>
   <div class="card">
     <h2>Default bet</h2>
@@ -70,7 +70,7 @@
     <h2>Matches</h2>
     <p id="status"></p>
     <table id="bets"></table>
-    <p>Start on <button type="button" id="start1" class="on" tabindex="-1">1</button> <button type="button" id="start10" tabindex="-1">10</button></p>
+    <p>Start on <button type="button" id="startHole" tabindex="-1">1</button> <span class="note">Tap to switch between 1 and 10.</span></p>
     <p><button type="button" id="save" tabindex="-1">Start Round</button> <button type="button" id="resume" tabindex="-1">Resume</button> <button type="button" id="newRound" tabindex="-1">New Round</button></p>
     <p id="saveNote"></p>
   </div>
@@ -162,7 +162,6 @@ function draw() {
       if (el.dataset.f === 'initials') el.value = el.value.toUpperCase();
       players[el.dataset.i][el.dataset.f] = el.value;
       if (el.dataset.f === 'initials') drawBets();
-      if (el.dataset.f === 'name') showSuggest(el);
     };
     el.onfocus = () => { setTimeout(() => { try { el.select(); } catch (e) {} }, 10); };
     el.onkeydown = e => {
@@ -176,6 +175,7 @@ function draw() {
   });
   document.querySelectorAll('#players input, #players select').forEach((el, n) => { el.tabIndex = n + 1; });
   document.querySelectorAll('#players select').forEach(el => el.onchange = () => { players[el.dataset.i].tee = el.value; });
+  drawSavedPlayers();
 }
 function syncPlayers() {
   document.querySelectorAll('#players input').forEach(el => { players[el.dataset.i][el.dataset.f] = el.value; });
@@ -323,13 +323,22 @@ function rememberPlayers() {
   });
   savePlayerBook(book);
 }
-function showSuggest(el) {
-  const box = document.getElementById('suggest');
+function syncStartButton() {
+  const btn = document.getElementById('startHole');
+  if (!btn) return;
+  btn.textContent = startAt === 9 ? '10' : '1';
+  btn.className = startAt === 9 ? 'on' : '';
+}
+function drawSavedPlayers() {
+  const box = document.getElementById('savedPlayers');
   if (!box) return;
-  const q = String(el.value || '').trim().toLowerCase();
-  if (q.length < 1) { box.innerHTML = ''; return; }
-  const hits = playerBook().filter(b => b.name.toLowerCase().includes(q) || String(b.initials).toLowerCase().startsWith(q)).slice(0, 5);
-  box.innerHTML = hits.map(b => '<button type="button" data-pick="' + b.name.replace(/"/g, '') + '" data-i="' + el.dataset.i + '">' + b.name + ' · ' + b.initials + ' · ' + (b.hcp || '') + '</button>').join(' ');
+  const book = playerBook();
+  if (!book.length) { box.innerHTML = ''; return; }
+  const used = players.map(p => String(p.name || '').toLowerCase());
+  box.innerHTML = '<b>Saved players</b><br>' + book.map(b => {
+    const inRound = used.includes(b.name.toLowerCase());
+    return '<label><input type="checkbox" data-add="' + b.name.replace(/"/g, '') + '"' + (inRound ? ' checked' : '') + '> ' + b.name + ' · ' + b.initials + ' · ' + (b.hcp || '') + '</label>';
+  }).join('<br>');
 }
 function startHole() {
   syncPlayers();
@@ -822,27 +831,10 @@ document.getElementById('savedList').onclick = e => {
     holeMarks = r.marks || [];
     holeNo = r.hole || 0;
     startAt = r.startAt || 0;
-    const s1 = document.getElementById('start1'), s10 = document.getElementById('start10');
-    if (s1 && s10) { s1.className = startAt === 9 ? '' : 'on'; s10.className = startAt === 9 ? 'on' : ''; }
+    syncStartButton();
     amounts = Object.assign({}, r.amounts || {});
     players = holePlayers.map(p => ({ name: p.id, initials: p.id, tee: p.tee || 'Blue', hcp: p.hcp || '0', box: !!p.box }));
-    
-document.getElementById('start1').onclick = () => { startAt = 0; document.getElementById('start1').className = 'on'; document.getElementById('start10').className = ''; };
-document.getElementById('start10').onclick = () => { startAt = 9; document.getElementById('start10').className = 'on'; document.getElementById('start1').className = ''; };
-document.getElementById('suggest').onclick = e => {
-  const btn = e.target.closest('button[data-pick]');
-  if (!btn) return;
-  const i = Number(btn.dataset.i);
-  const rec = playerBook().find(b => b.name === btn.dataset.pick);
-  if (!rec || !players[i]) return;
-  players[i].name = rec.name;
-  players[i].initials = rec.initials;
-  players[i].hcp = rec.hcp || players[i].hcp;
-  if (rec.tee) players[i].tee = rec.tee;
-  document.getElementById('suggest').innerHTML = '';
-  draw();
-};
-draw();
+    draw();
     drawBets();
     document.querySelectorAll('.wrap > h1, .wrap > p, .wrap > .card').forEach(el => el.style.display = 'none');
     document.getElementById('holeView').style.display = '';
@@ -885,6 +877,28 @@ document.getElementById('importRound').onchange = e => {
   };
   reader.readAsText(file);
 };
+document.getElementById('startHole').onclick = () => { startAt = startAt === 9 ? 0 : 9; syncStartButton(); };
+document.getElementById('savedPlayers').onclick = e => {
+  const box = e.target.closest('input[data-add]');
+  if (!box) return;
+  syncPlayers();
+  const rec = playerBook().find(b => b.name === box.dataset.add);
+  if (!rec) return;
+  if (box.checked) {
+    let i = players.findIndex(p => !p.name && !p.initials);
+    if (i < 0) { players.push({ name:'', initials:'', tee:'Blue', hcp:'', box:false }); i = players.length - 1; }
+    players[i].name = rec.name;
+    players[i].initials = rec.initials;
+    players[i].hcp = rec.hcp || '';
+    if (rec.tee) players[i].tee = rec.tee;
+  } else {
+    const i = players.findIndex(p => p.name.toLowerCase() === rec.name.toLowerCase());
+    if (i >= 0) players.splice(i, 1);
+    if (!players.length) players.push({ name:'', initials:'', tee:'Blue', hcp:'', box:false });
+  }
+  draw();
+};
+syncStartButton();
 drawSaved();
 </script>
 </body>
