@@ -95,6 +95,7 @@
     </div>
     <p><button type="button" id="back">Back a hole</button> <button type="button" id="post">Post hole</button> <button type="button" id="saveRound">Save round</button> <button type="button" id="newCard">Reset Scores</button> <button type="button" id="toSetup">Back to setup</button></p>
     <div class="card"><h2>Card</h2><div id="card"></div></div>
+    <div class="card"><h2>Group review</h2><div id="review"></div></div>
     <div class="card"><h2>Junk</h2><div id="junkSummary"></div></div>
     <div class="card"><h2>Standing</h2><div id="standing"></div></div>
     <div class="card"><h2>Manual press</h2><div id="manual"></div></div>
@@ -733,6 +734,54 @@ function drawHole() {
     return '<table>' + head + body + '</table>';
   };
   document.getElementById('card').innerHTML = nine(ss[0], '1st 9') + nine(ss[1], '2nd 9') + eighteen();
+  const review = document.getElementById('review');
+  if (review) {
+    const ids = holePlayers.map(p => p.id);
+    const halfNet = (i, h) => {
+      const g = holeScores[i][h];
+      if (g === 'X' || g == null) return null;
+      const hcp = hcpNum(holePlayers[i]);
+      const strokes = Math.max(0, Math.floor(Math.abs(hcp)));
+      const gets = blueIndex[h] <= strokes;
+      const adj = hcp >= 0 ? (gets ? 0.5 : 0) : (gets ? -0.5 : 0);
+      return g - adj;
+    };
+    const fullNet = (i, h) => {
+      const g = holeScores[i][h];
+      if (g === 'X' || g == null) return null;
+      const hcp = hcpNum(holePlayers[i]);
+      const strokes = Math.max(0, Math.floor(Math.abs(hcp)));
+      const gets = blueIndex[h] <= strokes;
+      return g - (hcp >= 0 ? (gets ? 1 : 0) : (gets ? -1 : 0));
+    };
+    const lowOf = (h, fn) => {
+      const vals = holePlayers.map((p, i) => ({ id: p.id, v: fn(i, h) })).filter(x => x.v != null);
+      if (!vals.length) return '—';
+      const best = Math.min(...vals.map(x => x.v));
+      const who = vals.filter(x => x.v === best).map(x => x.id).join('+');
+      return who + ' ' + best;
+    };
+    const holeRows = [];
+    for (let h = 0; h < 18; h++) {
+      const any = holeScores.some(row => row[h] != null);
+      if (!any) continue;
+      holeRows.push('<tr><td>' + (h+1) + '</td><td>' + lowOf(h, (i, hh) => holeScores[i][hh] === 'X' || holeScores[i][hh] == null ? null : holeScores[i][hh]) + '</td><td>' + lowOf(h, halfNet) + '</td></tr>');
+    }
+    const overall = (fn) => {
+      const tots = holePlayers.map((p, i) => {
+        let n = 0, any = false;
+        for (let h = 0; h < 18; h++) { const v = fn(i, h); if (v != null) { n += v; any = true; } }
+        return any ? { id: p.id, v: n } : null;
+      }).filter(Boolean);
+      if (!tots.length) return '—';
+      const best = Math.min(...tots.map(x => x.v));
+      const who = tots.filter(x => x.v === best).map(x => x.id).join('+');
+      return who + ' ' + best;
+    };
+    review.innerHTML = holeRows.length
+      ? '<table><tr><th>Hole</th><th>Low gross</th><th>Low net (½)</th></tr>' + holeRows.join('') + '</table><p>Overall low gross ' + overall((i,h) => holeScores[i][h] === 'X' || holeScores[i][h] == null ? null : holeScores[i][h]) + '<br>Overall low net ' + overall(fullNet) + '</p>'
+      : '<p>No scores posted.</p>';
+  }
   const markName = (mk) => {
     const b = Number(mk.Birdie) || 0;
     const bits = [];
