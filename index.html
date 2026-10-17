@@ -872,7 +872,7 @@ document.getElementById('savedList').onclick = e => {
     draw();
     drawBets();
     document.querySelectorAll('.wrap > h1, .wrap > p, .wrap > .card').forEach(el => el.style.display = 'none');
-    document.getElementById('holeView').style.display = '';
+    document.getElementById('holeView').style.display = 'block';
     drawHole();
   }
   if (del) {
