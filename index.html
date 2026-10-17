@@ -642,7 +642,8 @@ function settle() {
     const winners = dollars < 0 ? a : b;
     const losers = dollars < 0 ? b : a;
     const amt = Math.abs(dollars);
-    if (dollars) losers.forEach(from => winners.forEach(to => add(from, to, amt)));
+    const share = winners.length > 1 ? amt / winners.length : amt;
+    if (dollars) losers.forEach(from => winners.forEach(to => add(from, to, share)));
     return '<p><b>' + name + '</b><br>' + bits.join('<br>') + '<br>Total ' + who(dollars) + '</p>';
   });
   const nets = Object.keys(net).map(key => {
