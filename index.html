@@ -1007,7 +1007,9 @@ document.getElementById('savedPlayers').onclick = e => {
     if (i >= 0) players.splice(i, 1);
     if (!players.length) players.push({ name:'', initials:'', tee:'Blue', hcp:'', box:false });
   }
-  const courseSelect = document.getElementById('courseSelect');
+  draw();
+};
+const courseSelect = document.getElementById('courseSelect');
 Object.keys(courses).forEach(name => {
   const opt = document.createElement('option');
   opt.value = name; opt.textContent = name;
@@ -1019,8 +1021,6 @@ courseSelect.onchange = () => {
   document.getElementById('courseTitle').textContent = courseData().title;
   players.forEach(p => { if (!courseData().tees.includes(p.tee)) p.tee = courseData().tees[0]; });
   draw();
-};
-draw();
 };
 syncStartButton();
 drawSaved();
