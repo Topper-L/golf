@@ -1009,19 +1009,24 @@ document.getElementById('savedPlayers').onclick = e => {
   }
   draw();
 };
-const courseSelect = document.getElementById('courseSelect');
-Object.keys(courses).forEach(name => {
-  const opt = document.createElement('option');
-  opt.value = name; opt.textContent = name;
-  courseSelect.appendChild(opt);
-});
-courseSelect.value = currentCourse;
-courseSelect.onchange = () => {
-  currentCourse = courseSelect.value;
-  document.getElementById('courseTitle').textContent = courseData().title;
-  players.forEach(p => { if (!courseData().tees.includes(p.tee)) p.tee = courseData().tees[0]; });
-  draw();
-};
+function initCourseSelect() {
+  const courseSelect = document.getElementById('courseSelect');
+  if (!courseSelect) return;
+  courseSelect.innerHTML = '';
+  Object.keys(courses).forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = name;
+    courseSelect.appendChild(opt);
+  });
+  courseSelect.value = currentCourse;
+  courseSelect.onchange = () => {
+    currentCourse = courseSelect.value;
+    document.getElementById('courseTitle').textContent = courseData().title;
+    players.forEach(p => { if (!courseData().tees.includes(p.tee)) p.tee = courseData().tees[0]; });
+    draw();
+  };
+}
+initCourseSelect();
 syncStartButton();
 drawSaved();
 </script>
