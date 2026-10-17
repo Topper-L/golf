@@ -654,7 +654,9 @@ function settle() {
   el.innerHTML = lines.join('') + (nets.length ? '<p><b>Net</b></p>' + nets.join('') : '');
 }
 function detail() {
-  if (!detailName) { document.getElementById('matchDetail').innerHTML = ''; return; }
+  const el = document.getElementById('matchDetail');
+  if (!el) return;
+  if (!detailName) { el.innerHTML = ''; return; }
   const sides = matchSides(detailName);
   const cells = [];
   for (let h = 0; h < 18; h++) {
@@ -662,7 +664,7 @@ function detail() {
     const an = sideNet(sides.a, h, sides.a.concat(sides.b)), bn = sideNet(sides.b, h, sides.a.concat(sides.b));
     cells.push('<td>' + (an < bn ? 'up' : an > bn ? 'dn' : 'AS') + '</td>');
   }
-  document.getElementById('matchDetail').innerHTML = '<p>' + detailName + '</p><table><tr>' + Array.from({length:18}, (_,i) => '<th>' + (i+1) + '</th>').join('') + '</tr><tr>' + cells.join('') + '</tr></table>';
+  el.innerHTML = '<p>' + detailName + '</p><table><tr>' + Array.from({length:18}, (_,i) => '<th>' + (i+1) + '</th>').join('') + '</tr><tr>' + cells.join('') + '</tr></table>';
 }
 function drawManual() {
   const el = document.getElementById('manual');
