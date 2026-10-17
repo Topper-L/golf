@@ -628,7 +628,7 @@ function settle() {
     const junkOf = id => {
       const i = holePlayers.findIndex(p => p.id === id);
       if (i < 0) return 0;
-      const rate = (bet.player && bet.player[id]) || 3;
+      const rate = (bet.player && bet.player[id] != null) ? Number(bet.player[id]) : 3;
       const base = holeMarks[i].reduce((n, mk) => n + (Number(mk.Birdie) || 0) + (mk.Junk || 0), 0);
       return (base + (kp[id] || 0)) * rate;
     };
