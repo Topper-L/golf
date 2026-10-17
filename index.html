@@ -720,7 +720,7 @@ function getsStroke(p) {
 }
 function drawHole() {
   const idx = indexFor(holePlayers[0] && holePlayers[0].tee); document.getElementById('holeTitle').textContent = 'Hole ' + (holeNo + 1) + ' · Par ' + courseData().par[holeNo] + ' · Handicap ' + idx[holeNo];
-  const kinds = [2,6,12,16].includes(holeNo) ? ['KP','Birdie','Junk'] : ['Birdie','Junk'];
+  const kinds = courseData().par[holeNo] === 3 ? ['KP','Birdie','Junk'] : ['Birdie','Junk'];
   document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     const v = holeVal(i);
     const junkBtns = kinds.map(k => {
