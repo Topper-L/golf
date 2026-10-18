@@ -949,12 +949,17 @@ document.getElementById('savedList').onclick = e => {
   if (exp) {
     const r = list[Number(exp.dataset.export)];
     if (!r) return;
-    const blob = new Blob([JSON.stringify(r, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
     const abbr = (r.course && courses[r.course]) ? courses[r.course].abbr : 'golf';
-    a.download = abbr + '-' + (r.when || '').slice(0, 10) + '.json';
-    a.click();
+    const name = abbr + '-' + (r.when || '').slice(0, 10) + '.json';
+    const blob = new Blob([JSON.stringify(r, null, 2)], { type: 'application/json' });
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], name)] })) {
+      navigator.share({ files: [new File([blob], name)], title: name }).catch(() => {});
+    } else {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+    }
     return;
   }
   if (open) {
