@@ -98,10 +98,10 @@
       <div id="holeJunk"></div>
     </div>
     <p><button type="button" id="back">Back a hole</button> <button type="button" id="post">Post hole</button> <button type="button" id="saveRound">Save round</button> <button type="button" id="newCard">Reset Scores</button> <button type="button" id="toSetup">Back to setup</button></p>
+    <div class="card"><h2>Standing</h2><div id="standing"></div></div>
+    <div class="card"><h2>Junk</h2><div id="junkSummary"></div></div>
     <div class="card"><h2>Card</h2><div id="card"></div></div>
     <div class="card"><h2>Group review</h2><div id="review"></div></div>
-    <div class="card"><h2>Junk</h2><div id="junkSummary"></div></div>
-    <div class="card"><h2>Standing</h2><div id="standing"></div></div>
     <div class="card"><h2>Manual press</h2><div id="manual"></div></div>
     <div class="card"><h2>Settle</h2><div id="settle"></div></div>
   </div>
@@ -187,9 +187,9 @@ function drawBets() {
 }
 function draw() {
   document.getElementById('players').innerHTML = '<tr><th>Name</th><th>Initials</th><th>Tee</th><th>HCP</th><th></th><th>Box</th><th></th></tr>' +
-    players.map((p, i) => '<tr><td><input class="name" data-i="' + i + '" data-f="name" value="' + p.name + '"></td><td><input class="initials' + (p.initials ? '' : ' need') + '" data-i="' + i + '" data-f="initials" value="' + p.initials + '" maxlength="3" autocapitalize="characters"></td><td><select data-i="' + i + '">' +
+    players.map((p, i) => '<tr><td><input class="name' + (p.name ? '' : ' need') + '" data-i="' + i + '" data-f="name" value="' + p.name + '"></td><td><input class="initials' + (p.initials ? '' : ' need') + '" data-i="' + i + '" data-f="initials" value="' + p.initials + '" maxlength="3" autocapitalize="characters"></td><td><select data-i="' + i + '">' +
       courseData().tees.map(t => '<option' + (t === p.tee ? ' selected' : '') + '>' + t + '</option>').join('') +
-      '</select></td><td><input class="hcp' + (String(p.hcp).startsWith('+') ? ' plus' : '') + '" data-i="' + i + '" data-f="hcp" value="' + p.hcp + '" maxlength="3" inputmode="numeric"></td><td><button type="button" tabindex="-1" data-plus="' + i + '" class="' + (String(p.hcp).startsWith('+') ? 'plus' : '') + '">' + (String(p.hcp).startsWith('+') ? 'Plus' : '+') + '</button></td><td><button type="button" tabindex="-1" data-box="' + i + '" class="' + (p.box ? 'on' : '') + '">' + (p.box ? 'In' : 'Off') + '</button></td><td><button type="button" tabindex="-1" data-remove="' + i + '">Remove</button></td></tr>').join('');
+      '</select></td><td><input class="hcp' + (String(p.hcp).startsWith('+') ? ' plus' : '') + (p.hcp ? '' : ' need') + '" data-i="' + i + '" data-f="hcp" value="' + p.hcp + '" maxlength="3" inputmode="numeric"></td><td><button type="button" tabindex="-1" data-plus="' + i + '" class="' + (String(p.hcp).startsWith('+') ? 'plus' : '') + '">' + (String(p.hcp).startsWith('+') ? 'Plus' : '+') + '</button></td><td><button type="button" tabindex="-1" data-box="' + i + '" class="' + (p.box ? 'on' : '') + '">' + (p.box ? 'In' : 'Off') + '</button></td><td><button type="button" tabindex="-1" data-remove="' + i + '">Remove</button></td></tr>').join('');
   drawBets();
   document.querySelectorAll('#players input').forEach(el => {
     el.oninput = () => {
@@ -298,6 +298,7 @@ document.getElementById('resume').onclick = () => {
   });
   document.querySelectorAll('.wrap > h1, .wrap > p, .wrap > .card').forEach(el => el.style.display = 'none');
   document.getElementById('holeView').style.display = 'block';
+  window.scrollTo(0, 0);
   try { drawHole(); }
   catch (err) { document.getElementById('standing').innerHTML = '<p>Score page opened. Standing: ' + err.message + '</p>'; }
   if (missing) document.getElementById('saveNote').textContent = 'A handicap is blank. Scores and junk work. Betting stays off for that player until a handicap is entered.';
@@ -426,6 +427,7 @@ function startHole() {
   }
   document.querySelectorAll('.wrap > h1, .wrap > p, .wrap > .card').forEach(el => el.style.display = 'none');
   document.getElementById('holeView').style.display = 'block';
+  window.scrollTo(0, 0);
   drawHole();
 }
 function hcpNum(p) { return Number(String(p.hcp).replace('+','-')) || 0; }
@@ -679,7 +681,7 @@ function settle() {
     const [x, y] = key.split('|');
     const v = net[key];
     if (!v) return '';
-    return '<p>' + (v > 0 ? x : y) + ' pays ' + (v > 0 ? y : x) + ' $' + Math.abs(v) + '</p>';
+    return '<p class="' + (v > 0 ? 'dn' : 'up') + '">' + (v > 0 ? x : y) + ' pays ' + (v > 0 ? y : x) + ' $' + Math.abs(v) + '</p>';
   }).filter(Boolean);
   el.innerHTML = lines.join('') + (nets.length ? '<p><b>Net</b></p>' + nets.join('') : '');
 }
@@ -931,13 +933,26 @@ function drawSaved() {
   el.innerHTML = list.length ? list.map((r, i) => {
     const who = (r.players || []).map(p => p.id).join(', ');
     const when = new Date(r.when).toLocaleDateString();
-    return '<p>' + when + ' · ' + who + ' <button type="button" data-open="' + i + '">Open</button> <button type="button" data-del="' + i + '">Delete</button></p>';
+    const course = (r.course && courses[r.course]) ? courses[r.course].abbr : '';
+    return '<p>' + when + (course ? ' · ' + course : '') + ' · ' + who + ' <button type="button" data-open="' + i + '">Open</button> <button type="button" data-export="' + i + '">Export</button> <button type="button" data-del="' + i + '">Delete</button></p>';
   }).join('') : '<p>No saved rounds.</p>';
 }
 document.getElementById('savedList').onclick = e => {
   const open = e.target.closest('button[data-open]');
   const del = e.target.closest('button[data-del]');
+  const exp = e.target.closest('button[data-export]');
   const list = roundArchive();
+  if (exp) {
+    const r = list[Number(exp.dataset.export)];
+    if (!r) return;
+    const blob = new Blob([JSON.stringify(r, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const abbr = (r.course && courses[r.course]) ? courses[r.course].abbr : 'golf';
+    a.download = abbr + '-' + (r.when || '').slice(0, 10) + '.json';
+    a.click();
+    return;
+  }
   if (open) {
     const r = list[Number(open.dataset.open)];
     if (!r) return;
@@ -954,6 +969,7 @@ holePlayers = r.players || [];
     drawBets();
     document.querySelectorAll('.wrap > h1, .wrap > p, .wrap > .card').forEach(el => el.style.display = 'none');
     document.getElementById('holeView').style.display = 'block';
+  window.scrollTo(0, 0);
     drawHole();
   }
   if (del) {
