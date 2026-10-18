@@ -9,7 +9,7 @@
   .wrap { max-width:920px; margin:0 auto; padding:16px; }
   h1 { font-size:22px; margin:0 0 4px; }
   p { color:#5e6f64; font-size:13px; margin:0 0 12px; }
-  .card { background:#f7faf6; border:1px solid #d5e0d4; border-radius:14px; padding:12px; margin-bottom:12px; overflow-x:auto; }
+  .card { background:#f7faf6; border:1px solid #d5e0d4; border-radius:14px; padding:10px 12px; margin-bottom:10px; overflow-x:auto; }
   h2 { margin:0 0 8px; font-size:12px; letter-spacing:.04em; text-transform:uppercase; color:#5e6f64; }
   table { border-collapse:collapse; width:100%; font-size:14px; }
   #card, #card table, #card td, #card th, #junkSummary, #junkSummary table, #junkSummary td, #junkSummary th { font-size:12px !important; }
@@ -27,6 +27,9 @@
   input[type="number"] { width:40px; font-size:13px; padding:2px; text-align:center; }
   input.name { width:90px; }
   input.initials { text-transform:uppercase; width:36px; text-align:center; }
+  input.need { background:#fff4e5; border:1px solid #e0a84a; }
+  .up { color:#1f6b45; font-weight:700; }
+  .dn { color:#b42318; font-weight:700; }
   input.hcp { width:42px; text-align:center; }
   input.hcp.plus { background:#1f6b45; color:white; font-weight:700; }
   .defaults { display:grid; grid-template-columns:repeat(5, 1fr); gap:6px; align-items:end; }
@@ -106,12 +109,14 @@
 <script>
 const courses = {
   'Wood Ranch': {
+    abbr: 'WRGC',
     title: 'Wood Ranch Golf Club, Scorecard rev 09/2025.',
     par: [4,5,3,4,4,5,3,4,4,4,4,4,3,4,5,4,3,5],
     tees: ['Gold','Blue','White','White tournament','Red','Silver','Blue/White','White/Red','Red/Silver'],
     index: { default: [3,13,15,7,1,9,17,11,5,2,8,4,10,14,16,6,12,18] }
   },
   'Sunset Hills': {
+    abbr: 'SHCC',
     title: 'Sunset Hills Country Club.',
     par: [4,4,5,4,3,4,4,4,3,4,5,3,4,4,5,4,3,4],
     tees: ['Black','White','Red Short','Forward'],
@@ -182,7 +187,7 @@ function drawBets() {
 }
 function draw() {
   document.getElementById('players').innerHTML = '<tr><th>Name</th><th>Initials</th><th>Tee</th><th>HCP</th><th></th><th>Box</th><th></th></tr>' +
-    players.map((p, i) => '<tr><td><input class="name" data-i="' + i + '" data-f="name" value="' + p.name + '"></td><td><input class="initials" data-i="' + i + '" data-f="initials" value="' + p.initials + '" maxlength="3" autocapitalize="characters"></td><td><select data-i="' + i + '">' +
+    players.map((p, i) => '<tr><td><input class="name" data-i="' + i + '" data-f="name" value="' + p.name + '"></td><td><input class="initials' + (p.initials ? '' : ' need') + '" data-i="' + i + '" data-f="initials" value="' + p.initials + '" maxlength="3" autocapitalize="characters"></td><td><select data-i="' + i + '">' +
       courseData().tees.map(t => '<option' + (t === p.tee ? ' selected' : '') + '>' + t + '</option>').join('') +
       '</select></td><td><input class="hcp' + (String(p.hcp).startsWith('+') ? ' plus' : '') + '" data-i="' + i + '" data-f="hcp" value="' + p.hcp + '" maxlength="3" inputmode="numeric"></td><td><button type="button" tabindex="-1" data-plus="' + i + '" class="' + (String(p.hcp).startsWith('+') ? 'plus' : '') + '">' + (String(p.hcp).startsWith('+') ? 'Plus' : '+') + '</button></td><td><button type="button" tabindex="-1" data-box="' + i + '" class="' + (p.box ? 'on' : '') + '">' + (p.box ? 'In' : 'Off') + '</button></td><td><button type="button" tabindex="-1" data-remove="' + i + '">Remove</button></td></tr>').join('');
   drawBets();
@@ -522,7 +527,7 @@ function holeStanding() {
       }
       presses.push(...side);
     });
-    const say = n => n === 0 ? 'AS' : n > 0 ? n + ' up' : Math.abs(n) + ' dn';
+    const say = n => n === 0 ? 'AS' : n > 0 ? '<span class="up">' + n + ' up</span>' : '<span class="dn">' + Math.abs(n) + ' dn</span>';
     const gridFor = start => {
       const rows = [];
       for (let h = start; h < start + 9; h++) {
@@ -968,7 +973,7 @@ document.getElementById('exportRound').onclick = () => {
   const blob = new Blob([JSON.stringify(snapshot(), null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'golf-round-' + new Date().toISOString().slice(0, 10) + '.json';
+  a.download = (courseData().abbr || 'golf') + '-' + new Date().toISOString().slice(0, 10) + '.json';
   a.click();
 };
 document.getElementById('importRound').onchange = e => {
