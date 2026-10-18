@@ -681,7 +681,11 @@ function settle() {
     const [x, y] = key.split('|');
     const v = net[key];
     if (!v) return '';
-    return '<p class="' + (v > 0 ? 'dn' : 'up') + '">' + (v > 0 ? x : y) + ' pays ' + (v > 0 ? y : x) + ' $' + Math.abs(v) + '</p>';
+    const payer = v > 0 ? x : y;
+    const payee = v > 0 ? y : x;
+    const me = (holePlayers[0] && holePlayers[0].id) || '';
+    const cls = payer === me ? 'dn' : payee === me ? 'up' : '';
+    return '<p class="' + cls + '">' + payer + ' pays ' + payee + ' $' + Math.abs(v) + '</p>';
   }).filter(Boolean);
   el.innerHTML = lines.join('') + (nets.length ? '<p><b>Net</b></p>' + nets.join('') : '');
 }
