@@ -918,6 +918,8 @@ function saveRoundArchive(list) {
   try { localStorage.setItem('golf-rounds', JSON.stringify(list)); } catch (e) {}
 }
 function snapshot() {
+  const d = document.getElementById('roundDate');
+  if (d && d.value) roundDate = d.value;
   return { players: holePlayers, scores: holeScores, marks: holeMarks, hole: holeNo, startAt, amounts, course: currentCourse, when: (roundDate || new Date().toISOString().slice(0, 10)) + 'T12:00:00', auto: true };
 }
 function autoSaveRound() {
@@ -1025,7 +1027,7 @@ document.getElementById('importRound').onchange = e => {
 };
 document.getElementById('startHole').onclick = () => { startAt = startAt === 9 ? 0 : 9; syncStartButton(); };
 document.getElementById('roundDate').value = roundDate;
-document.getElementById('roundDate').onchange = () => { roundDate = document.getElementById('roundDate').value; };
+document.getElementById('roundDate').onchange = () => { roundDate = document.getElementById('roundDate').value; if (holePlayers.length) autoSaveRound(); };
 document.getElementById('savedPlayers').onclick = e => {
   const drop = e.target.closest('button[data-drop]');
   if (drop) {
