@@ -379,7 +379,7 @@ function drawSavedPlayers() {
   const used = players.map(p => String(p.name || '').toLowerCase());
   box.innerHTML = '<b>Saved players</b><div class="plist">' + book.map(b => {
     const inRound = used.includes(b.name.toLowerCase());
-    return '<label><input type="checkbox" data-add="' + b.name.replace(/"/g, '') + '"' + (inRound ? ' checked' : '') + '> ' + b.name + ' · ' + b.initials + ' · ' + (b.hcp || '') + '</label>';
+    return '<label><input type="checkbox" data-add="' + b.name.replace(/"/g, '') + '"' + (inRound ? ' checked' : '') + '> ' + b.name + ' · ' + b.initials + ' · ' + (b.hcp || '') + ' <button type="button" data-drop="' + b.name.replace(/"/g, '') + '" style="font-size:11px;padding:0 6px;min-height:22px;">Remove</button></label>';
   }).join('') + '</div>';
 }
 function startHole() {
@@ -934,7 +934,7 @@ function drawSaved() {
     const who = (r.players || []).map(p => p.id).join(', ');
     const when = new Date(r.when).toLocaleDateString();
     const course = (r.course && courses[r.course]) ? courses[r.course].abbr : '';
-    return '<p>' + when + (course ? ' · ' + course : '') + ' · ' + who + ' <button type="button" data-open="' + i + '">Open</button> <button type="button" data-export="' + i + '">Export</button> <button type="button" data-del="' + i + '">Delete</button></p>';
+    return '<p><button type="button" data-open="' + i + '">Open</button> <button type="button" data-export="' + i + '">Export</button> <button type="button" data-del="' + i + '">Delete</button> ' + when + (course ? ' · ' + course : '') + ' · ' + who + '</p>';
   }).join('') : '<p>No saved rounds.</p>';
 }
 document.getElementById('savedList').onclick = e => {
@@ -1011,6 +1011,13 @@ document.getElementById('importRound').onchange = e => {
 };
 document.getElementById('startHole').onclick = () => { startAt = startAt === 9 ? 0 : 9; syncStartButton(); };
 document.getElementById('savedPlayers').onclick = e => {
+  const drop = e.target.closest('button[data-drop]');
+  if (drop) {
+    const book = playerBook().filter(b => b.name !== drop.dataset.drop);
+    savePlayerBook(book);
+    drawSavedPlayers();
+    return;
+  }
   const box = e.target.closest('input[data-add]');
   if (!box) return;
   syncPlayers();
