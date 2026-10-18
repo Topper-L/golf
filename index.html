@@ -78,7 +78,7 @@
     <h2>Matches</h2>
     <p id="status"></p>
     <table id="bets"></table>
-    <p>Start on <button type="button" id="startHole" tabindex="-1">1</button> <span class="note">Tap to switch between 1 and 10.</span></p>
+    <p>Start on <button type="button" id="startHole" tabindex="-1">1</button> <span class="note">Tap to switch between 1 and 10.</span> Date <input type="date" id="roundDate"></p>
     <p><button type="button" id="save" tabindex="-1">Start Round</button> <button type="button" id="resume" tabindex="-1">Resume</button> <button type="button" id="newRound" tabindex="-1">New Round</button></p>
     <p id="saveNote"></p>
   </div>
@@ -129,6 +129,7 @@ const courses = {
   }
 };
 let currentCourse = 'Wood Ranch';
+let roundDate = new Date().toISOString().slice(0, 10);
 function courseData() { return courses[currentCourse]; }
 function indexFor(tee) {
   const c = courseData();
@@ -917,7 +918,7 @@ function saveRoundArchive(list) {
   try { localStorage.setItem('golf-rounds', JSON.stringify(list)); } catch (e) {}
 }
 function snapshot() {
-  return { players: holePlayers, scores: holeScores, marks: holeMarks, hole: holeNo, startAt, amounts, course: currentCourse, when: new Date().toISOString(), auto: true };
+  return { players: holePlayers, scores: holeScores, marks: holeMarks, hole: holeNo, startAt, amounts, course: currentCourse, when: (roundDate || new Date().toISOString().slice(0, 10)) + 'T12:00:00', auto: true };
 }
 function autoSaveRound() {
   if (!holePlayers.length) return;
@@ -972,6 +973,7 @@ holePlayers = r.players || [];
     holeNo = r.hole || 0;
     startAt = r.startAt || 0;
     syncStartButton();
+    if (r.when) { roundDate = r.when.slice(0, 10); const d = document.getElementById('roundDate'); if (d) d.value = roundDate; }
     amounts = Object.assign({}, r.amounts || {});
     players = holePlayers.map(p => {
       const book = playerBook().find(b => String(b.initials).toUpperCase() === String(p.id).toUpperCase());
@@ -1022,6 +1024,8 @@ document.getElementById('importRound').onchange = e => {
   reader.readAsText(file);
 };
 document.getElementById('startHole').onclick = () => { startAt = startAt === 9 ? 0 : 9; syncStartButton(); };
+document.getElementById('roundDate').value = roundDate;
+document.getElementById('roundDate').onchange = () => { roundDate = document.getElementById('roundDate').value; };
 document.getElementById('savedPlayers').onclick = e => {
   const drop = e.target.closest('button[data-drop]');
   if (drop) {
