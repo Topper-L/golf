@@ -968,7 +968,10 @@ holePlayers = r.players || [];
     startAt = r.startAt || 0;
     syncStartButton();
     amounts = Object.assign({}, r.amounts || {});
-    players = holePlayers.map(p => ({ name: p.id, initials: p.id, tee: p.tee || 'Blue', hcp: p.hcp || '0', box: !!p.box }));
+    players = holePlayers.map(p => {
+      const book = playerBook().find(b => String(b.initials).toUpperCase() === String(p.id).toUpperCase());
+      return { name: (book && book.name) || p.id, initials: p.id, tee: p.tee || 'Blue', hcp: p.hcp || '0', box: !!p.box };
+    });
     draw();
     drawBets();
     document.querySelectorAll('.wrap > h1, .wrap > p, .wrap > .card').forEach(el => el.style.display = 'none');
