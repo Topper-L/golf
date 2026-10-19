@@ -916,7 +916,17 @@ function drawHole() {
         let label = name;
         if (mk.KP > 0 && boxIds.length === 2) {
           const isBox = boxIds.includes(p.id);
-          label += isBox ? ' (full)' : ' (mini)';
+          if (isBox) {
+            label += ' (full)';
+          } else {
+            const others = holePlayers.filter(x => !boxIds.includes(x.id) && x.id !== p.id).map(x => x.id);
+            const wins = others.filter(opp => {
+              const oppI = holePlayers.findIndex(x => x.id === opp);
+              const oppKP = (holeMarks[oppI] && holeMarks[oppI][h] && holeMarks[oppI][h].KP) || 0;
+              return mk.KP > oppKP;
+            });
+            label += ' (mini vs ' + (wins.length === others.length ? 'all' : wins.join('+') || 'none') + ')';
+          }
         }
         items.push((h+1) + ' ' + label + ' $' + dollars);
       }
