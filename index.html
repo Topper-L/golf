@@ -905,9 +905,8 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
   const boxIds = holePlayers.filter(p => p.box).map(p => p.id);
   const outside = holePlayers.filter(p => !boxIds.includes(p.id));
   const pairs = boxIds.length === 2 && outside.length === 3 ? [[outside[0], outside[1]], [outside[0], outside[2]], [outside[1], outside[2]]] : [];
-  const byPlayer = holePlayers.map((p, i) => {
-    const items = [];
-    let total = 0;
+  const rows = [];
+  holePlayers.forEach((p, i) => {
     for (let h = 0; h < 18; h++) {
       const mk = holeMarks[i][h] || {};
       const name = markName(mk);
@@ -926,20 +925,21 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
         });
         if (wins.length) {
           const dollars = wins.length * rate;
-          total += dollars;
-          const isFull = wins.length === 3;
-          items.push((h+1) + ' KP-' + mk.KP + ' ' + (isFull ? '(full, 3 matches)' : '(' + wins.length + ' match' + (wins.length > 1 ? 'es' : '') + ')') + ' $' + dollars);
+          const matches = wins.map(pair => pair.map(x => x.id).join('+') + ' $' + rate).join(', ');
+          rows.push({ player: p.id, hole: h + 1, type: 'KP-' + mk.KP, matches, total: dollars });
         }
       } else if (mk.Birdie || mk.Junk) {
         const val = (Number(mk.Birdie) || 0) + (mk.Junk || 0);
         const dollars = val * rate;
-        total += dollars;
-        items.push((h+1) + ' ' + name + ' $' + dollars);
+        const isBox = boxIds.includes(p.id);
+        const partners = isBox ? [] : holePlayers.filter(x => !boxIds.includes(x.id) && x.id !== p.id).slice(0, 1).map(x => x.id);
+        const matchLabel = isBox ? 'all 3' : p.id + '+' + (partners[0] || '?');
+        rows.push({ player: p.id, hole: h + 1, type: name, matches: matchLabel + ' $' + dollars, total: dollars });
       }
     }
-    return items.length ? '<p><b>' + p.id + '</b> +$' + total + '<br>' + items.join('<br>') + '</p>' : '';
-  }).filter(Boolean);
-  junkEl.innerHTML = byPlayer.length ? byPlayer.join('') : '<p>No junk posted.</p>';
+  });
+  const table = rows.length ? '<table><tr><th>Player</th><th>Hole</th><th>Type</th><th>Matches</th><th>Total</th></tr>' + rows.map(r => '<tr><td>' + r.player + '</td><td>#' + r.hole + '</td><td>' + r.type + '</td><td>' + r.matches + '</td><td>+$' + r.total + '</td></tr>').join('') + '</table>' : '<p>No junk posted.</p>';
+  junkEl.innerHTML = table;
   try { document.getElementById('standing').innerHTML = holeStanding(); }
   catch (err) { document.getElementById('standing').innerHTML = '<p>' + err.message + '</p>'; }
   try { settle(); } catch (err) { document.getElementById('settle').innerHTML = '<p>' + err.message + '</p>'; }
