@@ -914,9 +914,9 @@ function drawHole() {
         const dollars = val * rate;
         total += dollars;
         let label = name;
-        if (mk.KP > 0) {
-          const isFull = boxIds.includes(p.id) || boxIds.length < 2;
-          label += isFull ? ' (full)' : ' (mini)';
+        if (mk.KP > 0 && boxIds.length === 2) {
+          const isBox = boxIds.includes(p.id);
+          label += isBox ? ' (full)' : ' (mini)';
         }
         items.push((h+1) + ' ' + label + ' $' + dollars);
       }
