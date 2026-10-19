@@ -785,7 +785,8 @@ function getsStroke(p) {
 function drawHole() {
   const idx = indexFor(holePlayers[0] && holePlayers[0].tee); document.getElementById('holeTitle').textContent = 'Hole ' + (holeNo + 1) + ' · Par ' + courseData().par[holeNo] + ' · Handicap ' + idx[holeNo];
   const kinds = courseData().par[holeNo] === 3 ? ['KP','Birdie','Junk'] : ['Birdie','Junk'];
-  document.getElementById('kpTip').textContent = courseData().par[holeNo] === 3 ? 'Tap KP: KP-1 = closest, KP-2 = 2nd, KP-3 = 3rd, KP-4 = 4th.' : '';\ndocument.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
+  document.getElementById('kpTip').textContent = courseData().par[holeNo] === 3 ? 'Tap KP: KP-1 = closest, KP-2 = 2nd, KP-3 = 3rd, KP-4 = 4th.' : '';
+document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     const v = holeVal(i);
     const junkBtns = kinds.map(k => {
       const n = holeMarks[i][holeNo][k];
