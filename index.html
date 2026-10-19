@@ -928,16 +928,19 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
           const matches = wins.map(pair => pair.map(x => x.id).join('+') + ' $' + rate).join(', ');
           rows.push({ player: p.id, hole: h + 1, type: 'KP-' + mk.KP, matches, total: dollars });
         }
-      } else if (mk.Birdie || mk.Junk) {
+      }
+      if (mk.Birdie || mk.Junk) {
         const val = (Number(mk.Birdie) || 0) + (mk.Junk || 0);
         const dollars = val * rate;
         const isBox = boxIds.includes(p.id);
         const partners = isBox ? [] : holePlayers.filter(x => !boxIds.includes(x.id) && x.id !== p.id).slice(0, 1).map(x => x.id);
         const matchLabel = isBox ? 'all 3' : p.id + '+' + (partners[0] || '?');
-        rows.push({ player: p.id, hole: h + 1, type: name, matches: matchLabel + ' $' + dollars, total: dollars });
+        const bName = mk.Birdie === 1 ? 'Birdie' : mk.Birdie === 2 ? 'Eagle' : mk.Birdie === 3 ? 'Dbl Eagle' : mk.Birdie === 4 ? 'Albatross' : 'Junk';
+        rows.push({ player: p.id, hole: h + 1, type: bName, matches: matchLabel + ' $' + dollars, total: dollars });
       }
     }
   });
+  rows.sort((a, b) => a.hole - b.hole || a.player.localeCompare(b.player));
   const table = rows.length ? '<table><tr><th>Player</th><th>Hole</th><th>Type</th><th>Matches</th><th>Total</th></tr>' + rows.map(r => '<tr><td>' + r.player + '</td><td>#' + r.hole + '</td><td>' + r.type + '</td><td>' + r.matches + '</td><td>+$' + r.total + '</td></tr>').join('') + '</table>' : '<p>No junk posted.</p>';
   junkEl.innerHTML = table;
   try { document.getElementById('standing').innerHTML = holeStanding(); }
