@@ -26,6 +26,11 @@
   #card td.par { color:#666; }
   #card tr.current { background:#e8f2ea; }
   #card .short { display:block; font-size:10px; color:#5e6f64; font-weight:400; }
+  .section-head { display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding:4px 0; }
+  .section-head h2 { margin:0; }
+  .section-head .chev { font-size:14px; color:#5e6f64; }
+  .section-body.collapsed { display:none; }
+
 
   #standing p { font-size:15px !important; line-height:1.4; }
   #settle, #settle p { font-size:15px !important; line-height:1.5; }
@@ -111,12 +116,12 @@
       <div id="holeJunk"></div>
     </div>
     <p><button type="button" id="back">Back a hole</button> <button type="button" id="post">Post hole</button> <button type="button" id="saveRound">Save round</button> <button type="button" id="newCard">Reset Scores</button> <button type="button" id="toSetup">Back to setup</button></p>
-    <div class="card"><h2>Standing</h2><div id="standing"></div></div>
-    <div class="card"><h2>Junk</h2><div id="junkSummary"></div></div>
-    <div class="card"><h2>Card</h2><div id="card"></div></div>
-    <div class="card"><h2>Group review</h2><div id="review"></div></div>
+    <div class="card"><div class="section-head" data-toggle="standing"><h2>Standing</h2><span class="chev">▼</span></div><div id="standing" class="section-body"></div></div>
+    <div class="card"><div class="section-head" data-toggle="junkSummary"><h2>Junk</h2><span class="chev">▼</span></div><div id="junkSummary" class="section-body"></div></div>
+    <div class="card"><div class="section-head" data-toggle="card"><h2>Card</h2><span class="chev">▼</span></div><div id="card" class="section-body"></div></div>
+    <div class="card"><div class="section-head" data-toggle="review"><h2>Group review</h2><span class="chev">▼</span></div><div id="review" class="section-body"></div></div>
     <div class="card"><h2>Manual press</h2><div id="manual"></div></div>
-    <div class="card"><h2>Settle</h2><div id="settle"></div></div>
+    <div class="card"><div class="section-head" data-toggle="settle"><h2>Settle</h2><span class="chev">▼</span></div><div id="settle" class="section-body"></div></div>
   </div>
 </div>
 <script>
@@ -161,7 +166,8 @@ function matchNames() {
   const ready = players.filter(p => p.initials);
   const box = ready.filter(p => p.box).map(p => p.initials);
   const rest = ready.filter(p => !p.box).map(p => p.initials);
-  const team = box.length === 2 ? pairs(rest).map(p => 'Box vs ' + p) : [];
+  const boxLabel = box.length === 2 ? 'Box (' + box.join('+') + ')' : 'Box';
+  const team = box.length === 2 ? pairs(rest).map(p => boxLabel + ' vs ' + p) : [];
   const side = [];
   ready.forEach((a, i) => ready.slice(i + 1).forEach(b => {
     side.push(String(a.initials).toUpperCase() + ' vs ' + String(b.initials).toUpperCase());
@@ -1106,6 +1112,15 @@ function initCourseSelect() {
 initCourseSelect();
 syncStartButton();
 drawSaved();
+document.querySelectorAll('.section-head').forEach(head => {
+  head.onclick = () => {
+    const body = document.getElementById(head.dataset.toggle);
+    if (!body) return;
+    body.classList.toggle('collapsed');
+    const chev = head.querySelector('.chev');
+    if (chev) chev.textContent = body.classList.contains('collapsed') ? '▶' : '▼';
+  };
+});
 </script>
 </body>
 </html>
