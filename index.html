@@ -707,7 +707,18 @@ function settle() {
     const cls = payer === me ? 'dn' : payee === me ? 'up' : '';
     return '<p class="' + cls + '">' + payer + ' pays ' + payee + ' $' + Math.abs(v) + '</p>';
   }).filter(Boolean);
-  el.innerHTML = lines.join('') + (nets.length ? '<p><b>Net</b></p>' + nets.join('') : '');
+  const summary = nets.length ? '<p><b>Summary</b></p>' + nets.join('') : '';
+  const details = lines.map((line, i) => '<div class="settle-match"><div class="section-head" data-settle="' + i + '"><span>' + (line.match(/<b>([^<]+)<\/b>/) || ['', 'Match'])[1] + '</span><span class="chev">▶</span></div><div class="section-body collapsed" id="settle-' + i + '">' + line + '</div></div>').join('');
+  el.innerHTML = summary + (details ? '<p><b>Details</b></p>' + details : '');
+  el.querySelectorAll('.section-head[data-settle]').forEach(head => {
+    head.onclick = () => {
+      const body = document.getElementById('settle-' + head.dataset.settle);
+      if (!body) return;
+      body.classList.toggle('collapsed');
+      const chev = head.querySelector('.chev');
+      if (chev) chev.textContent = body.classList.contains('collapsed') ? '▶' : '▼';
+    };
+  });
 }
 function detail() {
   const el = document.getElementById('matchDetail');
