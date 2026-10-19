@@ -879,9 +879,16 @@ function drawHole() {
   const junkHoles = [];
   for (let h = 0; h < 18; h++) if (holeMarks.some(row => row[h] && (row[h].Birdie || row[h].KP || row[h].Junk))) junkHoles.push(h);
   const junkEl = document.getElementById('junkSummary');
-  junkEl.innerHTML = junkHoles.length
-    ? '<table><tr><th></th>' + junkHoles.map(h => '<th>' + (h+1) + '</th>').join('') + '</tr>' + holePlayers.map((p, i) => '<tr><td>' + p.id + '</td>' + junkHoles.map(h => '<td>' + markName(holeMarks[i][h] || {}) + '</td>').join('') + '</tr>').join('') + '</table>'
-    : '<p>No junk posted.</p>';
+  const byPlayer = holePlayers.map((p, i) => {
+    const items = [];
+    for (let h = 0; h < 18; h++) {
+      const mk = holeMarks[i][h] || {};
+      const name = markName(mk);
+      if (name) items.push((h+1) + ' ' + name);
+    }
+    return items.length ? '<p><b>' + p.id + '</b><br>' + items.join(', ') + '</p>' : '';
+  }).filter(Boolean);
+  junkEl.innerHTML = byPlayer.length ? byPlayer.join('') : '<p>No junk posted.</p>';
   try { document.getElementById('standing').innerHTML = holeStanding(); }
   catch (err) { document.getElementById('standing').innerHTML = '<p>' + err.message + '</p>'; }
   try { settle(); } catch (err) { document.getElementById('settle').innerHTML = '<p>' + err.message + '</p>'; }
