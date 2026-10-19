@@ -929,15 +929,24 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
           rows.push({ player: p.id, hole: h + 1, type: 'KP-' + mk.KP, matches, total: dollars });
         }
       }
-      if (mk.Birdie || mk.Junk) {
-        const val = (Number(mk.Birdie) || 0) + (mk.Junk || 0);
-        const dollars = val * rate;
+      const addRow = (type, count) => {
+        if (!count) return;
+        const dollars = count * rate;
         const isBox = boxIds.includes(p.id);
-        const partners = isBox ? [] : holePlayers.filter(x => !boxIds.includes(x.id) && x.id !== p.id).slice(0, 1).map(x => x.id);
-        const matchLabel = isBox ? 'all 3' : p.id + '+' + (partners[0] || '?');
-        const bName = mk.Birdie === 1 ? 'Birdie' : mk.Birdie === 2 ? 'Eagle' : mk.Birdie === 3 ? 'Dbl Eagle' : mk.Birdie === 4 ? 'Albatross' : 'Junk';
-        rows.push({ player: p.id, hole: h + 1, type: bName, matches: matchLabel + ' $' + dollars, total: dollars });
+        let matchLabel;
+        if (isBox) {
+          matchLabel = 'all 3 $' + dollars;
+        } else {
+          const partners = holePlayers.filter(x => !boxIds.includes(x.id) && x.id !== p.id).map(x => x.id);
+          matchLabel = partners.map(partner => p.id + '+' + partner + ' $' + rate).join(', ');
+        }
+        rows.push({ player: p.id, hole: h + 1, type, matches: matchLabel, total: isBox ? dollars : partners.length * rate });
+      };
+      if (mk.Birdie) {
+        const bName = mk.Birdie === 1 ? 'Birdie' : mk.Birdie === 2 ? 'Eagle' : mk.Birdie === 3 ? 'Dbl Eagle' : mk.Birdie === 4 ? 'Albatross' : 'Birdie';
+        addRow(bName, mk.Birdie);
       }
+      if (mk.Junk) addRow('Junk', mk.Junk);
     }
   });
   rows.sort((a, b) => a.hole - b.hole || a.player.localeCompare(b.player));
