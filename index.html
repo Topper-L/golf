@@ -689,8 +689,8 @@ function settle() {
     const junk = b.reduce((n, id) => n + junkOf(id), 0) - a.reduce((n, id) => n + junkOf(id), 0);
     const dollars = front + frontPress.reduce((n, v) => n + v, 0) + back + backPress.reduce((n, v) => n + v, 0) + overall + junk;
     const who = n => !n ? 'AS' : (n > 0 ? b.join('+') : a.join('+')) + ' +$' + Math.abs(n);
-    const bits = ['Front ' + who(front)].concat(frontPress.map((v, i) => 'Press ' + (i + 1) + ' ' + who(v)));
-    if (backPlayed) bits.push('Back ' + who(back), ...backPress.map((v, i) => 'Press ' + (i + 1) + ' ' + who(v)), 'Overall ' + who(overall));
+    const bits = ['1st 9 ' + who(front)].concat(frontPress.map((v, i) => 'Press ' + (i + 1) + ' (A) ' + who(v)));
+    if (backPlayed) bits.push('2nd 9 ' + who(back), ...backPress.map((v, i) => 'Press ' + (i + 1) + ' (A) ' + who(v)), 'Overall ' + who(overall));
     if (junk) bits.push('Junk ' + who(junk));
     if (!dollars && !front && !junk) return '<p><b>' + name + '</b> even. First $' + (bet.first || 0) + ', Second $' + (bet.second || 0) + ', Overall $' + (bet.overall || 0) + '.</p>';
     const winners = dollars < 0 ? a : b;
