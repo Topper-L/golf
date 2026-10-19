@@ -739,6 +739,7 @@ function detail() {
 function drawManual() {
   const el = document.getElementById('manual');
   if (!el) return;
+  if (!el) return;
   const m = matchNames();
   const names = m.team.concat(m.side).filter(name => { const s = amountFor(name); return s && s.on !== false && s.pressMode === 'manual'; });
   const next = holeNo + 2;
@@ -747,7 +748,8 @@ function drawManual() {
     return '<p>' + name + ' <button type="button" data-press="' + name + '">' + (pressed ? 'Press on from h' + next : 'Press from h' + next) + '</button></p>';
   }).join('') : '<p>No matches on.</p>';
 }
-document.getElementById('manual').onclick = e => {
+const manualEl = document.getElementById('manual');
+if (manualEl) manualEl.onclick = e => {
   const btn = e.target.closest('button[data-press]');
   if (!btn) return;
   const name = btn.dataset.press;
