@@ -914,23 +914,19 @@ function drawHole() {
         const dollars = val * rate;
         total += dollars;
         let label = name;
-        if (mk.KP > 0 && boxIds.length === 2) {
+        if (boxIds.length === 2) {
           const isBox = boxIds.includes(p.id);
-          const others = holePlayers.filter(x => !boxIds.includes(x.id) && x.id !== p.id);
-          const closer = others.filter(opp => {
-            const oppI = holePlayers.findIndex(x => x.id === opp.id);
-            const oppKP = (holeMarks[oppI] && holeMarks[oppI][h] && holeMarks[oppI][h].KP) || 99;
-            return mk.KP < oppKP;
-          });
-          if (isBox && closer.length === others.length) {
-            label += ' (full)';
-          } else if (!isBox) {
-            const partners = others.filter(opp => {
+          if (!isBox) {
+            const partners = holePlayers.filter(x => !boxIds.includes(x.id) && x.id !== p.id).map(x => x.id);
+            label += ' (mini ' + p.id + '+' + (partners[0] || '?') + ' vs Box)';
+          } else if (mk.KP > 0) {
+            const others = holePlayers.filter(x => !boxIds.includes(x.id));
+            const closer = others.filter(opp => {
               const oppI = holePlayers.findIndex(x => x.id === opp.id);
               const oppKP = (holeMarks[oppI] && holeMarks[oppI][h] && holeMarks[oppI][h].KP) || 99;
               return mk.KP < oppKP;
-            }).map(x => x.id);
-            label += ' (mini ' + p.id + '+' + (partners[0] || '?') + ' vs Box)';
+            });
+            if (closer.length === others.length) label += ' (full)';
           }
         }
         items.push((h+1) + ' ' + label + ' $' + dollars);
