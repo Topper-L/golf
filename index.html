@@ -13,7 +13,7 @@
   h2 { margin:0 0 8px; font-size:12px; letter-spacing:.04em; text-transform:uppercase; color:#5e6f64; }
   table { border-collapse:collapse; width:100%; font-size:14px; }
   #card, #card table, #card td, #card th { font-size:14px !important; }
-  #junkSummary, #junkSummary table, #junkSummary td, #junkSummary th { font-size:12px !important; }
+  #junkSummary, #junkSummary table, #junkSummary td, #junkSummary th, #junkSummary p { font-size:14px !important; line-height:1.5; }
   #card td, #card th { padding:4px 3px; text-align:center; min-width:22px; }
   #junkSummary td, #junkSummary th { padding:1px 2px; text-align:center; min-width:18px; }
   #card td:first-child, #card th:first-child, #junkSummary td:first-child, #junkSummary th:first-child { text-align:left; min-width:28px; }
@@ -882,12 +882,19 @@ function drawHole() {
   const junkEl = document.getElementById('junkSummary');
   const byPlayer = holePlayers.map((p, i) => {
     const items = [];
+    let total = 0;
     for (let h = 0; h < 18; h++) {
       const mk = holeMarks[i][h] || {};
       const name = markName(mk);
-      if (name) items.push((h+1) + ' ' + name);
+      if (name) {
+        const rate = 3;
+        const val = (Number(mk.Birdie) || 0) + (mk.Junk || 0);
+        const dollars = val * rate;
+        total += dollars;
+        items.push((h+1) + ' ' + name + ' $' + dollars);
+      }
     }
-    return items.length ? '<p><b>' + p.id + '</b><br>' + items.join(', ') + '</p>' : '';
+    return items.length ? '<p><b>' + p.id + '</b> +$' + total + '<br>' + items.join('<br>') + '</p>' : '';
   }).filter(Boolean);
   junkEl.innerHTML = byPlayer.length ? byPlayer.join('') : '<p>No junk posted.</p>';
   try { document.getElementById('standing').innerHTML = holeStanding(); }
