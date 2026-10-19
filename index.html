@@ -931,16 +931,18 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
       }
       const addRow = (type, count) => {
         if (!count) return;
-        const dollars = count * rate;
+        const perMatch = count * rate;
         const isBox = boxIds.includes(p.id);
-        let matchLabel;
+        let matchLabel, total;
         if (isBox) {
-          matchLabel = 'all 3 $' + dollars;
+          total = perMatch * 3;
+          matchLabel = 'all 3 $' + perMatch;
         } else {
           const partners = holePlayers.filter(x => !boxIds.includes(x.id) && x.id !== p.id).map(x => x.id);
-          matchLabel = partners.map(partner => p.id + '+' + partner + ' $' + rate).join(', ');
+          total = partners.length * perMatch;
+          matchLabel = partners.map(partner => p.id + '+' + partner + ' $' + perMatch).join(', ');
         }
-        rows.push({ player: p.id, hole: h + 1, type, matches: matchLabel, total: isBox ? dollars : partners.length * rate });
+        rows.push({ player: p.id, hole: h + 1, type, matches: matchLabel, total });
       };
       if (mk.Birdie) {
         const bName = mk.Birdie === 1 ? 'Birdie' : mk.Birdie === 2 ? 'Eagle' : mk.Birdie === 3 ? 'Dbl Eagle' : mk.Birdie === 4 ? 'Albatross' : 'Birdie';
