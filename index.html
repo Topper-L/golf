@@ -116,12 +116,12 @@
       <div id="holeJunk"></div>
     </div>
     <p><button type="button" id="back">Back a hole</button> <button type="button" id="post">Post hole</button> <button type="button" id="saveRound">Save round</button> <button type="button" id="newCard">Reset Scores</button> <button type="button" id="toSetup">Back to setup</button></p>
-    <div class="card"><div class="section-head" data-toggle="standing"><h2>Standing</h2><span class="chev">▼</span></div><div id="standing" class="section-body"></div></div>
-    <div class="card"><div class="section-head" data-toggle="junkSummary"><h2>Junk</h2><span class="chev">▼</span></div><div id="junkSummary" class="section-body"></div></div>
-    <div class="card"><div class="section-head" data-toggle="card"><h2>Card</h2><span class="chev">▼</span></div><div id="card" class="section-body"></div></div>
-    <div class="card"><div class="section-head" data-toggle="review"><h2>Group review</h2><span class="chev">▼</span></div><div id="review" class="section-body"></div></div>
-    <div class="card"><h2>Manual press</h2><div id="manual"></div></div>
-    <div class="card"><div class="section-head" data-toggle="settle"><h2>Settle</h2><span class="chev">▼</span></div><div id="settle" class="section-body"></div></div>
+    <div class="card"><div class="section-head" data-toggle="standing"><h2>Standing</h2><span class="chev">▶</span></div><div id="standing" class="section-body collapsed"></div></div>
+    <div class="card"><div class="section-head" data-toggle="junkSummary"><h2>Junk</h2><span class="chev">▶</span></div><div id="junkSummary" class="section-body collapsed"></div></div>
+    <div class="card"><div class="section-head" data-toggle="card"><h2>Card</h2><span class="chev">▶</span></div><div id="card" class="section-body collapsed"></div></div>
+    <div class="card"><div class="section-head" data-toggle="review"><h2>Group review</h2><span class="chev">▶</span></div><div id="review" class="section-body collapsed"></div></div>
+    <div class="card"><div class="section-head" data-toggle="manual"><h2>Presses</h2><span class="chev">▶</span></div><div id="manual" class="section-body collapsed"></div></div>
+    <div class="card"><div class="section-head" data-toggle="settle"><h2>Settle</h2><span class="chev">▶</span></div><div id="settle" class="section-body collapsed"></div></div>
   </div>
 </div>
 <script>
@@ -510,10 +510,10 @@ function holeStanding() {
     const saved = amountFor(name);
     if (saved && saved.on === false) return '';
     const box = holePlayers.filter(p => p.box).map(p => p.id);
-    const isBox = name.indexOf('Box vs ') === 0;
+    const isBox = name.indexOf('Box') === 0;
     const parts = name.split(' vs ');
     const a = isBox ? box : [String(parts[0] || '').trim().toUpperCase()];
-    const b = isBox ? String(name.replace('Box vs ', '')).split('+').map(s => s.trim().toUpperCase()) : [String(parts[1] || '').trim().toUpperCase()];
+    const b = isBox ? String(name.split(' vs ')[1] || '').split('+').map(s => s.trim().toUpperCase()) : [String(parts[1] || '').trim().toUpperCase()];
     const matchIds = a.concat(b);
     let score = 0, played = 0;
     for (let h = 0; h < 18; h++) {
@@ -649,10 +649,10 @@ function settle() {
   };
   const lines = names.map(name => {
     const box = holePlayers.filter(p => p.box).map(p => p.id);
-    const isBox = name.indexOf('Box vs ') === 0;
+    const isBox = name.indexOf('Box') === 0;
     const parts = name.split(' vs ');
     const a = isBox ? box : [String(parts[0] || '').trim().toUpperCase()];
-    const b = isBox ? String(name.replace('Box vs ', '')).split('+').map(s => s.trim().toUpperCase()) : [String(parts[1] || '').trim().toUpperCase()];
+    const b = isBox ? String(name.split(' vs ')[1] || '').split('+').map(s => s.trim().toUpperCase()) : [String(parts[1] || '').trim().toUpperCase()];
     const bet = amountFor(name) || { first:0, second:0, overall:0, press:0, player:{} };
     const rows = [];
     sideStarts().forEach(start => {
