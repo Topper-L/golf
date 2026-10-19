@@ -115,7 +115,7 @@
     <div class="card">
       <h2>Scores and junk</h2>
       <p>Tap Birdie once for a birdie, twice for Eagle, three for Dbl Eagle, four for Albatross. Tap Junk up to four times.</p>
-      <div id="scores"></div>
+      <p id="kpTip" class="note"></p><div id="scores"></div>
       <div id="holeJunk"></div>
     </div>
     <p><button type="button" id="back">Back a hole</button> <button type="button" id="post">Post hole</button> <button type="button" id="saveRound">Save round</button> <button type="button" id="newCard">Reset Scores</button> <button type="button" id="toSetup">Back to setup</button></p>
@@ -785,13 +785,13 @@ function getsStroke(p) {
 function drawHole() {
   const idx = indexFor(holePlayers[0] && holePlayers[0].tee); document.getElementById('holeTitle').textContent = 'Hole ' + (holeNo + 1) + ' · Par ' + courseData().par[holeNo] + ' · Handicap ' + idx[holeNo];
   const kinds = courseData().par[holeNo] === 3 ? ['KP','Birdie','Junk'] : ['Birdie','Junk'];
-  document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
+  document.getElementById('kpTip').textContent = courseData().par[holeNo] === 3 ? 'Tap KP: KP-1 = closest, KP-2 = 2nd, KP-3 = 3rd, KP-4 = 4th.' : '';\ndocument.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     const v = holeVal(i);
     const junkBtns = kinds.map(k => {
       const n = holeMarks[i][holeNo][k];
       const label = k === 'Birdie'
         ? (n === 1 ? 'Birdie' : n === 2 ? 'Eagle' : n === 3 ? 'Dbl Eagle' : n === 4 ? 'Albatross' : 'Birdie')
-        : (k === 'KP' ? (n > 1 ? 'KP-' + n : 'KP Rank') : (n > 1 ? k + '-' + n : k));
+        : (k === 'KP' ? (n ? 'KP-' + n : 'KP') : (n > 1 ? k + '-' + n : k));
       return '<button data-i="' + i + '" data-k="' + k + '" class="' + (n ? 'on' : '') + '">' + label + '</button>';
     }).join('');
     return '<div class="grid"><b>' + p.id + '</b><span>' + String(p.tee).slice(0,2) + '</span><span>' + (getsStroke(p) ? '•' : '') + '</span><button data-i="' + i + '" data-d="-1">−</button><button data-i="' + i + '" data-set="1" class="score ' + (holeScores[i][holeNo] == null ? 'open' : 'set') + '">' + (v === 'X' ? 'X' : v) + '</button><button data-i="' + i + '" data-d="1">+</button><button data-i="' + i + '" data-x="1">X</button><span class="junkbtns">' + junkBtns + '</span></div>';
