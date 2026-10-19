@@ -694,7 +694,21 @@ function settle() {
     const who = n => !n ? 'AS' : (n > 0 ? b.join('+') : a.join('+')) + ' +$' + Math.abs(n);
     const bits = ['1st 9 ' + who(front)].concat(frontPress.map((v, i) => 'Press ' + (i + 1) + ' (A) ' + who(v)));
     if (backPlayed) bits.push('2nd 9 ' + who(back), ...backPress.map((v, i) => 'Press ' + (i + 1) + ' (A) ' + who(v)), 'Overall ' + who(overall));
-    if (junk) bits.push('Junk ' + who(junk));
+    if (junk) {
+      const junkDetail = matchIds.map(id => {
+        const i = holePlayers.findIndex(p => p.id === id);
+        if (i < 0) return '';
+        const rate = (bet.player && bet.player[id] != null) ? Number(bet.player[id]) : 3;
+        const mk = holeMarks[i] || [];
+        const items = [];
+        for (let h = 0; h < 18; h++) {
+          const m = mk[h] || {};
+          if (m.Birdie || m.KP || m.Junk) items.push((h+1) + (m.KP ? ' KP' : '') + (m.Birdie ? ' B' : ''));
+        }
+        return items.length ? id + ' $' + rate + ': ' + items.join(', ') : '';
+      }).filter(Boolean).join('; ');
+      bits.push('Junk ' + who(junk) + (junkDetail ? ' (' + junkDetail + ')' : ''));
+    }
     if (!dollars && !front && !junk) return '<p><b>' + name + '</b> even. First $' + (bet.first || 0) + ', Second $' + (bet.second || 0) + ', Overall $' + (bet.overall || 0) + '.</p>';
     const winners = dollars < 0 ? a : b;
     const losers = dollars < 0 ? b : a;
@@ -887,6 +901,7 @@ function drawHole() {
   const junkHoles = [];
   for (let h = 0; h < 18; h++) if (holeMarks.some(row => row[h] && (row[h].Birdie || row[h].KP || row[h].Junk))) junkHoles.push(h);
   const junkEl = document.getElementById('junkSummary');
+  const boxIds = holePlayers.filter(p => p.box).map(p => p.id);
   const byPlayer = holePlayers.map((p, i) => {
     const items = [];
     let total = 0;
@@ -895,10 +910,15 @@ function drawHole() {
       const name = markName(mk);
       if (name) {
         const rate = 3;
-        const val = (Number(mk.Birdie) || 0) + (mk.Junk || 0);
+        const val = (Number(mk.Birdie) || 0) + (Number(mk.KP) || 0) + (mk.Junk || 0);
         const dollars = val * rate;
         total += dollars;
-        items.push((h+1) + ' ' + name + ' $' + dollars);
+        let label = name;
+        if (mk.KP > 0) {
+          const isFull = boxIds.includes(p.id) || boxIds.length < 2;
+          label += isFull ? ' (full)' : ' (mini)';
+        }
+        items.push((h+1) + ' ' + label + ' $' + dollars);
       }
     }
     return items.length ? '<p><b>' + p.id + '</b> +$' + total + '<br>' + items.join('<br>') + '</p>' : '';
