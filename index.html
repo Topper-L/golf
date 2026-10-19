@@ -632,7 +632,8 @@ function holeStanding() {
     const due = dollars ? '<br>All in ' + (dollars > 0 ? b.join('+') : a.join('+')) + ' +$' + Math.abs(dollars) : '';
     const table = (rows, start) => rows.length ? '<table><tr><th></th>' + [0,1,2,3,4,5,6,7,8].map(i => '<th>' + (start + i + 1) + '</th>').join('') + '</tr>' + rows.map((row, n) => '<tr><td>' + (n ? n : '') + '</td>' + row.cells.map(v => '<td>' + (v === '' ? '' : say(v)) + '</td>').join('') + '</tr>').join('') + '</table>' : '';
     const pressLine = (frontRows.length ? '<br>1st 9 ' + stack(frontRows) + table(frontRows, ss[0]) : '') + (backRows.some(r => r.cells.some(v => v !== '')) ? '<br>2nd 9 ' + stack(backRows) + table(backRows, ss[1]) + '<br>Overall ' + say(overall) + '. 1st 9 ended ' + say(frontScore) + ', 2nd 9 is ' + say(backScore) + '.' : '') + junkLine + matchLine + due;
-    return '<p><b>' + name + '</b> ' + matchIds.map(id => { const p = holePlayers.find(x => x.id === id); return id + ' ' + (p ? p.hcp : ''); }).join(' · ') + '<br>' + label + ' through ' + played + pressLine + '</p>';
+    const running = dollars ? (dollars > 0 ? b.join('+') : a.join('+')) + ' +$' + Math.abs(dollars) : 'even';
+    return '<p><b>' + name + '</b> ' + running + '<br>' + matchIds.map(id => { const p = holePlayers.find(x => x.id === id); return id + ' ' + (p ? p.hcp : ''); }).join(' · ') + '<br>' + label + ' through ' + played + pressLine + '</p>';
   }).join('');
 }
 function settle() {
