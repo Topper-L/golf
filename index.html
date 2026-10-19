@@ -791,7 +791,7 @@ function drawHole() {
       const n = holeMarks[i][holeNo][k];
       const label = k === 'Birdie'
         ? (n === 1 ? 'Birdie' : n === 2 ? 'Eagle' : n === 3 ? 'Dbl Eagle' : n === 4 ? 'Albatross' : 'Birdie')
-        : (n > 1 ? k + '-' + n : k);
+        : (k === 'KP' ? (n > 1 ? 'KP-' + n : 'KP Rank') : (n > 1 ? k + '-' + n : k));
       return '<button data-i="' + i + '" data-k="' + k + '" class="' + (n ? 'on' : '') + '">' + label + '</button>';
     }).join('');
     return '<div class="grid"><b>' + p.id + '</b><span>' + String(p.tee).slice(0,2) + '</span><span>' + (getsStroke(p) ? '•' : '') + '</span><button data-i="' + i + '" data-d="-1">−</button><button data-i="' + i + '" data-set="1" class="score ' + (holeScores[i][holeNo] == null ? 'open' : 'set') + '">' + (v === 'X' ? 'X' : v) + '</button><button data-i="' + i + '" data-d="1">+</button><button data-i="' + i + '" data-x="1">X</button><span class="junkbtns">' + junkBtns + '</span></div>';
