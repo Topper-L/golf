@@ -16,6 +16,13 @@
   #card td, #card th, #junkSummary td, #junkSummary th { padding:1px 2px; text-align:center; min-width:18px; }
   #card td:first-child, #card th:first-child, #junkSummary td:first-child, #junkSummary th:first-child { text-align:left; min-width:28px; }
   #card .tot, #junkSummary .tot { font-weight:700; background:#f3f6f4; }
+  #card .shape { display:inline-block; min-width:16px; text-align:center; border-radius:50%; }
+  #card .birdie { border:1.5px solid #1b7a3a; }
+  #card .eagle { border:1.5px solid #1b7a3a; box-shadow:0 0 0 1.5px #1b7a3a; }
+  #card .bogey { border:1.5px solid #a33; border-radius:2px; }
+  #card .dblbogey { border:1.5px solid #a33; box-shadow:0 0 0 1.5px #a33; border-radius:2px; }
+  #card td.par { color:#666; }
+
   #standing, #standing p, #standing table, #standing td, #standing th { font-size:12px !important; }
   th, td { border-bottom:1px solid #d5e0d4; padding:6px; text-align:left; }
   button { min-height:36px; touch-action:manipulation; }
@@ -745,30 +752,45 @@ function drawHole() {
     return '<div class="grid"><b>' + p.id + '</b><span>' + String(p.tee).slice(0,2) + '</span><span>' + (getsStroke(p) ? '•' : '') + '</span><button data-i="' + i + '" data-d="-1">−</button><button data-i="' + i + '" data-set="1" class="score ' + (holeScores[i][holeNo] == null ? 'open' : 'set') + '">' + (v === 'X' ? 'X' : v) + '</button><button data-i="' + i + '" data-d="1">+</button><button data-i="' + i + '" data-x="1">X</button><span class="junkbtns">' + junkBtns + '</span></div>';
   }).join('');
   document.getElementById('holeJunk').innerHTML = '';
-  const nine = (start, label) => {
+  const shape = (score, par) => {
+    if (score === 'X' || score == null) return score === 'X' ? 'X' : '';
+    const diff = score - par;
+    let cls = '';
+    if (diff === -1) cls = 'birdie';
+    else if (diff <= -2) cls = 'eagle';
+    else if (diff === 1) cls = 'bogey';
+    else if (diff >= 2) cls = 'dblbogey';
+    return '<span class="shape ' + cls + '">' + score + '</span>';
+  };
+  const sideTable = (start, label) => {
     const holes = Array.from({ length: 9 }, (_, i) => start + i);
-    const head = '<tr><th></th>' + holes.map(h => '<th>' + (h+1) + '</th>').join('') + '<th class="tot">' + label + '</th></tr>';
-    const body = holePlayers.map((p, i) => {
-      const cells = holes.map(h => '<td>' + (holeScores[i][h] == null ? '' : holeScores[i][h]) + '</td>').join('');
-      const tot = holes.reduce((n, h) => n + (typeof holeScores[i][h] === 'number' ? holeScores[i][h] : 0), 0);
+    const head = '<tr><th>Hole</th><th>Par</th>' + holePlayers.map(p => '<th>' + p.id + '</th>').join('') + '</tr>';
+    const body = holes.map(h => {
+      const par = courseData().par[h];
+      const cells = holePlayers.map((p, i) => '<td>' + shape(holeScores[i][h], par) + '</td>').join('');
+      return '<tr><td>' + (h+1) + '</td><td class="par">' + par + '</td>' + cells + '</tr>';
+    }).join('');
+    const tot = holePlayers.map((p, i) => {
+      const sum = holes.reduce((n, h) => n + (typeof holeScores[i][h] === 'number' ? holeScores[i][h] : 0), 0);
       const any = holes.some(h => holeScores[i][h] != null);
       const picked = holes.some(h => holeScores[i][h] === 'X');
-      return '<tr><td>' + p.id + '</td>' + cells + '<td class="tot">' + (any ? tot + (picked ? '<sup>x</sup>' : '') : '') + '</td></tr>';
+      return '<td class="tot">' + (any ? sum + (picked ? '<sup>x</sup>' : '') : '') + '</td>';
     }).join('');
-    return '<table>' + head + body + '</table>';
+    const parTot = holes.reduce((n, h) => n + courseData().par[h], 0);
+    return '<table>' + head + body + '<tr><td class="tot">' + label + '</td><td class="tot">' + parTot + '</td>' + tot + '</tr></table>';
   };
   const ss = sideStarts();
-  const eighteen = () => {
-    const head = '<tr><th></th><th class="tot">18</th></tr>';
-    const body = holePlayers.map((p, i) => {
-      const tot = holeScores[i].reduce((n, s) => n + (typeof s === 'number' ? s : 0), 0);
+  const totalRow = () => {
+    const tot = holePlayers.map((p, i) => {
+      const sum = holeScores[i].reduce((n, s) => n + (typeof s === 'number' ? s : 0), 0);
       const any = holeScores[i].some(s => s != null);
       const picked = holeScores[i].some(s => s === 'X');
-      return '<tr><td>' + p.id + '</td><td class="tot">' + (any ? tot + (picked ? '<sup>x</sup>' : '') : '') + '</td></tr>';
+      return '<td class="tot">' + (any ? sum + (picked ? '<sup>x</sup>' : '') : '') + '</td>';
     }).join('');
-    return '<table>' + head + body + '</table>';
+    const parTot = courseData().par.reduce((n, p) => n + p, 0);
+    return '<table><tr><td class="tot">Total</td><td class="tot">' + parTot + '</td>' + tot + '</tr></table>';
   };
-  document.getElementById('card').innerHTML = nine(ss[0], '1st 9') + nine(ss[1], '2nd 9') + eighteen();
+  document.getElementById('card').innerHTML = sideTable(ss[0], 'Out') + sideTable(ss[1], 'In') + totalRow();
   const review = document.getElementById('review');
   if (review) {
     const ids = holePlayers.map(p => p.id);
