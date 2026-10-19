@@ -903,34 +903,38 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
   for (let h = 0; h < 18; h++) if (holeMarks.some(row => row[h] && (row[h].Birdie || row[h].KP || row[h].Junk))) junkHoles.push(h);
   const junkEl = document.getElementById('junkSummary');
   const boxIds = holePlayers.filter(p => p.box).map(p => p.id);
+  const outside = holePlayers.filter(p => !boxIds.includes(p.id));
+  const pairs = boxIds.length === 2 && outside.length === 3 ? [[outside[0], outside[1]], [outside[0], outside[2]], [outside[1], outside[2]]] : [];
   const byPlayer = holePlayers.map((p, i) => {
     const items = [];
     let total = 0;
     for (let h = 0; h < 18; h++) {
       const mk = holeMarks[i][h] || {};
       const name = markName(mk);
-      if (name) {
-        const rate = 3;
-        const val = (Number(mk.Birdie) || 0) + (Number(mk.KP) || 0) + (mk.Junk || 0);
+      if (!name) continue;
+      const rate = 3;
+      if (mk.KP > 0 && pairs.length) {
+        const wins = pairs.filter(pair => {
+          const matchIds = boxIds.concat(pair.map(x => x.id));
+          const kps = matchIds.map(id => {
+            const idx = holePlayers.findIndex(x => x.id === id);
+            return { id, kp: (holeMarks[idx] && holeMarks[idx][h] && holeMarks[idx][h].KP) || 99 };
+          }).filter(x => x.kp < 99);
+          if (!kps.length) return false;
+          const best = kps.reduce((a, b) => a.kp < b.kp ? a : b);
+          return best.id === p.id;
+        });
+        if (wins.length) {
+          const dollars = wins.length * rate;
+          total += dollars;
+          const isFull = wins.length === 3;
+          items.push((h+1) + ' KP-' + mk.KP + ' ' + (isFull ? '(full, 3 matches)' : '(' + wins.length + ' match' + (wins.length > 1 ? 'es' : '') + ')') + ' $' + dollars);
+        }
+      } else if (mk.Birdie || mk.Junk) {
+        const val = (Number(mk.Birdie) || 0) + (mk.Junk || 0);
         const dollars = val * rate;
         total += dollars;
-        let label = name;
-        if (boxIds.length === 2) {
-          const isBox = boxIds.includes(p.id);
-          if (!isBox) {
-            const partners = holePlayers.filter(x => !boxIds.includes(x.id) && x.id !== p.id).map(x => x.id);
-            label += ' (mini ' + p.id + '+' + (partners[0] || '?') + ' vs Box)';
-          } else if (mk.KP > 0) {
-            const others = holePlayers.filter(x => !boxIds.includes(x.id));
-            const closer = others.filter(opp => {
-              const oppI = holePlayers.findIndex(x => x.id === opp.id);
-              const oppKP = (holeMarks[oppI] && holeMarks[oppI][h] && holeMarks[oppI][h].KP) || 99;
-              return mk.KP < oppKP;
-            });
-            if (closer.length === others.length) label += ' (full)';
-          }
-        }
-        items.push((h+1) + ' ' + label + ' $' + dollars);
+        items.push((h+1) + ' ' + name + ' $' + dollars);
       }
     }
     return items.length ? '<p><b>' + p.id + '</b> +$' + total + '<br>' + items.join('<br>') + '</p>' : '';
