@@ -24,6 +24,8 @@
   #card .bogey { border:1.5px solid #a33; border-radius:2px; }
   #card .dblbogey { border:1.5px solid #a33; box-shadow:0 0 0 1.5px #a33; border-radius:2px; }
   #card td.par { color:#666; }
+  #card tr.current { background:#e8f2ea; }
+  #card .short { display:block; font-size:10px; color:#5e6f64; font-weight:400; }
 
   #standing p { font-size:15px !important; line-height:1.4; }
   #settle, #settle p { font-size:15px !important; line-height:1.5; }
@@ -768,11 +770,14 @@ function drawHole() {
   };
   const sideTable = (start, label) => {
     const holes = Array.from({ length: 9 }, (_, i) => start + i);
-    const head = '<tr><th>Hole</th><th>Par</th>' + holePlayers.map(p => '<th>' + p.id + '</th>').join('') + '</tr>';
+    const head = '<tr><th>Hole</th><th>Par</th>' + holePlayers.map(p => {
+      const short = (p.name || '').split(' ')[0].slice(0, 8);
+      return '<th>' + p.id + (short && short !== p.id ? '<span class="short">' + short + '</span>' : '') + '</th>';
+    }).join('') + '</tr>';
     const body = holes.map(h => {
       const par = courseData().par[h];
       const cells = holePlayers.map((p, i) => '<td>' + shape(holeScores[i][h], par) + '</td>').join('');
-      return '<tr><td>' + (h+1) + '</td><td class="par">' + par + '</td>' + cells + '</tr>';
+      return '<tr class="' + (h === holeNo ? 'current' : '') + '"><td>' + (h+1) + '</td><td class="par">' + par + '</td>' + cells + '</tr>';
     }).join('');
     const tot = holePlayers.map((p, i) => {
       const sum = holes.reduce((n, h) => n + (typeof holeScores[i][h] === 'number' ? holeScores[i][h] : 0), 0);
