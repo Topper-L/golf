@@ -188,7 +188,7 @@ function drawBets() {
   const m = matchNames();
   const nPlayers = players.filter(p => p.initials).length;
   document.getElementById('status').textContent = nPlayers >= 5
-    ? (m.box.length === 2 ? 'Box is ' + m.box.join(' and ') + '. Tap a match On to play it.' : 'Five players. Set Box On for two players, then tap each match On.')
+    ? (m.box.length === 2 ? 'Box is ' + m.box.join('+') + '. Tap a match On to play it.' : 'Five players. Set Box On for two players, then tap each match On.')
     : 'Tap a match On to play it.';
   const names = m.team.concat(m.side);
   const ids = players.filter(p => p.initials).map(p => String(p.initials).toUpperCase());
@@ -715,7 +715,9 @@ function settle() {
     const amt = Math.abs(dollars);
     const share = winners.length > 1 ? amt / winners.length : amt;
     if (dollars) losers.forEach(from => winners.forEach(to => add(from, to, share)));
-    return '<p><b>' + name + '</b><br>' + bits.join('<br>') + '<br>Total ' + who(dollars) + '</p>';
+    const rows2 = bits.map(b => '<tr><td>' + b + '</td></tr>');
+    rows2.push('<tr><td><b>Total ' + who(dollars) + '</b></td></tr>');
+    return '<table><tr><th>' + name + '</th></tr>' + rows2.join('') + '</table>';
   });
   const nets = Object.keys(net).map(key => {
     const [x, y] = key.split('|');
