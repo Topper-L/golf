@@ -6,10 +6,32 @@
 <meta http-equiv="Expires" content="0">
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>New round</title>
+<title>Golf</title>
+<script>
+try {
+  var savedFont = localStorage.getItem('golf-font');
+  document.documentElement.setAttribute('data-font', (savedFont === '0' || savedFont === '2' || savedFont === '3') ? savedFont : '1');
+} catch (e) { document.documentElement.setAttribute('data-font', '1'); }
+</script>
 <style>
-  body { margin:0; font-family:"Avenir Next","Segoe UI",sans-serif; background:#e7efe6; color:#1c2b22; touch-action:manipulation; }
-  .wrap { max-width:920px; margin:0 auto; padding:16px; }
+  html { --text: 13px; --lead: 15px; --h2: 12px; }
+  html[data-font="0"] { --text: 12px; --lead: 14px; --h2: 11px; }
+  html[data-font="1"] { --text: 13px; --lead: 15px; --h2: 12px; }
+  html[data-font="2"] { --text: 16px; --lead: 18px; --h2: 13px; }
+  html[data-font="3"] { --text: 18px; --lead: 21px; --h2: 14px; }
+  body { margin:0; font-family:"Avenir Next","Segoe UI",sans-serif; background:#e7efe6; color:#1c2b22; touch-action:manipulation; padding-bottom:calc(56px + env(safe-area-inset-bottom)); }
+  body.gate { padding-bottom:0; }
+  .topbar { position:sticky; top:0; z-index:20; display:flex; align-items:center; justify-content:space-between; gap:12px; background:#e7efe6; padding:8px 12px; padding-top:max(8px, env(safe-area-inset-top)); border-bottom:1px solid #d5e0d4; }
+  .topbar h1 { font-size:20px; margin:0; }
+  .fontctl { display:flex; align-items:center; gap:4px; flex:none; }
+  .fontctl button { min-width:44px; font-weight:700; background:#fff; }
+  .wrap { max-width:920px; margin:0 auto; padding:12px 16px 8px; }
+  .screen { display:none; }
+  .screen.on { display:block; }
+  .tabbar { position:fixed; left:0; right:0; bottom:0; z-index:20; display:flex; background:#f7faf6; border-top:1px solid #d5e0d4; padding-bottom:env(safe-area-inset-bottom); }
+  .tabbar.hidden { display:none; }
+  .tabbar button { flex:1; min-height:48px; border:0; border-radius:0; background:transparent; color:#5e6f64; font-size:13px; font-weight:700; box-shadow:none; }
+  .tabbar button.on { color:#1f6b45; background:transparent; box-shadow:inset 0 3px 0 #1f6b45; }
   h1 { font-size:22px; margin:0 0 4px; }
   p { color:#5e6f64; font-size:13px; margin:0 0 12px; }
   .card { background:#f7faf6; border:1px solid #d5e0d4; border-radius:14px; padding:10px 12px; margin-bottom:10px; }
@@ -36,11 +58,28 @@
   .section-body.collapsed { display:none; }
 
 
-  #standing p { font-size:15px !important; line-height:1.4; }
-  #settle, #settle p { font-size:15px !important; line-height:1.5; }
-  #standing table, #standing td, #standing th { font-size:12px !important; }
+  #standing, #cardStanding { max-width:100%; overflow-x:auto; }
+  #standing p, #cardStanding p { font-size:var(--lead) !important; line-height:1.45; }
+  #standing table, #cardStanding table { width:max-content; min-width:100%; }
+  .actions { display:flex; flex-wrap:wrap; gap:8px; }
+  .actions button { flex:1 1 9.5em; }
+  #presses p { margin:0 0 12px; }
+  #presses button { margin:4px 6px 0 0; }
+  #settle, #settle p, #settle td, #settle th, #settle .section-head, #settle .section-head span { font-size:var(--lead) !important; line-height:1.45; }
+  #review, #review p, #review td, #review th { font-size:var(--lead) !important; line-height:1.45; }
+  #screen-setup, #screen-gate { font-size:var(--text); }
+  #screen-setup p, #screen-gate p, #screen-setup td, #screen-setup th, #screen-setup button, #screen-gate button, #savedPlayers label { font-size:var(--text); }
+  #screen-setup .lab { font-size:var(--h2); }
+  #screen-setup h2, #screen-gate h2, #screen-card h2, #screen-settle h2, #holeView h2 { font-size:var(--h2); }
+  #screen-setup input, #screen-setup select { font-size:var(--text); }
+  #screen-setup input[type="number"] { width:3.2em; }
+  #screen-setup .hscroll > table { width:max-content; min-width:100%; }
   th, td { border-bottom:1px solid #d5e0d4; padding:6px; text-align:left; }
-  button { min-height:36px; touch-action:manipulation; cursor:pointer; }
+  button { min-height:36px; touch-action:manipulation; cursor:pointer; font-family:inherit; border:1px solid #c5d1c8; border-radius:8px; background:#fff; color:#1c2b22; padding:4px 10px; }
+  button.primary, button.choice { background:#1f6b45; color:#fff; border-color:#1f6b45; font-weight:700; }
+  button.choice { display:block; width:100%; min-height:48px; }
+  button.choice:disabled, button:disabled { background:#d5e0d4; border-color:#d5e0d4; color:#5e6f64; }
+  button.quiet { background:transparent; border-color:transparent; color:#1f6b45; font-weight:700; }
   button.on { background:#1f6b45; color:white; border-color:#1f6b45; }
   button.press-off { background:#b42318; color:white; border-color:#b42318; }
   sup { font-size:9px; }
@@ -66,18 +105,38 @@
   .file { padding:6px 10px; border:1px solid #c5d1c8; border-radius:8px; background:#fff; }
   .grid { display:grid; grid-template-columns:42px 28px 22px 36px 48px 36px 36px 1fr; align-items:center; gap:4px; margin:6px 0; }
   .junkbtns { display:flex; gap:4px; justify-content:flex-start; }
-  .grid button { min-width:36px; }
+  .grid button { min-width:36px; padding:2px 4px; }
   .score { font-size:22px; font-weight:700; min-width:44px; }
   .score.open { color:#9aa89e; }
   .score.set { color:#1f6b45; }
-  #holeView { display:none; }
   #holeNote { color:#8a5a00; font-weight:600; }
   #holeNote:empty { display:none; }
+  .empty-round[hidden], .round-body[hidden] { display:none; }
 </style>
 </head>
-<body>
+<body class="gate">
+<header class="topbar">
+  <h1 id="screenTitle">Golf</h1>
+  <div class="fontctl">
+    <button type="button" id="fontDown" aria-label="Smaller text">A−</button>
+    <button type="button" id="fontUp" aria-label="Larger text">A+</button>
+  </div>
+</header>
 <div class="wrap">
-  <h1>New round</h1>
+  <section id="screen-gate" class="screen on">
+    <p id="gateCourse">Wood Ranch Golf Club, Scorecard rev 09/2025.</p>
+    <div class="card">
+      <h2>Saved round</h2>
+      <p id="gateRound">No saved round on this phone.</p>
+      <p><button type="button" id="resume" class="choice" disabled>Resume</button></p>
+    </div>
+    <div class="card">
+      <h2>New round</h2>
+      <p>Clears the players, bets, and scores on this phone. Rounds already in Saved rounds stay there.</p>
+      <p><button type="button" id="newRound" class="choice">New Round</button></p>
+    </div>
+  </section>
+  <section id="screen-setup" class="screen">
   <p id="courseTitle">Wood Ranch Golf Club, Scorecard rev 09/2025.</p>
   <p><label>Course <select id="courseSelect"></select></label></p>
   <p>Return moves to the next field.</p>
@@ -106,7 +165,8 @@
     <p id="status"></p>
     <div class="hscroll"><table id="bets"></table></div>
     <p>Start on <button type="button" id="startPrev" tabindex="-1">−</button> <button type="button" id="startHole" tabindex="-1">1</button> <button type="button" id="startNext" tabindex="-1">+</button> <span class="note">Any hole. The nine you start in is the 1st 9.</span> Date <input type="date" id="roundDate"></p>
-    <p><button type="button" id="save" tabindex="-1">Start Round</button> <button type="button" id="resume" tabindex="-1">Resume</button> <button type="button" id="newRound" tabindex="-1">New Round</button></p>
+    <p><button type="button" id="save" class="primary" tabindex="-1">Start scoring</button> <button type="button" id="toGate" class="quiet" tabindex="-1">Start screen</button></p>
+    <p><button type="button" id="clearAll" tabindex="-1">Clear all scores</button></p>
     <p id="saveNote"></p>
   </div>
   <div class="card">
@@ -115,7 +175,10 @@
     <div id="savedList"></div>
     <p><button type="button" id="exportRound" tabindex="-1">Export current</button> <label class="file"><input type="file" id="importRound" accept="application/json"> Import file</label></p>
   </div>
-  <div id="holeView">
+  </section>
+  <section id="holeView" class="screen">
+    <p class="empty-round">Start scoring from Setup.</p>
+    <div class="round-body">
     <h1 id="holeTitle">Hole 1</h1>
     <p id="holeNote"></p>
     <p>Tap the gross score, or + or − to change it, or X if the player picked up.</p>
@@ -124,17 +187,34 @@
       <p>Birdies and eagles come from the gross score. A birdie pays one junk, an eagle two, and an albatross three. Tap Junk up to four times. On a par 3, tap KP for closest.</p>
       <p id="kpTip" class="note"></p><div id="scores"></div>
       <div id="holeJunk"></div>
-      <div id="presses"></div>
     </div>
-    <p><button type="button" id="back">Back a hole</button> <button type="button" id="post">Post hole</button> <button type="button" id="saveRound">Save round</button> <button type="button" id="newCard">Reset Scores</button> <button type="button" id="toSetup">Back to setup</button></p>
-    <div class="card"><div class="section-head" data-toggle="standing"><h2>Standing</h2><span class="chev">▶</span></div><div id="standing" class="section-body collapsed"></div></div>
-    <div class="card"><div class="section-head" data-toggle="junkSummary"><h2>Junk</h2><span class="chev">▶</span></div><div id="junkSummary" class="section-body collapsed hscroll"></div></div>
-    <div class="card"><div class="section-head" data-toggle="card"><h2>Card</h2><span class="chev">▶</span></div><div id="card" class="section-body collapsed hscroll"></div></div>
-    <div class="card"><div class="section-head" data-toggle="review"><h2>Group review</h2><span class="chev">▶</span></div><div id="review" class="section-body collapsed hscroll"></div></div>
-    
-    <div class="card"><div class="section-head" data-toggle="settle"><h2>Settle</h2><span class="chev">▶</span></div><div id="settle" class="section-body collapsed"></div></div>
-  </div>
+    <p class="actions"><button type="button" id="back">Back a hole</button> <button type="button" id="post" class="primary">Post score</button> <button type="button" id="saveRound">Save round</button> <button type="button" id="clearHole">Clear hole</button> <button type="button" id="toSetup">Back to setup</button></p>
+    <div class="card"><h2>Standing</h2><div id="standing"></div></div>
+    <div class="card"><h2>Presses</h2><div id="presses"></div></div>
+    </div>
+  </section>
+  <section id="screen-card" class="screen">
+    <p class="empty-round">Start scoring from Setup.</p>
+    <div class="round-body">
+      <div class="card"><h2>Standing</h2><div id="cardStanding"></div></div>
+      <div class="card"><h2>Junk</h2><div id="junkSummary" class="hscroll"></div></div>
+      <div class="card"><h2>Card</h2><div id="card" class="hscroll"></div></div>
+      <div class="card"><h2>Group review</h2><div id="review" class="hscroll"></div></div>
+    </div>
+  </section>
+  <section id="screen-settle" class="screen">
+    <p class="empty-round">Start scoring from Setup.</p>
+    <div class="round-body">
+      <div class="card"><h2>Settle</h2><div id="settle"></div></div>
+    </div>
+  </section>
 </div>
+<nav id="tabbar" class="tabbar hidden">
+  <button type="button" data-screen="setup">Setup</button>
+  <button type="button" data-screen="score">Score</button>
+  <button type="button" data-screen="card">Card</button>
+  <button type="button" data-screen="settle">Settle</button>
+</nav>
 <script>
 const courses = {
   'Wood Ranch': {
@@ -446,7 +526,7 @@ document.getElementById('add').onclick = () => {
 document.getElementById('resume').onclick = () => {
   syncPlayers();
   syncBets();
-  if (!holePlayers.length) { document.getElementById('saveNote').textContent = 'No round yet. Start Round first.'; return; }
+  if (!holePlayers.length) { showScreen('setup'); return; }
   let missingHcp = false;
   holePlayers.forEach(hp => {
     const p = players.find(x => String(x.initials).toUpperCase() === hp.id);
@@ -459,9 +539,7 @@ document.getElementById('resume').onclick = () => {
     hp.tee = validTee(p.tee || hp.tee);
     hp.box = !!p.box;
   });
-  document.querySelectorAll('.wrap > h1, .wrap > p, .wrap > .card').forEach(el => el.style.display = 'none');
-  document.getElementById('holeView').style.display = 'block';
-  window.scrollTo(0, 0);
+  showScreen('score');
   try { drawHole(); }
   catch (err) { document.getElementById('standing').innerHTML = '<p>Score page opened. Standing: ' + err.message + '</p>'; }
   showHandicapNote(missingHcp);
@@ -477,9 +555,8 @@ document.getElementById('newRound').onclick = () => {
   roundId = '';
   try { localStorage.removeItem('golf-card'); localStorage.removeItem('round-setup'); } catch (e) {}
   showHandicapNote(false);
-  document.getElementById('holeView').style.display = 'none';
-  document.querySelectorAll('.wrap > h1, .wrap > p, .wrap > .card').forEach(el => el.style.display = '');
   draw();
+  showScreen('setup');
   document.getElementById('status').textContent = 'New round. Add the players.';
 };
 document.getElementById('save').onclick = startHole;
@@ -731,9 +808,7 @@ function startHole() {
   const dateEl = document.getElementById('roundDate');
   if (dateEl && roundDate) dateEl.value = roundDate;
   persistSetup();
-  document.querySelectorAll('.wrap > h1, .wrap > p, .wrap > .card').forEach(el => el.style.display = 'none');
-  document.getElementById('holeView').style.display = 'block';
-  window.scrollTo(0, 0);
+  showScreen('score');
   drawHole();
   showHandicapNote(missing);
 }
@@ -956,6 +1031,16 @@ function sidesOf(name) {
   const a = isBox ? box : [String(parts[0] || '').trim().toUpperCase()];
   const b = isBox ? String(parts[1] || '').split('+').map(s => s.trim().toUpperCase()).filter(Boolean) : [String(parts[1] || '').trim().toUpperCase()];
   return { a: a, b: b, isBox: isBox };
+}
+function teamTag(ids) {
+  const list = (ids || []).map(id => String(id || '').trim().toUpperCase()).filter(Boolean);
+  if (!list.length) return '';
+  if (list.every(id => id.length === 1)) return list.join('');
+  return list.join('+');
+}
+function shortMatch(name) {
+  const sides = sidesOf(name);
+  return teamTag(sides.a) + ' vs ' + teamTag(sides.b);
 }
 function sideNet(ids, h, all) {
   const match = all || ids;
@@ -1209,31 +1294,49 @@ function detail() {
   }
   el.innerHTML = '<p>' + detailName + '</p><table><tr>' + playedHoles().map(h => '<th>' + (h + 1) + '</th>').join('') + '</tr><tr>' + cells.join('') + '</tr></table>';
 }
+function pressLegLine(leg) {
+  const kind = leg.manual ? 'Manual' : 'Auto';
+  if (!leg.played) return kind + ' press from ' + leg.from + ' covers this hole';
+  const say = leg.score === 0 ? 'AS' : leg.score > 0 ? leg.score + ' up' : Math.abs(leg.score) + ' down';
+  return kind + ' press from ' + leg.from + ' is ' + say;
+}
+function livePressText(name) {
+  const sides = sidesOf(name);
+  let sim;
+  try { sim = simulateMatch(name, sides.a, sides.b); } catch (e) { return ''; }
+  return (sim.legs || []).filter(l => l.kind === 'press' && l.holes.indexOf(holeNo) >= 0).map(pressLegLine).join('. ');
+}
 function drawPresses() {
   const el = document.getElementById('presses');
   if (!el) return;
   const m = matchNames();
   const names = m.team.concat(m.side).filter(name => { const s = amountFor(name); return s && s.on !== false; });
   const hole = holeNo + 1;
-  if (!names.length) { el.innerHTML = ''; return; }
-  el.innerHTML = '<h2>Presses</h2>' + names.map(name => {
+  if (!names.length) { el.innerHTML = '<p>No matches on.</p>'; return; }
+  el.innerHTML = names.map(name => {
     const bet = amountFor(name) || {};
     const sides = sidesOf(name);
     const amt = pressAmt(bet, hole);
     const offers = (bet.offers || []).filter(o => Number(o.from) === hole);
     const mode = pressModeOf(bet);
-    const auto = mode === 'auto' ? 'Auto at ' + pressDownN(bet) + ' down is on.' : mode === 'manual' ? 'Manual. Auto press is off.' : 'Presses are off.';
-    const sideBtn = (side, ids) => {
+    const tagA = teamTag(sides.a);
+    const tagB = teamTag(sides.b);
+    const sideBtn = (side, tag) => {
       const mine = offers.find(o => o.by === side && o.status !== 'no');
-      const who = ids.join('+') || side;
-      if (!mine) return '<button type="button" data-offer="' + esc(name) + '" data-side="' + side + '">' + esc(who) + ' offer $' + amt + '</button>';
-      if (mine.status === 'yes') return esc(who) + ' press on from this hole <button type="button" data-drop="' + esc(name) + '" data-side="' + side + '">Drop</button>';
-      const other = (side === 'a' ? sides.b : sides.a).join('+');
-      return esc(who) + ' offered $' + amt + ' · ' + esc(other) + ' <button type="button" data-answer="yes" data-offername="' + esc(name) + '" data-side="' + side + '">Accept</button> <button type="button" data-answer="no" data-offername="' + esc(name) + '" data-side="' + side + '">Decline</button>';
+      if (!mine) return '<button type="button" data-offer="' + esc(name) + '" data-side="' + side + '">' + esc(tag) + ': offer a $' + amt + ' press</button>';
+      if (mine.status === 'yes') return esc(tag) + ' press on from this hole <button type="button" data-drop="' + esc(name) + '" data-side="' + side + '">Drop</button>';
+      const other = side === 'a' ? tagB : tagA;
+      return esc(tag) + ' offered a $' + amt + ' press · ' + esc(other) + ' <button type="button" data-answer="yes" data-offername="' + esc(name) + '" data-side="' + side + '">Accept</button> <button type="button" data-answer="no" data-offername="' + esc(name) + '" data-side="' + side + '">Decline</button>';
     };
-    const earlier = manualPresses(bet).filter(o => o.from !== hole).map(o => 'h' + o.from).join(', ');
-    const controls = mode === 'off' ? '' : '<br>' + sideBtn('a', sides.a) + '<br>' + sideBtn('b', sides.b);
-    return '<p><b>' + esc(name) + '</b> ' + auto + controls + (earlier ? '<br>Accepted ' + earlier : '') + '</p>';
+    const live = livePressText(name);
+    let body = 'Presses off';
+    if (mode === 'auto') {
+      body = 'Auto press $' + amt + ' at ' + pressDownN(bet) + ' down' + (live ? '<br>' + esc(live) : '') + '<br>' + sideBtn('a', tagA) + '<br>' + sideBtn('b', tagB);
+    } else if (mode === 'manual') {
+      body = (live ? esc(live) + '<br>' : '') + sideBtn('a', tagA) + '<br>' + sideBtn('b', tagB);
+    }
+    const earlier = mode === 'off' ? '' : manualPresses(bet).filter(o => o.from !== hole).map(o => 'h' + o.from).join(', ');
+    return '<p><b>' + esc(shortMatch(name)) + '</b><br>' + body + (earlier ? '<br>Accepted ' + earlier : '') + '</p>';
   }).join('');
 }
 function ensureOfferList(name) {
@@ -1299,6 +1402,66 @@ function holeBirdieLabel() {
     Object.keys(labels).forEach(label => bits.push(esc(p.id) + ' ' + label));
   });
   return bits.length ? '<p>' + bits.join(' · ') + '</p>' : '';
+}
+function sideJunkRows(p, i, h, rows) {
+  let side = [];
+  try { side = matchNames().side; } catch (e) { return; }
+  const mine = side.filter(name => {
+    const bet = amountFor(name);
+    if (bet && bet.on === false) return false;
+    const sides = sidesOf(name);
+    return sides.a.concat(sides.b).indexOf(p.id) >= 0;
+  });
+  if (!mine.length) return;
+  const rateOf = name => {
+    const bet = amountFor(name) || {};
+    return (bet.player && bet.player[p.id] != null) ? Number(bet.player[p.id]) : 3;
+  };
+  const pushPay = (type, matches) => {
+    const byAmt = {};
+    matches.forEach(item => {
+      if (!item.amt) return;
+      if (!byAmt[item.amt]) byAmt[item.amt] = [];
+      byAmt[item.amt].push(item.name);
+    });
+    Object.keys(byAmt).forEach(key => {
+      const amt = Number(key);
+      const names = byAmt[key];
+      rows.push({ player: p.id, hole: h + 1, type: type, matches: names.map(shortMatch).join(', '), total: amt * names.length });
+      names.forEach(name => {
+        const opp = sidesOf(name).a.concat(sidesOf(name).b).find(id => id !== p.id);
+        if (!opp) return;
+        rows.push({ player: opp, hole: h + 1, type: type + ' pay', matches: shortMatch(name), total: -amt });
+      });
+    });
+  };
+  const units = grossBirdieUnits(i, h);
+  if (units) pushPay(birdieName(units), mine.map(name => ({ name: name, amt: units * rateOf(name) })));
+  const manual = (holeMarks[i] && holeMarks[i][h] && holeMarks[i][h].Junk) || 0;
+  if (manual) pushPay(manual > 1 ? 'Junk-' + manual : 'Junk', mine.map(name => ({ name: name, amt: manual * rateOf(name) })));
+  const kpMark = (holeMarks[i] && holeMarks[i][h] && holeMarks[i][h].KP) || 0;
+  if (kpMark) {
+    const won = mine.filter(name => {
+      const ids = sidesOf(name).a.concat(sidesOf(name).b);
+      const marked = ids.filter(id => {
+        const idx = holePlayers.findIndex(x => x.id === id);
+        return idx >= 0 && holeMarks[idx] && holeMarks[idx][h] && holeMarks[idx][h].KP > 0;
+      });
+      if (!marked.length) return false;
+      const best = marked.reduce((x, y) => {
+        const ix = holePlayers.findIndex(pl => pl.id === x);
+        const iy = holePlayers.findIndex(pl => pl.id === y);
+        const cx = holeMarks[ix][h].KP || 0;
+        const cy = holeMarks[iy][h].KP || 0;
+        if (cx !== cy) return cx < cy ? x : y;
+        const xb = holePlayers[ix] && holePlayers[ix].box;
+        const yb = holePlayers[iy] && holePlayers[iy].box;
+        return xb && !yb ? y : x;
+      });
+      return best === p.id;
+    });
+    pushPay('KP-' + kpMark, won.map(name => ({ name: name, amt: rateOf(name) })));
+  }
 }
 function drawHole() {
   padCard();
@@ -1429,11 +1592,11 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
             [p.id, partner.id].forEach(id => { shares[id] += amount * boxIds.length / 2; });
           });
         }
-        const note = winPairs.map(pair => pair.map(x => x.id).join('+')).join(', ');
+        const noteFor = id => winPairs.filter(pair => boxIds.includes(id) || pair.some(op => op.id === id)).map(pair => pair.map(x => x.id).join('+')).join(', ');
         Object.keys(shares).forEach(id => {
           if (!shares[id]) return;
           const role = id === p.id ? type : (shares[id] > 0 ? type + ' split' : type + ' pay');
-          rows.push({ player: id, hole: h + 1, type: role, matches: note, total: shares[id] });
+          rows.push({ player: id, hole: h + 1, type: role, matches: noteFor(id), total: shares[id] });
         });
       };
       if (mk.KP > 0 && pairs.length) {
@@ -1481,6 +1644,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
           groups[units].push(pair);
         });
         Object.keys(groups).forEach(k => shareRows(birdieName(Number(k)), Number(k) * rate, groups[k]));
+        sideJunkRows(p, i, h, rows);
       } else {
         const groups = {};
         holePlayers.forEach(op => {
@@ -1504,8 +1668,13 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
   rows.sort((a, b) => a.hole - b.hole || a.player.localeCompare(b.player));
   const table = rows.length ? '<table><tr><th>Player</th><th>Hole</th><th>Type</th><th>Matches</th><th>Total</th></tr>' + rows.map(r => '<tr><td>' + r.player + '</td><td>#' + r.hole + '</td><td>' + r.type + '</td><td>' + r.matches + '</td><td>' + cashText(r.total) + '</td></tr>').join('') + '</table>' : '<p>No junk posted.</p>';
   junkEl.innerHTML = table;
-  try { document.getElementById('standing').innerHTML = holeStanding(); }
-  catch (err) { document.getElementById('standing').innerHTML = '<p>' + err.message + '</p>'; }
+  let standingHtml = '';
+  try { standingHtml = holeStanding(); }
+  catch (err) { standingHtml = '<p>' + err.message + '</p>'; }
+  ['standing', 'cardStanding'].forEach(id => {
+    const node = document.getElementById(id);
+    if (node) node.innerHTML = standingHtml;
+  });
   try { settle(); } catch (err) { document.getElementById('settle').innerHTML = '<p>' + err.message + '</p>'; }
   drawPresses();
   detail();
@@ -1528,12 +1697,16 @@ function saveCard() {
     }));
   } catch (e) {}
 }
-document.getElementById('standing').onclick = e => {
-  const btn = e.target.closest('button[data-detail]');
-  if (!btn) return;
-  detailName = detailName === btn.dataset.detail ? '' : btn.dataset.detail;
-  drawHole();
-};
+['standing', 'cardStanding'].forEach(id => {
+  const node = document.getElementById(id);
+  if (!node) return;
+  node.onclick = e => {
+    const btn = e.target.closest('button[data-detail]');
+    if (!btn) return;
+    detailName = detailName === btn.dataset.detail ? '' : btn.dataset.detail;
+    drawHole();
+  };
+});
 document.getElementById('scores').onclick = e => {
   const btn = e.target.closest('button');
   if (!btn) return;
@@ -1556,9 +1729,9 @@ document.getElementById('holeJunk').onclick = e => {
   if (k === 'KP' || k === 'Junk') holeMarks[i][holeNo][k] = (Number(holeMarks[i][holeNo][k]) + 1) % 5;
   drawHole();
 };
-document.getElementById('toSetup').onclick = () => {
-  document.getElementById('holeView').style.display = 'none';
-  document.querySelectorAll('.wrap > h1, .wrap > p, .wrap > .card').forEach(el => el.style.display = '');
+document.getElementById('toGate').onclick = () => {
+  try { syncPlayers(); syncBets(); persistSetup(); } catch (e) {}
+  showScreen('gate');
 };
 function stepHole(dir) {
   const order = playOrder();
@@ -1569,12 +1742,33 @@ function stepHole(dir) {
   drawHole();
 }
 document.getElementById('post').onclick = () => stepHole(1);
-document.getElementById('newCard').onclick = () => {
+function clearPressesFrom(hole1) {
+  Object.keys(amounts).forEach(k => {
+    const bet = amounts[k];
+    if (!bet) return;
+    if (bet.offers) bet.offers = bet.offers.filter(o => Number(o.from) !== hole1);
+    if (bet.manual) bet.manual = bet.manual.filter(n => Number(n) !== hole1);
+  });
+}
+const clearHoleBtn = document.getElementById('clearHole');
+if (clearHoleBtn) clearHoleBtn.onclick = () => {
+  if (!holePlayers.length) return;
+  const scored = holeScores.some(row => row && row[holeNo] != null);
+  if (scored && !window.confirm('Clear this hole?')) return;
+  holeScores.forEach(row => { if (row) row[holeNo] = null; });
+  holeMarks.forEach(row => { if (row) row[holeNo] = { KP: 0, Birdie: 0, Junk: 0 }; });
+  clearPressesFrom(holeNo + 1);
+  drawHole();
+};
+const toSetupBtn = document.getElementById('toSetup');
+if (toSetupBtn) toSetupBtn.onclick = () => showScreen('setup');
+const clearAllBtn = document.getElementById('clearAll');
+if (clearAllBtn) clearAllBtn.onclick = () => {
   if (!holePlayers.length) return;
   const scored = holeScores.some(row => row && row.some(s => s != null));
   const msg = scored
-    ? 'Reset all scores on this card? The saved copy stays in Saved rounds.'
-    : 'Reset all scores on this card?';
+    ? 'Clear all 18 holes and all presses on this card? The saved copy stays in Saved rounds.'
+    : 'Clear all 18 holes and all presses on this card?';
   if (!window.confirm(msg)) return;
   if (scored) detachSavedRound();
   roundId = newRoundId();
@@ -1591,7 +1785,7 @@ document.getElementById('newCard').onclick = () => {
   finally { suppressAutoSave = false; }
   persistSetup();
   const note = document.getElementById('saveNote');
-  if (note) note.textContent = scored ? 'Scores reset. The saved round is still in Saved rounds.' : 'Scores reset.';
+  if (note) note.textContent = scored ? 'All scores cleared. The saved round is still in Saved rounds.' : 'All scores cleared.';
 };
 document.getElementById('back').onclick = () => stepHole(-1);
 document.addEventListener('keydown', e => {
@@ -1786,9 +1980,7 @@ holePlayers = r.players || [];
     draw();
     drawBets();
     persistSetup();
-    document.querySelectorAll('.wrap > h1, .wrap > p, .wrap > .card').forEach(el => el.style.display = 'none');
-    document.getElementById('holeView').style.display = 'block';
-  window.scrollTo(0, 0);
+    showScreen('score');
     suppressAutoSave = true;
     try { drawHole(); }
     finally { suppressAutoSave = false; }
@@ -1894,18 +2086,83 @@ function initCourseSelect() {
     persistSetup();
   };
 }
+function showScreen(name) {
+  if (name === 'gate') refreshGate();
+  const map = { gate: 'screen-gate', setup: 'screen-setup', score: 'holeView', card: 'screen-card', settle: 'screen-settle' };
+  const id = map[name] || 'screen-gate';
+  document.querySelectorAll('.screen').forEach(el => el.classList.toggle('on', el.id === id));
+  document.body.classList.toggle('gate', name === 'gate');
+  const tabs = document.getElementById('tabbar');
+  if (tabs) tabs.classList.toggle('hidden', name === 'gate');
+  document.querySelectorAll('#tabbar button').forEach(btn => btn.classList.toggle('on', btn.dataset.screen === name));
+  const titles = { gate: 'Golf', setup: 'Setup', score: 'Score', card: 'Card', settle: 'Settle' };
+  const title = document.getElementById('screenTitle');
+  if (title) title.textContent = titles[name] || 'Golf';
+  document.title = titles[name] || 'Golf';
+  const ready = holePlayers.length > 0;
+  document.querySelectorAll('.empty-round').forEach(el => { el.hidden = ready; });
+  document.querySelectorAll('.round-body').forEach(el => { el.hidden = !ready; });
+  window.scrollTo(0, 0);
+}
+function namedSetup() {
+  try {
+    const setup = JSON.parse(localStorage.getItem('round-setup') || 'null');
+    return !!(setup && Array.isArray(setup.players) && setup.players.some(p => String(p.name || p.initials || '').trim()));
+  } catch (e) { return false; }
+}
+function refreshGate() {
+  const course = document.getElementById('gateCourse');
+  if (course) course.textContent = courseData().title;
+  const roundText = document.getElementById('gateRound');
+  const btn = document.getElementById('resume');
+  if (!roundText || !btn) return;
+  let card = null;
+  try { card = JSON.parse(localStorage.getItem('golf-card') || 'null'); } catch (e) {}
+  const cardPlayers = holePlayers.length ? holePlayers : (card && Array.isArray(card.players) ? card.players : []);
+  if (cardPlayers.length) {
+    const hole = (holePlayers.length ? holeNo : (card && card.hole != null ? card.hole : 0)) + 1;
+    const courseName = (card && card.course) || currentCourse;
+    roundText.textContent = courseName + ' · ' + cardPlayers.map(p => p.id).join(', ') + ' · Hole ' + hole;
+    btn.disabled = false;
+  } else if (namedSetup()) {
+    const setup = JSON.parse(localStorage.getItem('round-setup'));
+    const who = setup.players.filter(p => p.initials || p.name).map(p => p.initials || p.name).join(', ');
+    roundText.textContent = (setup.course || currentCourse) + ' · setup for ' + who;
+    btn.disabled = false;
+  } else {
+    roundText.textContent = 'No saved round on this phone.';
+    btn.disabled = true;
+  }
+}
+function currentFont() {
+  const n = Number(document.documentElement.getAttribute('data-font'));
+  return n === 0 || n === 2 || n === 3 ? n : 1;
+}
+function setFont(n) {
+  n = Math.max(0, Math.min(3, n));
+  document.documentElement.setAttribute('data-font', String(n));
+  try { localStorage.setItem('golf-font', String(n)); } catch (e) {}
+  const down = document.getElementById('fontDown');
+  const up = document.getElementById('fontUp');
+  if (down) down.disabled = n === 0;
+  if (up) up.disabled = n === 3;
+}
+document.getElementById('fontDown').onclick = () => setFont(currentFont() - 1);
+document.getElementById('fontUp').onclick = () => setFont(currentFont() + 1);
+document.getElementById('tabbar').onclick = e => {
+  const btn = e.target.closest('button[data-screen]');
+  if (!btn) return;
+  const name = btn.dataset.screen;
+  if ((name === 'score' || name === 'card' || name === 'settle') && holePlayers.length) {
+    try { drawHole(); } catch (err) {}
+  }
+  showScreen(name);
+};
 initCourseSelect();
 syncStartButton();
 drawSaved();
-document.querySelectorAll('.section-head').forEach(head => {
-  head.onclick = () => {
-    const body = document.getElementById(head.dataset.toggle);
-    if (!body) return;
-    body.classList.toggle('collapsed');
-    const chev = head.querySelector('.chev');
-    if (chev) chev.textContent = body.classList.contains('collapsed') ? '▶' : '▼';
-  };
-});
+setFont(currentFont());
+showScreen('gate');
 </script>
 </body>
 </html>
