@@ -796,24 +796,23 @@ function playOrder() {
 }
 function segmentIndex(h) { return isFirstNineHole(h) ? 0 : 1; }
 function holesOfNine(seg) { return playOrder().filter(h => segmentIndex(h) === seg); }
+function sameCardNine(h, from0) { return isFirstNineHole(h) === isFirstNineHole(from0); }
 function holesFrom(from0, allDay) {
   const order = playOrder();
   const i = order.indexOf(from0);
   if (i < 0) return [];
   const rest = order.slice(i);
-  if (allDay || !isFirstNineHole(from0)) return rest;
-  return rest.filter(isFirstNineHole);
+  if (allDay) return rest;
+  return rest.filter(h => sameCardNine(h, from0));
 }
 function nextPressStart(h, leg, allDay) {
   const order = playOrder();
   const pos = order.indexOf(h);
   if (pos < 0) return null;
-  const firstNine = !allDay && !(leg.kind === 'nine' && leg.seg === 1) && isFirstNineHole(leg.from - 1);
-  if (firstNine) {
-    for (let k = pos + 1; k < order.length; k++) if (isFirstNineHole(order[k])) return order[k];
-    return null;
-  }
-  return pos + 1 < order.length ? order[pos + 1] : null;
+  if (allDay) return pos + 1 < order.length ? order[pos + 1] : null;
+  const from0 = leg.from - 1;
+  for (let k = pos + 1; k < order.length; k++) if (sameCardNine(order[k], from0)) return order[k];
+  return null;
 }
 function manualPresses(bet) {
   const out = [];
