@@ -579,6 +579,7 @@ document.getElementById('newRound').onclick = () => {
   holeScores = [];
   holeMarks = [];
   holeNo = 0;
+  playedThru = -1;
   ninesPlayed = null;
   roundId = '';
   try { localStorage.removeItem('golf-card'); localStorage.removeItem('round-setup'); } catch (e) {}
@@ -626,7 +627,7 @@ function copyBets() {
   document.getElementById('status').textContent = 'Copied ' + values.first + ' / ' + values.second + ' / ' + values.overall + ', press ' + values.pressFirst + ' on the 1st 9 and ' + values.pressSecond + ' on the 2nd 9, at ' + values.pressDown + ' down, junk ' + junk + ' into ' + list.length + ' matches.';
 }
 document.getElementById('apply').onclick = copyBets;
-let holePlayers = [], holeScores = [], holeMarks = [], holeNo = 0, detailName = '', startAt = 0, ninesPlayed = null;
+let holePlayers = [], holeScores = [], holeMarks = [], holeNo = 0, detailName = '', startAt = 0, ninesPlayed = null, playedThru = -1;
 function courseNines() {
   const listed = courseData().nines;
   if (Array.isArray(listed) && listed.filter(n => n && Array.isArray(n.holes) && n.holes.length).length >= 2) {
@@ -807,18 +808,21 @@ function startHole() {
         if (saved.startAt != null) startAt = clampStart(saved.startAt);
         if (Array.isArray(saved.ninesPlayed)) ninesPlayed = saved.ninesPlayed;
         holeNo = saved.hole != null ? saved.hole : startAt;
+        playedThru = typeof saved.playedThru === 'number' ? saved.playedThru : -1;
         roundId = saved.roundId || '';
         if (saved.roundDate) roundDate = saved.roundDate;
       } else {
         holeScores = holePlayers.map(freshScores);
         holeMarks = holePlayers.map(freshMarks);
         holeNo = startAt;
+        playedThru = -1;
         roundId = newRoundId();
       }
     } catch (e) {
       holeScores = holePlayers.map(freshScores);
       holeMarks = holePlayers.map(freshMarks);
       holeNo = startAt;
+      playedThru = -1;
       roundId = newRoundId();
     }
   }
@@ -1437,6 +1441,14 @@ if (pressEl) pressEl.onclick = e => {
   }
 };
 function holeVal(i) { return holeScores[i][holeNo] == null ? courseData().par[holeNo] : holeScores[i][holeNo]; }
+function rememberThru() {
+  const i = playOrder().indexOf(holeNo);
+  if (i > playedThru) playedThru = i;
+}
+function holeLeftBehind(h) {
+  const i = playOrder().indexOf(h);
+  return i >= 0 && i < playedThru;
+}
 function strokeMark(p) {
   const ids = holePlayers.map(x => x.id);
   const n = strokesOnHole(indexFor(p.tee)[holeNo], strokesReceived(ids, p.id));
@@ -1534,6 +1546,7 @@ function sideJunkRows(p, i, h, rows) {
 }
 function drawHole() {
   padCard();
+  rememberThru();
   const idx = indexFor(holePlayers[0] && holePlayers[0].tee); document.getElementById('holeTitle').textContent = 'Hole ' + (holeNo + 1) + ' · Par ' + courseData().par[holeNo] + ' · Handicap ' + idx[holeNo];
   const kinds = courseData().par[holeNo] === 3 ? ['KP','Junk'] : ['Junk'];
   document.getElementById('kpTip').textContent = courseData().par[holeNo] === 3 ? 'Tap KP: KP-1 = closest, KP-2 = 2nd, KP-3 = 3rd, KP-4 = 4th.' : '';
@@ -1547,7 +1560,8 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     }).join('');
     const shown = unset ? '' : (v === 'X' ? 'X' : v);
     const aria = unset ? ' aria-label="Par ' + courseData().par[holeNo] + '"' : '';
-    return '<div class="grid"><b>' + p.id + '</b><span>' + String(p.tee).slice(0,2) + '</span><span>' + strokeMark(p) + '</span><button data-i="' + i + '" data-d="-1">−</button><button data-i="' + i + '" data-set="1" class="score ' + (unset ? 'missing' : 'set') + '"' + aria + '>' + shown + '</button><button data-i="' + i + '" data-d="1">+</button><button data-i="' + i + '" data-x="1">X</button><span class="junkbtns">' + junkBtns + '</span></div>';
+    const scoreCls = unset ? (holeLeftBehind(holeNo) ? 'missing' : 'open') : 'set';
+    return '<div class="grid"><b>' + p.id + '</b><span>' + String(p.tee).slice(0,2) + '</span><span>' + strokeMark(p) + '</span><button data-i="' + i + '" data-d="-1">−</button><button data-i="' + i + '" data-set="1" class="score ' + scoreCls + '"' + aria + '>' + shown + '</button><button data-i="' + i + '" data-d="1">+</button><button data-i="' + i + '" data-x="1">X</button><span class="junkbtns">' + junkBtns + '</span></div>';
   }).join('');
   document.getElementById('holeJunk').innerHTML = holeBirdieLabel();
   const shape = (score, par) => {
@@ -1569,7 +1583,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
       const par = courseData().par[h];
       const cells = holePlayers.map((p, i) => {
         const score = holeScores[i][h];
-        if (score == null) return '<td class="missing"></td>';
+        if (score == null) return holeLeftBehind(h) ? '<td class="missing"></td>' : '<td></td>';
         return '<td>' + shape(score, par) + '</td>';
       }).join('');
       return '<tr class="' + (h === holeNo ? 'current' : '') + '"><td>' + (h+1) + '</td><td class="par">' + par + '</td>' + cells + '</tr>';
@@ -1614,7 +1628,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
       const score = holeScores[i] && holeScores[i][h];
       const dots = strokeDots(holePlayers[i], h);
       const mark = dots ? '<span class="dots">' + dots + '</span>' : '';
-      if (score == null) return '<td class="missing">' + mark + '</td>';
+      if (score == null) return '<td' + (holeLeftBehind(h) ? ' class="missing"' : '') + '>' + mark + '</td>';
       if (score === 'X') return '<td>X' + mark + '</td>';
       return '<td>' + score + mark + '</td>';
     };
@@ -1796,6 +1810,7 @@ function saveCard() {
       marks: holeMarks,
       hole: holeNo,
       startAt: startAt,
+      playedThru: playedThru,
       ninesPlayed: playedPair().map(n => n.id),
       roundId: roundId,
       course: currentCourse,
@@ -1888,6 +1903,7 @@ if (clearAllBtn) clearAllBtn.onclick = () => {
   holeScores = holePlayers.map(freshScores);
   holeMarks = holePlayers.map(freshMarks);
   holeNo = startAt;
+  playedThru = -1;
   Object.keys(amounts).forEach(k => {
     if (!amounts[k]) return;
     amounts[k].manual = [];
@@ -1962,6 +1978,7 @@ function loadSavedSetup() {
   if (card.startAt != null) startAt = clampStart(card.startAt);
   if (Array.isArray(card.ninesPlayed)) ninesPlayed = card.ninesPlayed;
   holeNo = card.hole != null ? card.hole : startAt;
+  playedThru = typeof card.playedThru === 'number' ? card.playedThru : -1;
   if (card.roundId) roundId = card.roundId;
   if (card.roundDate) roundDate = card.roundDate;
   syncPlayedNines();
@@ -1994,6 +2011,7 @@ function snapshot(isAuto) {
     marks: holeMarks,
     hole: holeNo,
     startAt: startAt,
+    playedThru: playedThru,
     ninesPlayed: playedPair().map(n => n.id),
     amounts: amounts,
     course: currentCourse,
@@ -2093,6 +2111,7 @@ holePlayers = r.players || [];
     holeScores = r.scores || [];
     holeMarks = r.marks || [];
     holeNo = r.hole != null ? r.hole : clampStart(r.startAt);
+    playedThru = typeof r.playedThru === 'number' ? r.playedThru : -1;
     startAt = clampStart(r.startAt);
     ninesPlayed = Array.isArray(r.ninesPlayed) ? r.ninesPlayed : null;
     syncPlayedNines();
