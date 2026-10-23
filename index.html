@@ -120,7 +120,7 @@
     <p>Tap the gross score, or + or − to change it, or X if the player picked up.</p>
     <div class="card">
       <h2>Scores and junk</h2>
-      <p>Birdies and eagles come from the net score. Tap Junk up to four times. On a par 3, tap KP for closest.</p>
+      <p>Birdies and eagles come from the gross score. A birdie pays one junk, an eagle two, and an albatross three. Tap Junk up to four times. On a par 3, tap KP for closest.</p>
       <p id="kpTip" class="note"></p><div id="scores"></div>
       <div id="holeJunk"></div>
       <div id="presses"></div>
@@ -189,6 +189,8 @@ let roundDate = localDateStr();
 let roundId = '';
 let suppressAutoSave = false;
 let strokePct = 100;
+// Box 2v2 matches keep full strokes. A later setting can change this number. There is no control for it on the setup screen.
+const BOX_STROKE_PCT = 100;
 function courseData() { return courses[currentCourse]; }
 function newRoundId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -721,10 +723,18 @@ function currentPct() {
   if (!(strokePct >= 0)) strokePct = 100;
   return strokePct;
 }
-function playingHandicap(p) { return roundHalfUp(courseHandicap(p) * currentPct() / 100); }
+function playingHandicap(p, pct) {
+  const use = pct == null ? currentPct() : pct;
+  return roundHalfUp(courseHandicap(p) * use / 100);
+}
+function strokePctForMatch(ids) {
+  const box = holePlayers.filter(p => p.box).map(p => p.id);
+  if (box.length === 2 && ids && ids.length === 4 && box.every(id => ids.indexOf(id) >= 0)) return BOX_STROKE_PCT;
+  return currentPct();
+}
 function strokesReceived(ids, id) {
   const list = ids && ids.length ? ids : [id];
-  const value = pid => playingHandicap(holePlayers.find(p => p.id === pid) || { hcp: 0 });
+  const value = pid => playingHandicap(holePlayers.find(p => p.id === pid) || { hcp: 0 }, strokePctForMatch(list));
   return value(id) - Math.min(...list.map(value));
 }
 function strokesOnHole(strokeIndex, strokes) {
@@ -743,20 +753,18 @@ function holeNet(i, h, ids) {
   const n = ids ? strokesOnHole(idx[h], strokesReceived(ids, holePlayers[i].id)) : 0;
   return g - n;
 }
-function netBirdieUnits(i, h, matchIds) {
+function grossBirdieUnits(i, h) {
   const g = holeScores[i] && holeScores[i][h];
   if (typeof g !== 'number') return 0;
-  const net = holeNet(i, h, matchIds);
-  if (net === 99) return 0;
-  const under = courseData().par[h] - net;
+  const under = courseData().par[h] - g;
   return under >= 1 ? Math.min(4, under) : 0;
 }
 function birdieName(units) {
-  return units >= 4 ? 'Albatross' : units === 3 ? 'Dbl Eagle' : units === 2 ? 'Eagle' : 'Birdie';
+  return units >= 4 ? 'Condor' : units === 3 ? 'Albatross' : units === 2 ? 'Eagle' : 'Birdie';
 }
-function junkUnits(i, h, matchIds) {
+function junkUnits(i, h) {
   const manual = (holeMarks[i] && holeMarks[i][h] && holeMarks[i][h].Junk) || 0;
-  return netBirdieUnits(i, h, matchIds) + manual;
+  return grossBirdieUnits(i, h) + manual;
 }
 function autoPressOn(bet) {
   if (!bet) return true;
@@ -1017,7 +1025,7 @@ function holeStanding() {
       if (i < 0) return 0;
       const rate = (bet.player && bet.player[id] != null) ? Number(bet.player[id]) : 3;
       let units = 0;
-      for (const h of playedHoles()) units += junkUnits(i, h, matchIds);
+      for (const h of playedHoles()) units += junkUnits(i, h);
       const kp = kpForMatch(matchIds)[id] || 0;
       return (units + kp) * rate;
     };
@@ -1088,7 +1096,7 @@ function settle() {
       if (i < 0) return 0;
       const rate = (bet.player && bet.player[id] != null) ? Number(bet.player[id]) : 3;
       let units = 0;
-      for (const h of playedHoles()) units += junkUnits(i, h, matchIds);
+      for (const h of playedHoles()) units += junkUnits(i, h);
       return (units + (kp[id] || 0)) * rate;
     };
     const junk = b.reduce((n, id) => n + junkOf(id), 0) - a.reduce((n, id) => n + junkOf(id), 0);
@@ -1106,7 +1114,7 @@ function settle() {
         const items = [];
         for (const h of playedHoles()) {
           const m = mk[h] || {};
-          const units = netBirdieUnits(i, h, matchIds);
+          const units = grossBirdieUnits(i, h);
           const bits = [];
           if (units) bits.push(birdieName(units));
           if (m.KP) bits.push('KP');
@@ -1244,11 +1252,11 @@ function holeBirdieLabel() {
       const sides = sidesOf(name);
       const ids = sides.a.concat(sides.b);
       if (ids.indexOf(p.id) < 0) return;
-      const units = netBirdieUnits(i, holeNo, ids);
+      const units = grossBirdieUnits(i, holeNo);
       if (!units) return;
       labels[birdieName(units)] = true;
     });
-    Object.keys(labels).forEach(label => bits.push(esc(p.id) + ' net ' + label));
+    Object.keys(labels).forEach(label => bits.push(esc(p.id) + ' ' + label));
   });
   return bits.length ? '<p>' + bits.join(' · ') + '</p>' : '';
 }
@@ -1427,7 +1435,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
         const consider = boxIds.includes(p.id) ? pairs : pairs.filter(pair => pair.some(op => op.id === p.id));
         consider.forEach(pair => {
           const matchIds = boxIds.concat(pair.map(x => x.id));
-          const units = netBirdieUnits(i, h, matchIds);
+          const units = grossBirdieUnits(i, h);
           if (!units) return;
           if (!groups[units]) groups[units] = [];
           groups[units].push(pair);
@@ -1437,7 +1445,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
         const groups = {};
         holePlayers.forEach(op => {
           if (op.id === p.id) return;
-          const units = netBirdieUnits(i, h, [p.id, op.id]);
+          const units = grossBirdieUnits(i, h);
           if (!units) return;
           if (!groups[units]) groups[units] = [];
           groups[units].push(op.id);
