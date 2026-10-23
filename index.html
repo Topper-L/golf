@@ -270,7 +270,14 @@ function draw() {
   drawBets();
   document.querySelectorAll('#players input').forEach(el => {
     el.oninput = () => {
-      if (el.dataset.f === 'initials') el.value = el.value.toUpperCase();
+      if (el.dataset.f === 'initials') {
+        const up = el.value.toUpperCase();
+        if (up !== el.value) {
+          const pos = el.selectionStart;
+          el.value = up;
+          if (pos != null) el.setSelectionRange(pos, pos);
+        }
+      }
       players[el.dataset.i][el.dataset.f] = el.value;
       if (el.dataset.f === 'initials') drawBets();
     };
