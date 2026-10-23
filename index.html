@@ -89,11 +89,11 @@
   <div class="card">
     <h2>Default bet</h2>
     <div class="defaults" id="defaults">
-      <div class="col"><div class="lab">First</div><div class="ctrl"><button type="button" data-step="-1" data-id="dFirst">−</button><input id="dFirst" type="number" inputmode="numeric" value="0"><button type="button" data-step="1" data-id="dFirst">+</button></div></div>
-      <div class="col"><div class="lab">Second</div><div class="ctrl"><button type="button" data-step="-1" data-id="dSecond">−</button><input id="dSecond" type="number" inputmode="numeric" value="0"><button type="button" data-step="1" data-id="dSecond">+</button></div></div>
+      <div class="col"><div class="lab">1st 9</div><div class="ctrl"><button type="button" data-step="-1" data-id="dFirst">−</button><input id="dFirst" type="number" inputmode="numeric" value="0"><button type="button" data-step="1" data-id="dFirst">+</button></div></div>
+      <div class="col"><div class="lab">2nd 9</div><div class="ctrl"><button type="button" data-step="-1" data-id="dSecond">−</button><input id="dSecond" type="number" inputmode="numeric" value="0"><button type="button" data-step="1" data-id="dSecond">+</button></div></div>
       <div class="col"><div class="lab">Overall</div><div class="ctrl"><button type="button" data-step="-1" data-id="dOverall">−</button><input id="dOverall" type="number" inputmode="numeric" value="20"><button type="button" data-step="1" data-id="dOverall">+</button></div></div>
-      <div class="col"><div class="lab">Press F</div><div class="ctrl"><button type="button" data-step="-1" data-id="dPressF">−</button><input id="dPressF" type="number" inputmode="numeric" value="0"><button type="button" data-step="1" data-id="dPressF">+</button></div></div>
-      <div class="col"><div class="lab">Press B</div><div class="ctrl"><button type="button" data-step="-1" data-id="dPressB">−</button><input id="dPressB" type="number" inputmode="numeric" value="0"><button type="button" data-step="1" data-id="dPressB">+</button></div></div>
+      <div class="col"><div class="lab">1st 9 press</div><div class="ctrl"><button type="button" data-step="-1" data-id="dPressF">−</button><input id="dPressF" type="number" inputmode="numeric" value="0"><button type="button" data-step="1" data-id="dPressF">+</button></div></div>
+      <div class="col"><div class="lab">2nd 9 press</div><div class="ctrl"><button type="button" data-step="-1" data-id="dPressB">−</button><input id="dPressB" type="number" inputmode="numeric" value="0"><button type="button" data-step="1" data-id="dPressB">+</button></div></div>
       <div class="col"><div class="lab">Down</div><div class="ctrl"><button type="button" data-step="-1" data-id="dDown">−</button><input id="dDown" type="number" inputmode="numeric" value="2"><button type="button" data-step="1" data-id="dDown">+</button></div></div>
       <div class="col"><div class="lab">Junk</div><div class="ctrl"><button type="button" data-step="-1" data-id="dJunk">−</button><input id="dJunk" type="number" inputmode="numeric" value="3"><button type="button" data-step="1" data-id="dJunk">+</button></div></div>
       <div class="col"><div class="lab">Strokes %</div><div class="ctrl"><button type="button" data-step="-1" data-id="dPct">−</button><input id="dPct" type="number" inputmode="numeric" value="100"><button type="button" data-step="1" data-id="dPct">+</button></div></div>
@@ -104,7 +104,7 @@
     <h2>Matches</h2>
     <p id="status"></p>
     <table id="bets"></table>
-    <p>Start on <button type="button" id="startHole" tabindex="-1">1</button> <span class="note">Tap to switch between 1 and 10.</span> Date <input type="date" id="roundDate"></p>
+    <p>Start on <button type="button" id="startPrev" tabindex="-1">−</button> <button type="button" id="startHole" tabindex="-1">1</button> <button type="button" id="startNext" tabindex="-1">+</button> <span class="note">Any hole. The nine you start in is the 1st 9.</span> Date <input type="date" id="roundDate"></p>
     <p><button type="button" id="save" tabindex="-1">Start Round</button> <button type="button" id="resume" tabindex="-1">Resume</button> <button type="button" id="newRound" tabindex="-1">New Round</button></p>
     <p id="saveNote"></p>
   </div>
@@ -120,7 +120,7 @@
     <p>Tap the gross score, or + or − to change it, or X if the player picked up.</p>
     <div class="card">
       <h2>Scores and junk</h2>
-      <p>Tap Birdie once for a birdie, twice for Eagle, three for Dbl Eagle, four for Albatross. Tap Junk up to four times.</p>
+      <p>Birdies and eagles come from the gross score. A birdie pays one junk, an eagle two, and an albatross three. Tap Junk up to four times. On a par 3, tap KP for closest.</p>
       <p id="kpTip" class="note"></p><div id="scores"></div>
       <div id="holeJunk"></div>
       <div id="presses"></div>
@@ -142,6 +142,11 @@ const courses = {
     par: [4,5,3,4,4,5,3,4,4,4,4,4,3,4,5,4,3,5],
     tees: ['Gold','Blue','White','White tournament','Red','Silver','Blue/White','White/Red','Red/Silver'],
     index: { default: [3,13,15,7,1,9,17,11,5,2,8,4,10,14,16,6,12,18] },
+    // Card nines, in card order. A round plays two of these. "1st 9" and "2nd 9" are the order played, never a nine's name.
+    nines: [
+      { id: 'n1', name: '', press: 'pressFront', holes: [0,1,2,3,4,5,6,7,8] },
+      { id: 'n2', name: '', press: 'pressBack', holes: [9,10,11,12,13,14,15,16,17] }
+    ],
     // Men's ratings. Blue/White, White/Red, and Red/Silver have no men's rating, so those tees use the index as entered.
     rating: {
       Gold: { slope: 140, rating: 74.4, par: 72 },
@@ -163,6 +168,10 @@ const courses = {
       'Red Short': { slope: 116, rating: 66.8, par: 71 }, // SCGA Men's Red; the chart has no separate men's Red Short
       Forward: { slope: 91, rating: 56.0, par: 71 }
     },
+    nines: [
+      { id: 'n1', name: '', press: 'pressFront', holes: [0,1,2,3,4,5,6,7,8] },
+      { id: 'n2', name: '', press: 'pressBack', holes: [9,10,11,12,13,14,15,16,17] }
+    ],
     index: {
       Black: [9,1,3,11,15,5,7,17,13,16,18,12,8,2,4,6,10,14],
       White: [9,1,3,11,15,5,7,17,13,16,18,12,8,2,4,6,10,14],
@@ -180,6 +189,8 @@ let roundDate = localDateStr();
 let roundId = '';
 let suppressAutoSave = false;
 let strokePct = 100;
+// Box 2v2 matches keep full strokes. A later setting can change this number. There is no control for it on the setup screen.
+const BOX_STROKE_PCT = 100;
 function courseData() { return courses[currentCourse]; }
 function newRoundId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -241,18 +252,20 @@ function drawBets() {
     : 'Tap a match On to play it.';
   const names = m.team.concat(m.side);
   const ids = players.filter(p => p.initials).map(p => String(p.initials).toUpperCase());
-  document.getElementById('bets').innerHTML = names.length ? '<tr><th>Match</th><th></th><th>First</th><th>Second</th><th>Overall</th><th>Press F</th><th>Press B</th><th>Down</th>' + ids.map(id => '<th>Junk ' + esc(id) + '</th>').join('') + '</tr>' + names.map(name => {
+  const pressCols = pressFields();
+  document.getElementById('bets').innerHTML = names.length ? '<tr><th>Match</th><th></th><th>1st 9</th><th>2nd 9</th><th>Overall</th><th>1st 9 press</th><th>2nd 9 press</th><th>Down</th>' + ids.map(id => '<th>Junk ' + esc(id) + '</th>').join('') + '</tr>' + names.map(name => {
     if (!amounts[name]) amounts[name] = { on: m.team.includes(name) || (names.length === 1 && !m.team.length), first:0, second:0, overall:0, press:0, pressFront:0, pressBack:0, pressDown:2, autoPress:true, player:{}, offers:[] };
     const a = amounts[name];
     if (a.autoPress == null) a.autoPress = autoPressOn(a);
     if (a.pressFront == null) a.pressFront = Number(a.press) || 0;
     if (a.pressBack == null) a.pressBack = Number(a.press) || 0;
+    pressCols.forEach(key => { if (a[key] == null) a[key] = Number(a.press) || 0; });
     if (a.pressDown == null) a.pressDown = 2;
     ids.forEach(id => { if (a.player[id] == null) a.player[id] = 3; });
     const eName = esc(name);
     const num = f => '<td><input data-bet="' + eName + '" data-f="' + f + '" type="number" inputmode="numeric" value="' + a[f] + '"></td>';
     return '<tr><td>' + eName + '</td><td><button type="button" tabindex="-1" data-bet="' + eName + '" class="' + (a.on ? 'on' : '') + '">' + (a.on ? 'On' : 'Off') +
-      '</button></td>' + ['first','second','overall','pressFront','pressBack'].map(num).join('') +
+      '</button></td>' + ['first','second','overall',pressCols[0],pressCols[1]].map(num).join('') +
       '<td><button type="button" tabindex="-1" data-mode="' + eName + '" class="' + (a.autoPress ? 'on' : 'press-off') + '">' + (a.autoPress ? 'Auto' : 'Auto off') + '</button><input data-bet="' + eName + '" data-f="pressDown" type="number" inputmode="numeric" value="' + a.pressDown + '"></td>' +
       ids.map(id => '<td><input data-bet="' + eName + '" data-p="' + esc(id) + '" type="number" inputmode="numeric" value="' + (a.player[id] || 0) + '"></td>').join('') + '</tr>';
   }).join('') : '';
@@ -269,7 +282,14 @@ function draw() {
   drawBets();
   document.querySelectorAll('#players input').forEach(el => {
     el.oninput = () => {
-      if (el.dataset.f === 'initials') el.value = el.value.toUpperCase();
+      if (el.dataset.f === 'initials') {
+        const up = el.value.toUpperCase();
+        if (up !== el.value) {
+          const pos = el.selectionStart;
+          el.value = up;
+          if (pos != null) el.setSelectionRange(pos, pos);
+        }
+      }
       players[el.dataset.i][el.dataset.f] = el.value;
       if (el.dataset.f === 'initials') drawBets();
     };
@@ -287,6 +307,7 @@ function draw() {
   document.querySelectorAll('#players input, #players select').forEach((el, n) => { el.tabIndex = n + 1; });
   document.querySelectorAll('#players select').forEach(el => el.onchange = () => { players[el.dataset.i].tee = el.value; });
   drawSavedPlayers();
+  syncStartButton();
 }
 function syncPlayers() {
   document.querySelectorAll('#players input').forEach(el => { players[el.dataset.i][el.dataset.f] = el.value; });
@@ -417,6 +438,7 @@ document.getElementById('newRound').onclick = () => {
   holeScores = [];
   holeMarks = [];
   holeNo = 0;
+  ninesPlayed = null;
   roundId = '';
   try { localStorage.removeItem('golf-card'); localStorage.removeItem('round-setup'); } catch (e) {}
   showHandicapNote(false);
@@ -433,8 +455,8 @@ function copyBets() {
     second: Number(document.getElementById('dSecond').value) || 0,
     overall: Number(document.getElementById('dOverall').value) || 0,
     press: Number(document.getElementById('dPressF').value) || 0,
-    pressFront: Number(document.getElementById('dPressF').value) || 0,
-    pressBack: Number(document.getElementById('dPressB').value) || 0,
+    pressFirst: Number(document.getElementById('dPressF').value) || 0,
+    pressSecond: Number(document.getElementById('dPressB').value) || 0,
     pressDown: Number(document.getElementById('dDown').value) || 2
   };
   const junk = Number(document.getElementById('dJunk').value) || 0;
@@ -452,19 +474,112 @@ function copyBets() {
     amounts[name].first = values.first;
     amounts[name].second = values.second;
     amounts[name].overall = values.overall;
+    const cols = pressFields();
     amounts[name].press = values.press;
-    amounts[name].pressFront = values.pressFront;
-    amounts[name].pressBack = values.pressBack;
+    amounts[name][cols[0]] = values.pressFirst;
+    if (cols[1] !== cols[0]) amounts[name][cols[1]] = values.pressSecond;
     amounts[name].pressDown = values.pressDown;
     if (amounts[name].autoPress == null) amounts[name].autoPress = true;
     players.filter(p => p.initials).forEach(p => amounts[name].player[p.initials] = junk);
   });
   drawBets();
-  document.getElementById('status').textContent = 'Copied ' + values.first + ' / ' + values.second + ' / ' + values.overall + ', press ' + values.pressFront + '/' + values.pressBack + ' at ' + values.pressDown + ' down, junk ' + junk + ' into ' + list.length + ' matches.';
+  document.getElementById('status').textContent = 'Copied ' + values.first + ' / ' + values.second + ' / ' + values.overall + ', press ' + values.pressFirst + ' on the 1st 9 and ' + values.pressSecond + ' on the 2nd 9, at ' + values.pressDown + ' down, junk ' + junk + ' into ' + list.length + ' matches.';
 }
 document.getElementById('apply').onclick = copyBets;
-let holePlayers = [], holeScores = [], holeMarks = [], holeNo = 0, detailName = '', startAt = 0;
-function sideStarts() { return startAt === 9 ? [9, 0] : [0, 9]; }
+let holePlayers = [], holeScores = [], holeMarks = [], holeNo = 0, detailName = '', startAt = 0, ninesPlayed = null;
+function courseNines() {
+  const listed = courseData().nines;
+  if (Array.isArray(listed) && listed.filter(n => n && Array.isArray(n.holes) && n.holes.length).length >= 2) {
+    return listed.filter(n => n && Array.isArray(n.holes) && n.holes.length).map((n, i) => ({
+      id: n.id || ('n' + (i + 1)),
+      name: n.name || '',
+      press: n.press || '',
+      holes: n.holes.map(Number)
+    }));
+  }
+  const count = (courseData().par || []).length;
+  const built = [];
+  for (let start = 0; start < count; start += 9) {
+    const holes = [];
+    for (let h = start; h < Math.min(start + 9, count); h++) holes.push(h);
+    if (holes.length) built.push({ id: 'n' + (built.length + 1), name: '', press: built.length === 1 ? 'pressBack' : 'pressFront', holes: holes });
+  }
+  return built.length >= 2 ? built : [{ id: 'n1', name: '', press: 'pressFront', holes: [0,1,2,3,4,5,6,7,8] }, { id: 'n2', name: '', press: 'pressBack', holes: [9,10,11,12,13,14,15,16,17] }];
+}
+function holeCount() { return (courseData().par || []).length || 18; }
+function freshScores() { return Array(holeCount()).fill(null); }
+function freshMarks() { return Array.from({ length: holeCount() }, () => ({ KP: 0, Birdie: 0, Junk: 0 })); }
+function padCard() {
+  const n = holeCount();
+  holeScores.forEach(row => { if (row) while (row.length < n) row.push(null); });
+  holeMarks.forEach(row => { if (row) while (row.length < n) row.push({ KP: 0, Birdie: 0, Junk: 0 }); });
+}
+function nineById(id) { return courseNines().find(n => n.id === id) || null; }
+function nineOfHole(h) { return courseNines().find(n => n.holes.indexOf(h) >= 0) || null; }
+function clampStart(n) {
+  n = Number(n);
+  const span = holeCount();
+  return n >= 0 && n < span ? n : 0;
+}
+function playedPair() {
+  const all = courseNines();
+  const start = clampStart(startAt);
+  const startNine = nineOfHole(start) || all[0];
+  const saved = Array.isArray(ninesPlayed) ? ninesPlayed : null;
+  let first = null;
+  let second = null;
+  if (saved && saved.length === 2) {
+    const a = nineById(saved[0]);
+    const b = nineById(saved[1]);
+    if (a && b && a.id !== b.id) {
+      if (a.holes.indexOf(start) >= 0) { first = a; second = b; }
+      else if (b.holes.indexOf(start) >= 0) { first = b; second = a; }
+    }
+  }
+  if (!first) {
+    first = startNine;
+    const kept = saved && nineById(saved[1]);
+    second = kept && kept.id !== first.id ? kept : all.find(n => n.id !== first.id);
+  }
+  if (!second) second = all.find(n => n.id !== first.id) || first;
+  return [first, second];
+}
+function syncPlayedNines() {
+  const pair = playedPair();
+  ninesPlayed = [pair[0].id, pair[1].id];
+}
+function playedHoles() {
+  const pair = playedPair();
+  const holes = pair[0].holes.concat(pair[1].holes);
+  return holes.filter((h, i) => holes.indexOf(h) === i).sort((a, b) => a - b);
+}
+function pressKey(nine) {
+  if (nine && nine.press) return nine.press;
+  const idx = courseNines().findIndex(n => nine && n.id === nine.id);
+  if (idx === 1) return 'pressBack';
+  if (idx > 1) return 'press_' + (nine && nine.id ? nine.id : idx);
+  return 'pressFront';
+}
+function isFirstNineHole(h) { return playedPair()[0].holes.indexOf(h) >= 0; }
+function pressFields() {
+  const pair = playedPair();
+  return [pressKey(pair[0]), pressKey(pair[1])];
+}
+function setStartHole(n) {
+  const span = holeCount();
+  const v = Number(n);
+  startAt = isFinite(v) ? ((Math.floor(v) % span) + span) % span : 0;
+  if (!nineOfHole(startAt)) {
+    for (let i = 1; i < span; i++) {
+      const h = (startAt + i) % span;
+      if (nineOfHole(h)) { startAt = h; break; }
+    }
+  }
+  syncPlayedNines();
+  syncStartButton();
+  drawBets();
+  persistSetup();
+}
 function playerBook() { try { return JSON.parse(localStorage.getItem('golf-players') || '[]'); } catch (e) { return []; } }
 function savePlayerBook(list) { try { localStorage.setItem('golf-players', JSON.stringify(list.slice(0, 80))); } catch (e) {} }
 function rememberPlayers() {
@@ -481,7 +596,7 @@ function rememberPlayers() {
 function syncStartButton() {
   const btn = document.getElementById('startHole');
   if (!btn) return;
-  btn.textContent = startAt === 9 ? '10' : '1';
+  btn.textContent = String(clampStart(startAt) + 1);
   btn.className = 'on';
 }
 function drawSavedPlayers() {
@@ -512,6 +627,7 @@ function persistSetup() {
       course: currentCourse,
       roundDate: roundDate,
       startAt: startAt,
+      ninesPlayed: playedPair().map(n => n.id),
       roundId: roundId,
       defaults: defaults,
       strokePct: strokePct
@@ -548,23 +664,26 @@ function startHole() {
       if (saved && saved.players && saved.players.map(p => p.id).join() === ids) {
         holeScores = saved.scores;
         holeMarks = saved.marks;
-        holeNo = saved.hole || 0;
-        if (saved.startAt != null) startAt = saved.startAt;
+        if (saved.startAt != null) startAt = clampStart(saved.startAt);
+        if (Array.isArray(saved.ninesPlayed)) ninesPlayed = saved.ninesPlayed;
+        holeNo = saved.hole != null ? saved.hole : startAt;
         roundId = saved.roundId || '';
         if (saved.roundDate) roundDate = saved.roundDate;
       } else {
-        holeScores = holePlayers.map(() => Array(18).fill(null));
-        holeMarks = holePlayers.map(() => Array.from({ length: 18 }, () => ({ KP: 0, Birdie: 0, Junk: 0 })));
+        holeScores = holePlayers.map(freshScores);
+        holeMarks = holePlayers.map(freshMarks);
         holeNo = startAt;
         roundId = newRoundId();
       }
     } catch (e) {
-      holeScores = holePlayers.map(() => Array(18).fill(null));
-      holeMarks = holePlayers.map(() => Array.from({ length: 18 }, () => ({ KP: 0, Birdie: 0, Junk: 0 })));
+      holeScores = holePlayers.map(freshScores);
+      holeMarks = holePlayers.map(freshMarks);
       holeNo = startAt;
       roundId = newRoundId();
     }
   }
+  syncPlayedNines();
+  padCard();
   if (!roundId) roundId = newRoundId();
   rememberPlayers();
   const m = matchNames();
@@ -595,7 +714,7 @@ function courseHandicap(p) {
   const index = hcpNum(p || { hcp: 0 });
   const row = ratingFor(p && p.tee);
   if (!row) return index;
-  const par = row.par != null ? row.par : courseData().par.reduce((n, v) => n + v, 0);
+  const par = row.par != null ? row.par : playedHoles().reduce((n, h) => n + (courseData().par[h] || 0), 0);
   return roundHalfUp(index * (row.slope / 113) + (row.rating - par));
 }
 function currentPct() {
@@ -604,10 +723,18 @@ function currentPct() {
   if (!(strokePct >= 0)) strokePct = 100;
   return strokePct;
 }
-function playingHandicap(p) { return roundHalfUp(courseHandicap(p) * currentPct() / 100); }
+function playingHandicap(p, pct) {
+  const use = pct == null ? currentPct() : pct;
+  return roundHalfUp(courseHandicap(p) * use / 100);
+}
+function strokePctForMatch(ids) {
+  const box = holePlayers.filter(p => p.box).map(p => p.id);
+  if (box.length === 2 && ids && ids.length === 4 && box.every(id => ids.indexOf(id) >= 0)) return BOX_STROKE_PCT;
+  return currentPct();
+}
 function strokesReceived(ids, id) {
   const list = ids && ids.length ? ids : [id];
-  const value = pid => playingHandicap(holePlayers.find(p => p.id === pid) || { hcp: 0 });
+  const value = pid => playingHandicap(holePlayers.find(p => p.id === pid) || { hcp: 0 }, strokePctForMatch(list));
   return value(id) - Math.min(...list.map(value));
 }
 function strokesOnHole(strokeIndex, strokes) {
@@ -626,6 +753,19 @@ function holeNet(i, h, ids) {
   const n = ids ? strokesOnHole(idx[h], strokesReceived(ids, holePlayers[i].id)) : 0;
   return g - n;
 }
+function grossBirdieUnits(i, h) {
+  const g = holeScores[i] && holeScores[i][h];
+  if (typeof g !== 'number') return 0;
+  const under = courseData().par[h] - g;
+  return under >= 1 ? Math.min(4, under) : 0;
+}
+function birdieName(units) {
+  return units >= 4 ? 'Condor' : units === 3 ? 'Albatross' : units === 2 ? 'Eagle' : 'Birdie';
+}
+function junkUnits(i, h) {
+  const manual = (holeMarks[i] && holeMarks[i][h] && holeMarks[i][h].Junk) || 0;
+  return grossBirdieUnits(i, h) + manual;
+}
 function autoPressOn(bet) {
   if (!bet) return true;
   if (bet.autoPress != null) return !!bet.autoPress;
@@ -638,32 +778,41 @@ function pressDownN(bet) {
 }
 function pressAmt(bet, hole1) {
   const fallback = Number(bet && bet.press) || 0;
-  const raw = hole1 <= 9
-    ? (bet && bet.pressFront != null ? bet.pressFront : fallback)
-    : (bet && bet.pressBack != null ? bet.pressBack : fallback);
+  const key = pressKey(nineOfHole(hole1 - 1));
+  const raw = bet && bet[key] != null ? bet[key] : fallback;
   return Number(raw) || 0;
 }
 function isAllDayBet(bet) {
   return !!bet && !Number(bet.first) && !Number(bet.second) && Number(bet.overall) > 0;
 }
 function playOrder() {
-  const ss = sideStarts();
-  const holes = [];
-  for (let n = 0; n < 2; n++) for (let h = ss[n]; h < ss[n] + 9; h++) holes.push(h);
-  return holes;
+  const pair = playedPair();
+  const first = pair[0].holes;
+  const second = pair[1].holes;
+  const start = clampStart(startAt);
+  const i = first.indexOf(start);
+  if (i < 0) return first.concat(second);
+  return first.slice(i).concat(second, first.slice(0, i));
 }
-function segmentIndex(h) {
-  const ss = sideStarts();
-  return (h >= ss[0] && h < ss[0] + 9) ? 0 : 1;
-}
-function segmentStart(h) { return sideStarts()[segmentIndex(h)]; }
+function segmentIndex(h) { return isFirstNineHole(h) ? 0 : 1; }
+function holesOfNine(seg) { return playOrder().filter(h => segmentIndex(h) === seg); }
+function sameCardNine(h, from0) { return isFirstNineHole(h) === isFirstNineHole(from0); }
 function holesFrom(from0, allDay) {
   const order = playOrder();
   const i = order.indexOf(from0);
   if (i < 0) return [];
-  if (allDay) return order.slice(i);
-  const start = segmentStart(from0);
-  return order.slice(i).filter(h => h >= start && h < start + 9);
+  const rest = order.slice(i);
+  if (allDay) return rest;
+  return rest.filter(h => sameCardNine(h, from0));
+}
+function nextPressStart(h, leg, allDay) {
+  const order = playOrder();
+  const pos = order.indexOf(h);
+  if (pos < 0) return null;
+  if (allDay) return pos + 1 < order.length ? order[pos + 1] : null;
+  const from0 = leg.from - 1;
+  for (let k = pos + 1; k < order.length; k++) if (sameCardNine(order[k], from0)) return order[k];
+  return null;
 }
 function manualPresses(bet) {
   const out = [];
@@ -673,7 +822,8 @@ function manualPresses(bet) {
   (bet && bet.manual || []).forEach(h => {
     if (!out.some(o => o.from === Number(h))) out.push({ from: Number(h), by: '' });
   });
-  return out.filter(o => o.from >= 1 && o.from <= 18);
+  const holes = playedHoles();
+  return out.filter(o => holes.indexOf(o.from - 1) >= 0);
 }
 function simulateMatch(name, a, b) {
   const bet = amountFor(name) || { first:0, second:0, overall:0, press:0, player:{} };
@@ -681,11 +831,13 @@ function simulateMatch(name, a, b) {
   const auto = autoPressOn(bet);
   const N = pressDownN(bet);
   const order = playOrder();
-  const ss = sideStarts();
-  const legs = [0, 1].map(seg => ({
-    kind: 'nine', seg: seg, from: ss[seg] + 1, holes: holesFrom(ss[seg], false),
-    score: 0, played: false, cells: {}, auto: false, manual: false
-  }));
+  const legs = [0, 1].map(seg => {
+    const holes = holesOfNine(seg);
+    return {
+      kind: 'nine', seg: seg, from: holes.length ? holes[0] + 1 : 1, holes: holes,
+      score: 0, played: false, cells: {}, auto: false, manual: false
+    };
+  });
   manualPresses(bet).forEach(o => {
     const from0 = o.from - 1;
     legs.push({
@@ -712,9 +864,8 @@ function simulateMatch(name, a, b) {
       leg.cells[h] = leg.score;
       if (!auto) continue;
       if (Math.abs(leg.score) !== N || Math.abs(leg.score - r) !== N - 1) continue;
-      const next = order[oi + 1];
+      const next = nextPressStart(h, leg, allDay);
       if (next == null) continue;
-      if (!allDay && segmentIndex(next) !== segmentIndex(h)) continue;
       const from1 = next + 1;
       if (legs.some(x => x.kind === 'press' && x.auto && x.from === from1) || born.indexOf(from1) >= 0) continue;
       born.push(from1);
@@ -833,7 +984,7 @@ function holeStanding() {
     const b = isBox ? String(name.split(' vs ')[1] || '').split('+').map(s => s.trim().toUpperCase()) : [String(parts[1] || '').trim().toUpperCase()];
     const matchIds = a.concat(b);
     let score = 0, played = 0;
-    for (let h = 0; h < 18; h++) {
+    for (const h of playedHoles()) {
       const ids = a.concat(b);
       const ready = ids.every(id => { const i = holePlayers.findIndex(p => p.id === id); return i >= 0 && holeScores[i] && holeScores[i][h] != null; });
       if (!ready) continue;
@@ -844,7 +995,7 @@ function holeStanding() {
     if (!played) return '<p><b>' + name + '</b> ' + matchIds.map(id => { const p = holePlayers.find(x => x.id === id); return id + ' ' + (p ? p.hcp : ''); }).join(' · ') + '<br>No holes yet.</p>';
     const label = score === 0 ? 'AS' : score > 0 ? score + ' up' : Math.abs(score) + ' dn';
     const open = name === detailName;
-    const row = open ? '<br>' + [0,1,2,3,4,5,6,7,8].map(h => {
+    const row = open ? '<br>' + holesOfNine(0).map(h => {
       const ready = a.concat(b).every(id => { const i = holePlayers.findIndex(p => p.id === id); return i >= 0 && holeScores[i] && holeScores[i][h] != null; });
       if (!ready) return (h + 1) + ' —';
       const an = sideNet(a, h, matchIds), bn = sideNet(b, h, matchIds);
@@ -872,37 +1023,36 @@ function holeStanding() {
       const i = holePlayers.findIndex(p => p.id === id);
       if (i < 0) return 0;
       const rate = (bet.player && bet.player[id] != null) ? Number(bet.player[id]) : 3;
-      const base = holeMarks[i].reduce((n, m) => n + (Number(m.Birdie) || 0) + (m.Junk || 0), 0);
+      let units = 0;
+      for (const h of playedHoles()) units += junkUnits(i, h);
       const kp = kpForMatch(matchIds)[id] || 0;
-      return (base + kp) * rate;
+      return (units + kp) * rate;
     };
     const junkNets = junkPersonNets(a, b, junkOf);
     const junkLine = junkShareLine(junkNets);
     const teamJunk = a.reduce((n, id) => n + (junkNets[id] || 0), 0);
     dollars -= teamJunk;
-    const ss = sideStarts();
-    const nineTable = start => {
-      const holes = [];
-      for (let i = 0; i < 9; i++) holes.push(start + i);
-      const base = sim.legs.find(l => l.kind === 'nine' && l.holes[0] === start);
+    const nineTable = holes => {
+      const base = sim.legs.find(l => l.kind === 'nine' && holes.length && l.holes[0] === holes[0]);
       const extra = sim.legs.filter(l => l.kind === 'press' && holes.some(h => l.holes.indexOf(h) >= 0));
       const rows = [base].concat(extra).filter(Boolean);
       const head = '<tr><th></th>' + holes.map(h => '<th>' + (h + 1) + '</th>').join('') + '</tr>';
       const body = rows.map(leg => '<tr><td>' + (leg.kind === 'press' ? (leg.manual ? 'M' : 'A') : '') + '</td>' + holes.map(h => '<td>' + (leg.cells[h] == null ? '' : say(leg.cells[h])) + '</td>').join('') + '</tr>').join('');
       return '<table>' + head + body + '</table>';
     };
-    const lastIn = (leg, start) => {
+    const lastIn = (leg, holes) => {
       let last = 0, any = false;
-      for (let h = start; h < start + 9; h++) if (leg.cells[h] != null) { last = leg.cells[h]; any = true; }
+      holes.forEach(h => { if (leg.cells[h] != null) { last = leg.cells[h]; any = true; } });
       return any ? last : leg.score;
     };
-    const stack = (seg, start) => {
+    const stack = (seg, holes) => {
       const base = nineLeg(seg);
       const extra = sim.legs.filter(l => l.kind === 'press' && l.seg === seg);
-      return [base].concat(extra).filter(Boolean).map(leg => say(leg.kind === 'press' ? lastIn(leg, start) : leg.score) + (leg.kind === 'press' ? (leg.manual ? ' (M)' : ' (A)') : '')).join(' / ');
+      return [base].concat(extra).filter(Boolean).map(leg => say(leg.kind === 'press' ? lastIn(leg, holes) : leg.score) + (leg.kind === 'press' ? (leg.manual ? ' (M)' : ' (A)') : '')).join(' / ');
     };
+    const h0 = holesOfNine(0), h1 = holesOfNine(1);
     const pressNotes = sim.legs.filter(l => l.kind === 'press').sort((x, y) => x.from - y.from).map(leg => 'Press from ' + leg.from + (leg.manual ? ' (M)' : ' (A)') + ' ' + say(leg.score)).join('<br>');
-    const pressLine = '<br>1st 9 ' + stack(0, ss[0]) + nineTable(ss[0]) + (backPlayed ? '<br>2nd 9 ' + stack(1, ss[1]) + nineTable(ss[1]) + '<br>Overall ' + say(overallScore) + '. 1st 9 ended ' + say(frontScore) + ', 2nd 9 is ' + say(backScore) + '.' : '') + (pressNotes ? '<br>' + pressNotes : '') + (junkLine ? '<br>' + junkLine : '');
+    const pressLine = '<br>1st 9 ' + stack(0, h0) + nineTable(h0) + (backPlayed ? '<br>2nd 9 ' + stack(1, h1) + nineTable(h1) + '<br>Overall ' + say(overallScore) + '. 1st 9 ended ' + say(frontScore) + ', 2nd 9 is ' + say(backScore) + '.' : '') + (pressNotes ? '<br>' + pressNotes : '') + (junkLine ? '<br>' + junkLine : '');
     const running = dollars ? (dollars > 0 ? b.join('+') : a.join('+')) + ' +$' + Math.abs(Math.round(dollars * 100) / 100) : 'even';
     return '<p><b>' + name + '</b> ' + running + '<br>' + matchIds.map(id => { const p = holePlayers.find(x => x.id === id); return id + ' ' + hcpLabel(p); }).join(' · ') + '<br>' + label + ' through ' + played + pressLine + '</p>';
   }).join('');
@@ -944,8 +1094,9 @@ function settle() {
       const i = holePlayers.findIndex(p => p.id === id);
       if (i < 0) return 0;
       const rate = (bet.player && bet.player[id] != null) ? Number(bet.player[id]) : 3;
-      const base = holeMarks[i].reduce((n, mk) => n + (Number(mk.Birdie) || 0) + (mk.Junk || 0), 0);
-      return (base + (kp[id] || 0)) * rate;
+      let units = 0;
+      for (const h of playedHoles()) units += junkUnits(i, h);
+      return (units + (kp[id] || 0)) * rate;
     };
     const junk = b.reduce((n, id) => n + junkOf(id), 0) - a.reduce((n, id) => n + junkOf(id), 0);
     const dollars = front + frontPress.reduce((n, v) => n + v, 0) + back + backPress.reduce((n, v) => n + v, 0) + overall + junk;
@@ -960,15 +1111,20 @@ function settle() {
         const rate = (bet.player && bet.player[id] != null) ? Number(bet.player[id]) : 3;
         const mk = holeMarks[i] || [];
         const items = [];
-        for (let h = 0; h < 18; h++) {
+        for (const h of playedHoles()) {
           const m = mk[h] || {};
-          if (m.Birdie || m.KP || m.Junk) items.push((h+1) + (m.KP ? ' KP' : '') + (m.Birdie ? ' B' : ''));
+          const units = grossBirdieUnits(i, h);
+          const bits = [];
+          if (units) bits.push(birdieName(units));
+          if (m.KP) bits.push('KP');
+          if (m.Junk) bits.push(m.Junk > 1 ? 'Junk-' + m.Junk : 'Junk');
+          if (bits.length) items.push((h + 1) + ' ' + bits.join(' '));
         }
         return items.length ? id + ' $' + rate + ': ' + items.join(', ') : '';
       }).filter(Boolean).join('; ');
       bits.push('Junk ' + who(junk) + (junkDetail ? ' (' + junkDetail + ')' : ''));
     }
-    if (!dollars && !front && !junk) return '<p><b>' + name + '</b> even. First $' + (bet.first || 0) + ', Second $' + (bet.second || 0) + ', Overall $' + (bet.overall || 0) + '.</p>';
+    if (!dollars && !front && !junk) return '<p><b>' + name + '</b> even. 1st 9 $' + (bet.first || 0) + ', 2nd 9 $' + (bet.second || 0) + ', Overall $' + (bet.overall || 0) + '.</p>';
     const winners = dollars < 0 ? a : b;
     const losers = dollars < 0 ? b : a;
     const amt = Math.abs(dollars);
@@ -1007,12 +1163,12 @@ function detail() {
   if (!detailName) { el.innerHTML = ''; return; }
   const sides = matchSides(detailName);
   const cells = [];
-  for (let h = 0; h < 18; h++) {
+  for (const h of playedHoles()) {
     if (sides.a.concat(sides.b).some(id => { const i = holePlayers.findIndex(p => p.id === id); return i < 0 || holeScores[i][h] == null; })) { cells.push('<td></td>'); continue; }
     const an = sideNet(sides.a, h, sides.a.concat(sides.b)), bn = sideNet(sides.b, h, sides.a.concat(sides.b));
     cells.push('<td>' + (an < bn ? 'up' : an > bn ? 'dn' : 'AS') + '</td>');
   }
-  el.innerHTML = '<p>' + detailName + '</p><table><tr>' + Array.from({length:18}, (_,i) => '<th>' + (i+1) + '</th>').join('') + '</tr><tr>' + cells.join('') + '</tr></table>';
+  el.innerHTML = '<p>' + detailName + '</p><table><tr>' + playedHoles().map(h => '<th>' + (h + 1) + '</th>').join('') + '</tr><tr>' + cells.join('') + '</tr></table>';
 }
 function drawPresses() {
   const el = document.getElementById('presses');
@@ -1082,22 +1238,42 @@ function strokeMark(p) {
   if (n === 1) return '•';
   return n > 0 ? String(n) : '−' + Math.abs(n);
 }
+function holeBirdieLabel() {
+  let names = [];
+  try { const m = matchNames(); names = m.team.concat(m.side); } catch (e) { return ''; }
+  const bits = [];
+  holePlayers.forEach((p, i) => {
+    if (!holeScores[i] || typeof holeScores[i][holeNo] !== 'number') return;
+    const labels = {};
+    names.forEach(name => {
+      const saved = amountFor(name);
+      if (saved && saved.on === false) return;
+      const sides = sidesOf(name);
+      const ids = sides.a.concat(sides.b);
+      if (ids.indexOf(p.id) < 0) return;
+      const units = grossBirdieUnits(i, holeNo);
+      if (!units) return;
+      labels[birdieName(units)] = true;
+    });
+    Object.keys(labels).forEach(label => bits.push(esc(p.id) + ' ' + label));
+  });
+  return bits.length ? '<p>' + bits.join(' · ') + '</p>' : '';
+}
 function drawHole() {
+  padCard();
   const idx = indexFor(holePlayers[0] && holePlayers[0].tee); document.getElementById('holeTitle').textContent = 'Hole ' + (holeNo + 1) + ' · Par ' + courseData().par[holeNo] + ' · Handicap ' + idx[holeNo];
-  const kinds = courseData().par[holeNo] === 3 ? ['KP','Birdie','Junk'] : ['Birdie','Junk'];
+  const kinds = courseData().par[holeNo] === 3 ? ['KP','Junk'] : ['Junk'];
   document.getElementById('kpTip').textContent = courseData().par[holeNo] === 3 ? 'Tap KP: KP-1 = closest, KP-2 = 2nd, KP-3 = 3rd, KP-4 = 4th.' : '';
 document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     const v = holeVal(i);
     const junkBtns = kinds.map(k => {
-      const n = holeMarks[i][holeNo][k];
-      const label = k === 'Birdie'
-        ? (n === 1 ? 'Birdie' : n === 2 ? 'Eagle' : n === 3 ? 'Dbl Eagle' : n === 4 ? 'Albatross' : 'Birdie')
-        : (k === 'KP' ? (n ? 'KP-' + n : 'KP') : (n > 1 ? k + '-' + n : k));
+      const n = holeMarks[i][holeNo][k] || 0;
+      const label = k === 'KP' ? (n ? 'KP-' + n : 'KP') : (n > 1 ? k + '-' + n : k);
       return '<button data-i="' + i + '" data-k="' + k + '" class="' + (n ? 'on' : '') + '">' + label + '</button>';
     }).join('');
     return '<div class="grid"><b>' + p.id + '</b><span>' + String(p.tee).slice(0,2) + '</span><span>' + strokeMark(p) + '</span><button data-i="' + i + '" data-d="-1">−</button><button data-i="' + i + '" data-set="1" class="score ' + (holeScores[i][holeNo] == null ? 'open' : 'set') + '">' + (v === 'X' ? 'X' : v) + '</button><button data-i="' + i + '" data-d="1">+</button><button data-i="' + i + '" data-x="1">X</button><span class="junkbtns">' + junkBtns + '</span></div>';
   }).join('');
-  document.getElementById('holeJunk').innerHTML = '';
+  document.getElementById('holeJunk').innerHTML = holeBirdieLabel();
   const shape = (score, par) => {
     if (score === 'X' || score == null) return score === 'X' ? 'X' : '';
     const diff = score - par;
@@ -1108,8 +1284,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     else if (diff >= 2) cls = 'dblbogey';
     return '<span class="shape ' + cls + '">' + score + '</span>';
   };
-  const sideTable = (start, label) => {
-    const holes = Array.from({ length: 9 }, (_, i) => start + i);
+  const sideTable = (holes, label) => {
     const head = '<tr><th>Hole</th><th>Par</th>' + holePlayers.map(p => {
       const short = (p.name || '').split(' ')[0].slice(0, 8);
       return '<th>' + p.id + (short && short !== p.id ? '<span class="short">' + short + '</span>' : '') + '</th>';
@@ -1128,18 +1303,18 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     const parTot = holes.reduce((n, h) => n + courseData().par[h], 0);
     return '<table>' + head + body + '<tr><td class="tot">' + label + '</td><td class="tot">' + parTot + '</td>' + tot + '</tr></table>';
   };
-  const ss = sideStarts();
   const totalRow = () => {
+    const holes = playedHoles();
     const tot = holePlayers.map((p, i) => {
-      const sum = holeScores[i].reduce((n, s) => n + (typeof s === 'number' ? s : 0), 0);
-      const any = holeScores[i].some(s => s != null);
-      const picked = holeScores[i].some(s => s === 'X');
+      const sum = holes.reduce((n, h) => n + (typeof holeScores[i][h] === 'number' ? holeScores[i][h] : 0), 0);
+      const any = holes.some(h => holeScores[i][h] != null);
+      const picked = holes.some(h => holeScores[i][h] === 'X');
       return '<td class="tot">' + (any ? sum + (picked ? '<sup>x</sup>' : '') : '') + '</td>';
     }).join('');
-    const parTot = courseData().par.reduce((n, p) => n + p, 0);
+    const parTot = holes.reduce((n, h) => n + (courseData().par[h] || 0), 0);
     return '<table><tr><td class="tot">Total</td><td class="tot">' + parTot + '</td>' + tot + '</tr></table>';
   };
-  document.getElementById('card').innerHTML = sideTable(ss[0], 'Out') + sideTable(ss[1], 'In') + totalRow();
+  document.getElementById('card').innerHTML = sideTable(holesOfNine(0), '1st 9') + sideTable(holesOfNine(1), '2nd 9') + totalRow();
   const review = document.getElementById('review');
   if (review) {
     const ids = holePlayers.map(p => p.id);
@@ -1168,7 +1343,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
       return who + ' ' + best;
     };
     const holeRows = [];
-    for (let h = 0; h < 18; h++) {
+    for (const h of playedHoles()) {
       const any = holeScores.some(row => row[h] != null);
       if (!any) continue;
       holeRows.push('<tr><td>' + (h+1) + '</td><td>' + lowOf(h, (i, hh) => holeScores[i][hh] === 'X' || holeScores[i][hh] == null ? null : holeScores[i][hh]) + '</td><td>' + lowOf(h, halfNet) + '</td></tr>');
@@ -1176,7 +1351,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     const overall = (fn) => {
       const tots = holePlayers.map((p, i) => {
         let n = 0, any = false;
-        for (let h = 0; h < 18; h++) { const v = fn(i, h); if (v != null) { n += v; any = true; } }
+        for (const h of playedHoles()) { const v = fn(i, h); if (v != null) { n += v; any = true; } }
         return any ? { id: p.id, v: n } : null;
       }).filter(Boolean);
       if (!tots.length) return '—';
@@ -1188,29 +1363,14 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
       ? '<table><tr><th>Hole</th><th>Low gross</th><th>Low net (½)</th></tr>' + holeRows.join('') + '</table><p>Overall low gross ' + overall((i,h) => holeScores[i][h] === 'X' || holeScores[i][h] == null ? null : holeScores[i][h]) + '<br>Overall low net ' + overall(fullNet) + '</p>'
       : '<p>No scores posted.</p>';
   }
-  const markName = (mk) => {
-    const b = Number(mk.Birdie) || 0;
-    const bits = [];
-    if (b === 1) bits.push('B');
-    else if (b === 2) bits.push('E');
-    else if (b === 3) bits.push('DE');
-    else if (b === 4) bits.push('Alb');
-    if (mk.KP) bits.push(mk.KP > 1 ? 'KP-' + mk.KP : 'KP');
-    if (mk.Junk) bits.push(mk.Junk > 1 ? 'J-' + mk.Junk : 'J');
-    return bits.join(' ');
-  };
-  const junkHoles = [];
-  for (let h = 0; h < 18; h++) if (holeMarks.some(row => row[h] && (row[h].Birdie || row[h].KP || row[h].Junk))) junkHoles.push(h);
   const junkEl = document.getElementById('junkSummary');
   const boxIds = holePlayers.filter(p => p.box).map(p => p.id);
   const outside = holePlayers.filter(p => !boxIds.includes(p.id));
   const pairs = boxIds.length === 2 && outside.length === 3 ? [[outside[0], outside[1]], [outside[0], outside[2]], [outside[1], outside[2]]] : [];
   const rows = [];
   holePlayers.forEach((p, i) => {
-    for (let h = 0; h < 18; h++) {
-      const mk = holeMarks[i][h] || {};
-      const name = markName(mk);
-      if (!name) continue;
+    for (const h of playedHoles()) {
+      const mk = (holeMarks[i] && holeMarks[i][h]) || {};
       const rate = configuredJunkRate(p.id);
       const shareRows = (type, amount, winPairs) => {
         const shares = {};
@@ -1268,11 +1428,36 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
         }
         rows.push({ player: p.id, hole: h + 1, type, matches: matchLabel, total });
       };
-      if (mk.Birdie) {
-        const bName = mk.Birdie === 1 ? 'Birdie' : mk.Birdie === 2 ? 'Eagle' : mk.Birdie === 3 ? 'Dbl Eagle' : mk.Birdie === 4 ? 'Albatross' : 'Birdie';
-        addRow(bName, mk.Birdie);
-      }
       if (mk.Junk) addRow('Junk', mk.Junk);
+      if (pairs.length) {
+        const groups = {};
+        const consider = boxIds.includes(p.id) ? pairs : pairs.filter(pair => pair.some(op => op.id === p.id));
+        consider.forEach(pair => {
+          const matchIds = boxIds.concat(pair.map(x => x.id));
+          const units = grossBirdieUnits(i, h);
+          if (!units) return;
+          if (!groups[units]) groups[units] = [];
+          groups[units].push(pair);
+        });
+        Object.keys(groups).forEach(k => shareRows(birdieName(Number(k)), Number(k) * rate, groups[k]));
+      } else {
+        const groups = {};
+        holePlayers.forEach(op => {
+          if (op.id === p.id) return;
+          const units = grossBirdieUnits(i, h);
+          if (!units) return;
+          if (!groups[units]) groups[units] = [];
+          groups[units].push(op.id);
+        });
+        Object.keys(groups).forEach(k => {
+          const units = Number(k);
+          const partners = groups[k];
+          const perMatch = units * rate;
+          const total = partners.length * perMatch;
+          const matchLabel = partners.map(id => p.id + '+' + id + ' $' + perMatch).join(', ');
+          rows.push({ player: p.id, hole: h + 1, type: birdieName(units), matches: matchLabel, total });
+        });
+      }
     }
   });
   rows.sort((a, b) => a.hole - b.hole || a.player.localeCompare(b.player));
@@ -1295,6 +1480,7 @@ function saveCard() {
       marks: holeMarks,
       hole: holeNo,
       startAt: startAt,
+      ninesPlayed: playedPair().map(n => n.id),
       roundId: roundId,
       course: currentCourse,
       roundDate: roundDate
@@ -1313,7 +1499,7 @@ document.getElementById('scores').onclick = e => {
   const i = Number(btn.dataset.i);
   if (btn.dataset.k) {
     const k = btn.dataset.k;
-    if (k === 'Birdie' || k === 'KP' || k === 'Junk') holeMarks[i][holeNo][k] = (Number(holeMarks[i][holeNo][k]) + 1) % 5;
+    if (k === 'KP' || k === 'Junk') holeMarks[i][holeNo][k] = (Number(holeMarks[i][holeNo][k]) + 1) % 5;
     drawHole();
     return;
   }
@@ -1326,20 +1512,22 @@ document.getElementById('holeJunk').onclick = e => {
   const btn = e.target.closest('button');
   if (!btn) return;
   const i = Number(btn.dataset.i), k = btn.dataset.k;
-  if (k === 'Birdie' || k === 'KP' || k === 'Junk') holeMarks[i][holeNo][k] = (Number(holeMarks[i][holeNo][k]) + 1) % 5;
+  if (k === 'KP' || k === 'Junk') holeMarks[i][holeNo][k] = (Number(holeMarks[i][holeNo][k]) + 1) % 5;
   drawHole();
 };
 document.getElementById('toSetup').onclick = () => {
   document.getElementById('holeView').style.display = 'none';
   document.querySelectorAll('.wrap > h1, .wrap > p, .wrap > .card').forEach(el => el.style.display = '');
 };
-document.getElementById('post').onclick = () => {
-  if (startAt === 0) { if (holeNo < 17) holeNo += 1; }
-  else if (holeNo === 17) holeNo = 0;
-  else if (holeNo < 8) holeNo += 1;
-  else if (holeNo >= 9 && holeNo < 17) holeNo += 1;
+function stepHole(dir) {
+  const order = playOrder();
+  const i = order.indexOf(holeNo);
+  const n = i + dir;
+  if (i < 0 || n < 0 || n >= order.length) return;
+  holeNo = order[n];
   drawHole();
-};
+}
+document.getElementById('post').onclick = () => stepHole(1);
 document.getElementById('newCard').onclick = () => {
   if (!holePlayers.length) return;
   const scored = holeScores.some(row => row && row.some(s => s != null));
@@ -1349,8 +1537,8 @@ document.getElementById('newCard').onclick = () => {
   if (!window.confirm(msg)) return;
   if (scored) detachSavedRound();
   roundId = newRoundId();
-  holeScores = holePlayers.map(() => Array(18).fill(null));
-  holeMarks = holePlayers.map(() => Array.from({ length: 18 }, () => ({ KP: 0, Birdie: 0, Junk: 0 })));
+  holeScores = holePlayers.map(freshScores);
+  holeMarks = holePlayers.map(freshMarks);
   holeNo = startAt;
   Object.keys(amounts).forEach(k => {
     if (!amounts[k]) return;
@@ -1364,13 +1552,7 @@ document.getElementById('newCard').onclick = () => {
   const note = document.getElementById('saveNote');
   if (note) note.textContent = scored ? 'Scores reset. The saved round is still in Saved rounds.' : 'Scores reset.';
 };
-document.getElementById('back').onclick = () => {
-  if (startAt === 0) { if (holeNo > 0) holeNo -= 1; }
-  else if (holeNo === 0) holeNo = 17;
-  else if (holeNo === 9) holeNo = 9;
-  else holeNo -= 1;
-  drawHole();
-};
+document.getElementById('back').onclick = () => stepHole(-1);
 document.addEventListener('keydown', e => {
   if (e.key !== 'Tab' && e.key !== 'Enter') return;
   const el = document.activeElement;
@@ -1402,15 +1584,16 @@ function loadSavedSetup() {
     }));
     if (setup.amounts && typeof setup.amounts === 'object') amounts = setup.amounts;
     if (setup.roundDate) roundDate = setup.roundDate;
-    if (setup.startAt != null) startAt = setup.startAt;
+    if (setup.startAt != null) startAt = clampStart(setup.startAt);
+    if (Array.isArray(setup.ninesPlayed)) ninesPlayed = setup.ninesPlayed;
     if (setup.roundId) roundId = setup.roundId;
     if (setup.defaults) applyDefaultFields(setup.defaults);
     if (setup.strokePct != null) strokePct = Number(setup.strokePct);
   }
-  if (!cardPlayers) return;
+  if (!cardPlayers) { syncPlayedNines(); return; }
   const formIds = players.filter(p => p.initials).map(p => String(p.initials).toUpperCase()).join();
   const cardIds = cardPlayers.map(p => p.id).join();
-  if (formIds !== cardIds && setupPlayers) return;
+  if (formIds !== cardIds && setupPlayers) { syncPlayedNines(); return; }
   if (!setupPlayers) {
     players = cardPlayers.map(p => ({
       name: p.id,
@@ -1426,12 +1609,15 @@ function loadSavedSetup() {
     hcp: p.hcp != null && String(p.hcp).trim() !== '' ? p.hcp : '0',
     box: !!p.box
   }));
-  holeScores = Array.isArray(card.scores) ? card.scores : holePlayers.map(() => Array(18).fill(null));
-  holeMarks = Array.isArray(card.marks) ? card.marks : holePlayers.map(() => Array.from({ length: 18 }, () => ({ KP: 0, Birdie: 0, Junk: 0 })));
-  holeNo = card.hole || 0;
-  if (card.startAt != null) startAt = card.startAt;
+  holeScores = Array.isArray(card.scores) ? card.scores : holePlayers.map(freshScores);
+  holeMarks = Array.isArray(card.marks) ? card.marks : holePlayers.map(freshMarks);
+  if (card.startAt != null) startAt = clampStart(card.startAt);
+  if (Array.isArray(card.ninesPlayed)) ninesPlayed = card.ninesPlayed;
+  holeNo = card.hole != null ? card.hole : startAt;
   if (card.roundId) roundId = card.roundId;
   if (card.roundDate) roundDate = card.roundDate;
+  syncPlayedNines();
+  padCard();
 }
 loadSavedSetup();
 draw();
@@ -1460,6 +1646,7 @@ function snapshot(isAuto) {
     marks: holeMarks,
     hole: holeNo,
     startAt: startAt,
+    ninesPlayed: playedPair().map(n => n.id),
     amounts: amounts,
     course: currentCourse,
     when: day + 'T12:00:00',
@@ -1542,8 +1729,10 @@ document.getElementById('savedList').onclick = e => {
 holePlayers = r.players || [];
     holeScores = r.scores || [];
     holeMarks = r.marks || [];
-    holeNo = r.hole || 0;
-    startAt = r.startAt || 0;
+    holeNo = r.hole != null ? r.hole : clampStart(r.startAt);
+    startAt = clampStart(r.startAt);
+    ninesPlayed = Array.isArray(r.ninesPlayed) ? r.ninesPlayed : null;
+    syncPlayedNines();
     syncStartButton();
     if (r.when) { roundDate = r.when.slice(0, 10); const d = document.getElementById('roundDate'); if (d) d.value = roundDate; }
     amounts = Object.assign({}, r.amounts || {});
@@ -1600,7 +1789,8 @@ document.getElementById('importRound').onchange = e => {
   };
   reader.readAsText(file);
 };
-document.getElementById('startHole').onclick = () => { startAt = startAt === 9 ? 0 : 9; syncStartButton(); };
+document.getElementById('startPrev').onclick = () => setStartHole(clampStart(startAt) - 1);
+document.getElementById('startNext').onclick = () => setStartHole(clampStart(startAt) + 1);
 document.getElementById('roundDate').value = roundDate;
 document.getElementById('roundDate').onchange = () => {
   roundDate = document.getElementById('roundDate').value;
@@ -1651,7 +1841,16 @@ function initCourseSelect() {
     currentCourse = courseSelect.value;
     document.getElementById('courseTitle').textContent = courseData().title;
     players.forEach(p => { if (!courseData().tees.includes(p.tee)) p.tee = courseData().tees[0]; });
+    startAt = clampStart(startAt);
+    const ids = courseNines().map(n => n.id);
+    if (!Array.isArray(ninesPlayed) || ninesPlayed.some(id => ids.indexOf(id) < 0)) ninesPlayed = null;
+    if (!nineOfHole(startAt)) {
+      const holes = courseNines()[0] && courseNines()[0].holes;
+      if (holes && holes.length) startAt = holes[0];
+    }
+    syncPlayedNines();
     draw();
+    persistSetup();
   };
 }
 initCourseSelect();
