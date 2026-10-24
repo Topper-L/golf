@@ -68,14 +68,19 @@ try {
   #card tr.matchrow th, #card tr.pressrow th, #paperCard tr.matchrow th, #paperCard tr.pressrow th { text-align:left; white-space:nowrap; font-weight:700; }
   #card tr.pressrow, #paperCard tr.pressrow { color:#5e6f64; }
   #card .pmark, #paperCard .pmark { color:#1f6b45; font-weight:700; }
-  #card table.matches { margin-top:6px; }
+  #card table.matches { width:100%; table-layout:fixed; margin-top:6px; }
+  #card table.matches col.mlab { width:15ch; }
+  #card table.matches th, #card table.matches td { min-width:0; padding:3px 0; }
+  #card table.matches th.mlab { text-align:left; padding-left:1px; }
+  #card td.mlast { font-weight:700; background:#f3f6f4; }
   .card-tools { display:flex; align-items:center; gap:8px; margin:0 0 6px; }
   .card-tools h2 { margin:0; flex:1; }
   .card-tools button { min-height:32px; font-size:var(--text); padding:2px 8px; }
   .view-note { margin:0 0 8px; font-size:var(--text); }
-  .match-strip { position:sticky; top:calc(46px + env(safe-area-inset-top)); z-index:15; margin:0 0 8px; padding:4px 0; background:#e7efe6; font-size:var(--text); line-height:1.35; max-width:100%; max-height:calc(var(--text) * 2.9); overflow:auto; }
+  .match-strip { position:sticky; top:calc(46px + env(safe-area-inset-top)); z-index:15; margin:0 0 8px; padding:6px 0 5px; background:#e7efe6; font-size:var(--lead); line-height:1.25; max-width:100%; overflow-x:auto; overflow-y:hidden; white-space:nowrap; }
   .match-strip[hidden] { display:none; }
-  .match-strip .bit { display:inline-block; white-space:nowrap; margin:0 10px 2px 0; }
+  .match-strip .bit { display:inline-block; white-space:nowrap; margin:0 14px 0 0; }
+  .match-strip .bit:last-child { margin-right:0; }
   #toast { position:fixed; left:50%; bottom:72px; transform:translateX(-50%); background:#1c2b22; color:#fff; padding:8px 14px; border-radius:999px; font-size:var(--text); z-index:40; display:none; }
   #toast.on { display:block; }
   @media (orientation: landscape) {
@@ -1113,11 +1118,16 @@ function simulateMatch(name, a, b) {
   });
   return { bet: bet, legs: legs, allDay: allDay };
 }
+function dollarText(n) {
+  const cents = Math.round(Math.abs(Number(n) || 0) * 100);
+  const whole = Math.floor(cents / 100);
+  const frac = cents % 100;
+  return '$' + whole + (frac ? '.' + String(frac).padStart(2, '0') : '');
+}
 function cashText(n) {
   const v = Math.round(n * 100) / 100;
-  const body = (v % 1) ? String(Math.abs(v)) : String(Math.abs(Math.trunc(v)));
   if (!v) return '$0';
-  return (v > 0 ? '+$' : '−$') + body;
+  return (v > 0 ? '+' : '−') + dollarText(v);
 }
 function junkPersonNets(a, b, junkOf) {
   const nets = {};
@@ -1209,25 +1219,39 @@ function lastMark(leg, holes) {
   });
   return last == null ? '' : holeMark(last);
 }
-function matchCell(h, leg, starts) {
+function lastScoredHole(leg, holes) {
+  let last = null;
+  if (!leg) return null;
+  playOrder().forEach(h => {
+    if (holes.indexOf(h) >= 0 && leg.cells[h] != null) last = h;
+  });
+  return last;
+}
+function matchCell(h, leg, starts, lastH) {
   const v = leg && leg.cells[h] != null ? holeMark(leg.cells[h]) : '';
   const p = starts && starts[h] ? '<sup class="pmark">P</sup>' : '';
-  return '<td class="mcell" data-hole="' + h + '">' + v + p + '</td>';
+  const last = lastH != null && h === lastH && v;
+  return '<td class="mcell' + (last ? ' mlast' : '') + '" data-hole="' + h + '">' + v + p + '</td>';
 }
 function matchTable(holes, boards) {
   if (!boards.length || !holes.length) return '';
   const seg = segmentIndex(holes[0]);
-  const head = '<tr><th>Match</th>' + holes.map(h => '<th data-hole="' + h + '">' + (h + 1) + '</th>').join('') + '<th></th></tr>';
+  const head = '<tr><th class="mlab">Match</th>' + holes.map(h => '<th data-hole="' + h + '">' + (h + 1) + '</th>').join('') + '</tr>';
+  const cols = '<colgroup><col class="mlab">' + holes.map(() => '<col>').join('') + '</colgroup>';
   const body = boards.map(board => {
     const nine = board.sim.legs.find(l => l.kind === 'nine' && l.seg === seg);
     const presses = board.sim.legs.filter(l => l.kind === 'press' && holes.some(h => l.holes.indexOf(h) >= 0));
     const starts = {};
     presses.forEach(leg => { if (holes.indexOf(leg.from - 1) >= 0) starts[leg.from - 1] = true; });
-    const row = '<tr class="matchrow"><th class="mlab">' + esc(board.label) + '</th>' + holes.map(h => matchCell(h, nine, starts)).join('') + '<td class="tot">' + lastMark(nine, holes) + '</td></tr>';
-    const prows = presses.map(leg => '<tr class="pressrow"><th class="mlab">P' + leg.from + '</th>' + holes.map(h => matchCell(h, leg, null)).join('') + '<td class="tot">' + lastMark(leg, holes) + '</td></tr>').join('');
+    const lastNine = lastScoredHole(nine, holes);
+    const row = '<tr class="matchrow"><th class="mlab">' + esc(board.label) + '</th>' + holes.map(h => matchCell(h, nine, starts, lastNine)).join('') + '</tr>';
+    const prows = presses.map(leg => {
+      const lastP = lastScoredHole(leg, holes);
+      return '<tr class="pressrow"><th class="mlab">P' + leg.from + '</th>' + holes.map(h => matchCell(h, leg, null, lastP)).join('') + '</tr>';
+    }).join('');
     return row + prows;
   }).join('');
-  return '<table class="matches">' + head + body + '</table>';
+  return '<table class="matches">' + cols + head + body + '</table>';
 }
 function paperMatchRows(boards, front, back) {
   return boards.map(board => {
@@ -1246,18 +1270,23 @@ function paperMatchRows(boards, front, back) {
     return row + prows;
   }).join('');
 }
+function statusSpan(n) {
+  if (!n) return '<b>AS</b>';
+  if (n > 0) return '<b class="up">' + n + ' up</b>';
+  return '<b class="dn">' + Math.abs(n) + ' dn</b>';
+}
 function stripBit(board) {
   const run = runningScore(board);
   if (!run.played) return '';
   const presses = board.sim.legs.filter(l => l.kind === 'press' && l.played);
-  const ptxt = presses.length === 1 ? 'P: ' + holeMark(presses[0].score) : presses.map(l => 'P' + l.from + ' ' + holeMark(l.score)).join(' · ');
-  return board.label + ' ' + upMark(run.score) + (ptxt ? ' · ' + ptxt : '');
+  const ptxt = presses.map(l => 'Press from ' + l.from + ': ' + statusSpan(l.score)).join(' · ');
+  return esc(board.label) + ' ' + statusSpan(run.score) + (ptxt ? ' · ' + ptxt : '');
 }
 function paintMatchStrip(boards) {
   const strip = document.getElementById('matchStrip');
   if (!strip) return;
   const bits = (boards || []).map(stripBit).filter(Boolean);
-  strip.innerHTML = bits.map(t => '<span class="bit">' + esc(t) + '</span>').join('');
+  strip.innerHTML = bits.map(t => '<span class="bit">' + t + '</span>').join('');
   strip.hidden = !bits.length;
 }
 function thruText() {
@@ -1512,7 +1541,7 @@ function holeStanding() {
     const h0 = holesOfNine(0), h1 = holesOfNine(1);
     const pressNotes = sim.legs.filter(l => l.kind === 'press').sort((x, y) => x.from - y.from).map(leg => 'Press from ' + leg.from + (leg.manual ? ' (M)' : ' (A)') + ' ' + say(leg.score)).join('<br>');
     const pressLine = '<br>1st 9 ' + stack(0, h0) + nineTable(h0) + (backPlayed ? '<br>2nd 9 ' + stack(1, h1) + nineTable(h1) + '<br>Overall ' + say(overallScore) + '. 1st 9 ended ' + say(frontScore) + ', 2nd 9 is ' + say(backScore) + '.' : '') + (pressNotes ? '<br>' + pressNotes : '') + (junkLine ? '<br>' + junkLine : '');
-    const running = dollars ? (dollars > 0 ? b.join('+') : a.join('+')) + ' +$' + Math.abs(Math.round(dollars * 100) / 100) : 'even';
+    const running = dollars ? (dollars > 0 ? b.join('+') : a.join('+')) + ' +' + dollarText(dollars) : 'even';
     return '<p><b>' + name + '</b> ' + running + '<br>' + matchIds.map(id => { const p = holePlayers.find(x => x.id === id); return id + ' ' + hcpLabel(p); }).join(' · ') + '<br>' + label + ' thru ' + (lastThru + 1) + pressLine + '</p>';
   }).join('');
 }
@@ -1559,7 +1588,7 @@ function settle() {
     };
     const junk = b.reduce((n, id) => n + junkOf(id), 0) - a.reduce((n, id) => n + junkOf(id), 0);
     const dollars = front + frontPress.reduce((n, v) => n + v, 0) + back + backPress.reduce((n, v) => n + v, 0) + overall + junk;
-    const who = n => !n ? 'AS' : (n > 0 ? b.join('+') : a.join('+')) + ' +$' + Math.abs(n);
+    const who = n => !n ? 'AS' : (n > 0 ? b.join('+') : a.join('+')) + ' +' + dollarText(n);
     const tag = leg => leg.manual ? '(M)' : '(A)';
     const bits = ['1st 9 ' + who(front)].concat(frontPressLegs.map((leg, i) => 'Press from ' + leg.from + ' ' + tag(leg) + ' ' + who(frontPress[i])));
     if (backPlayed) bits.push('2nd 9 ' + who(back), ...backPressLegs.map((leg, i) => 'Press from ' + leg.from + ' ' + tag(leg) + ' ' + who(backPress[i])), 'Overall ' + who(overall));
@@ -1580,11 +1609,11 @@ function settle() {
           if (m.Junk) bits.push(m.Junk > 1 ? 'Junk-' + m.Junk : 'Junk');
           if (bits.length) items.push((h + 1) + ' ' + bits.join(' '));
         }
-        return items.length ? id + ' $' + rate + ': ' + items.join(', ') : '';
+        return items.length ? id + ' ' + dollarText(rate) + ': ' + items.join(', ') : '';
       }).filter(Boolean).join('; ');
       bits.push('Junk ' + who(junk) + (junkDetail ? ' (' + junkDetail + ')' : ''));
     }
-    if (!dollars && !front && !junk) return '<p><b>' + name + '</b> even. 1st 9 $' + (bet.first || 0) + ', 2nd 9 $' + (bet.second || 0) + ', Overall $' + (bet.overall || 0) + '.</p>';
+    if (!dollars && !front && !junk) return '<p><b>' + name + '</b> even. 1st 9 ' + dollarText(bet.first || 0) + ', 2nd 9 ' + dollarText(bet.second || 0) + ', Overall ' + dollarText(bet.overall || 0) + '.</p>';
     const winners = dollars < 0 ? a : b;
     const losers = dollars < 0 ? b : a;
     const amt = Math.abs(dollars);
@@ -1602,7 +1631,7 @@ function settle() {
     const payee = v > 0 ? y : x;
     const me = (holePlayers[0] && holePlayers[0].id) || '';
     const cls = payer === me ? 'dn' : payee === me ? 'up' : '';
-    return '<p class="' + cls + '">' + payer + ' pays ' + payee + ' $' + (Math.round(Math.abs(v) * 100) / 100) + '</p>';
+    return '<p class="' + cls + '">' + payer + ' pays ' + payee + ' ' + dollarText(v) + '</p>';
   }).filter(Boolean);
   const summary = nets.length ? '<p><b>Summary</b></p>' + nets.join('') : '';
   const details = lines.map((line, i) => '<div class="settle-match"><div class="section-head" data-settle="' + i + '"><span>' + (line.match(/<b>([^<]+)<\/b>/) || ['', 'Match'])[1] + '</span><span class="chev">▶</span></div><div class="section-body collapsed" id="settle-' + i + '">' + line + '</div></div>').join('');
@@ -1659,10 +1688,10 @@ function drawPresses() {
     const tagB = teamTag(sides.b);
     const sideBtn = (side, tag) => {
       const mine = offers.find(o => o.by === side && o.status !== 'no');
-      if (!mine) return '<button type="button" data-offer="' + esc(name) + '" data-side="' + side + '">' + esc(tag) + ': offer a $' + amt + ' press</button>';
+      if (!mine) return '<button type="button" data-offer="' + esc(name) + '" data-side="' + side + '">' + esc(tag) + ': offer a ' + dollarText(amt) + ' press</button>';
       if (mine.status === 'yes') return esc(tag) + ' press on from this hole <button type="button" data-drop="' + esc(name) + '" data-side="' + side + '">Drop</button>';
       const other = side === 'a' ? tagB : tagA;
-      return esc(tag) + ' offered a $' + amt + ' press · ' + esc(other) + ' <button type="button" data-answer="yes" data-offername="' + esc(name) + '" data-side="' + side + '">Accept</button> <button type="button" data-answer="no" data-offername="' + esc(name) + '" data-side="' + side + '">Decline</button>';
+      return esc(tag) + ' offered a ' + dollarText(amt) + ' press · ' + esc(other) + ' <button type="button" data-answer="yes" data-offername="' + esc(name) + '" data-side="' + side + '">Accept</button> <button type="button" data-answer="no" data-offername="' + esc(name) + '" data-side="' + side + '">Decline</button>';
     };
     const live = livePressText(name);
     const cap = pressCap(bet);
@@ -1673,7 +1702,7 @@ function drawPresses() {
     const offerHtml = capped ? 'Max ' + cap + ' presses on this nine.' : sideBtn('a', tagA) + '<br>' + sideBtn('b', tagB);
     let body = 'Presses off';
     if (mode === 'auto') {
-      body = 'Auto press $' + amt + ' at ' + pressDownN(bet) + ' down' + (live ? '<br>' + esc(live) : '') + '<br>' + offerHtml;
+      body = 'Auto press ' + dollarText(amt) + ' at ' + pressDownN(bet) + ' down' + (live ? '<br>' + esc(live) : '') + '<br>' + offerHtml;
     } else if (mode === 'manual') {
       body = (live ? esc(live) + '<br>' : '') + offerHtml;
     }
@@ -2032,11 +2061,11 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
         let matchLabel, total;
         if (isBox) {
           total = perMatch * 3;
-          matchLabel = 'all 3 $' + perMatch;
+          matchLabel = 'all 3 ' + dollarText(perMatch);
         } else {
           const partners = holePlayers.filter(x => !boxIds.includes(x.id) && x.id !== p.id).map(x => x.id);
           total = partners.length * perMatch;
-          matchLabel = partners.map(partner => p.id + '+' + partner + ' $' + perMatch).join(', ');
+          matchLabel = partners.map(partner => p.id + '+' + partner + ' ' + dollarText(perMatch)).join(', ');
         }
         rows.push({ player: p.id, hole: h + 1, type, matches: matchLabel, total });
       };
@@ -2067,7 +2096,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
           const partners = groups[k];
           const perMatch = units * rate;
           const total = partners.length * perMatch;
-          const matchLabel = partners.map(id => p.id + '+' + id + ' $' + perMatch).join(', ');
+          const matchLabel = partners.map(id => p.id + '+' + id + ' ' + dollarText(perMatch)).join(', ');
           rows.push({ player: p.id, hole: h + 1, type: birdieName(units), matches: matchLabel, total });
         });
       }
