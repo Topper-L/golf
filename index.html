@@ -57,6 +57,8 @@ try {
   #card tr.current { background:#e8f2ea; }
   #card td.missing, #paperCard td.missing { background:#fff4e5; box-shadow:inset 0 0 0 2px #e0a84a; }
   #card .short { display:block; font-size:10px; color:#5e6f64; font-weight:400; }
+  #card .xscore, #paperCard .xscore { font-weight:700; }
+  #card .xscore sup, #paperCard .xscore sup { font-size:9px; font-weight:600; margin-left:1px; color:#3d4f44; }
   #paperCard { display:none; }
   #paperCard table { width:max-content; min-width:100%; border-collapse:collapse; background:#fff; }
   #paperCard td, #paperCard th { font-size:12px !important; padding:3px 4px; text-align:center; min-width:26px; border:1px solid #c5d1c8; background:#fff; }
@@ -165,6 +167,7 @@ try {
   <p>Return moves to the next field.</p>
   <div class="card">
     <h2>Players</h2>
+    <p>Course hcp is the handicap for these tees, not a Handicap Index.</p>
     <div class="hscroll"><table id="players"></table></div>
     <p><button type="button" id="add" tabindex="-1">Add player</button></p>
     <p id="savedPlayers"></p>
@@ -206,7 +209,7 @@ try {
       <p id="kpTip" class="note"></p><div id="scores"></div>
       <div id="holeJunk"></div>
     </div>
-    <p class="actions"><button type="button" id="back">Back a hole</button> <button type="button" id="post" class="primary">Post score</button> <button type="button" id="saveRound">Save round</button> <button type="button" id="clearHole">Clear hole</button> <button type="button" id="toSetup">Back to setup</button></p>
+    <p class="actions"><button type="button" id="back">Back a hole</button> <button type="button" id="post" class="primary">Next hole</button> <button type="button" id="saveRound">Save round</button> <button type="button" id="clearHole">Clear hole</button> <button type="button" id="toSetup">Back to setup</button></p>
     <div class="card"><h2>Standing</h2><div id="standing"></div></div>
     <div class="card"><h2>Presses</h2><div id="presses"></div></div>
     </div>
@@ -246,7 +249,7 @@ const courses = {
       { id: 'n1', name: '', press: 'pressFront', holes: [0,1,2,3,4,5,6,7,8] },
       { id: 'n2', name: '', press: 'pressBack', holes: [9,10,11,12,13,14,15,16,17] }
     ],
-    // Men's ratings. Blue/White, White/Red, and Red/Silver have no men's rating, so those tees use the index as entered.
+    // Men's slope and rating stay with the course. The number entered for a player is already the course handicap on every tee, so it is not converted from an index.
     rating: {
       Gold: { slope: 140, rating: 74.4, par: 72 },
       Blue: { slope: 135, rating: 72.2, par: 72 },
@@ -384,9 +387,15 @@ function drawBets() {
     bet.maxPresses = el.value === '' ? null : Number(el.value);
   });
 }
+function capWords(value) {
+  return String(value).replace(/(^|\s)(\S)/g, (all, lead, ch) => {
+    const up = ch.toLocaleUpperCase();
+    return lead + (up.length === ch.length ? up : ch);
+  });
+}
 function draw() {
-  document.getElementById('players').innerHTML = '<tr><th>Name</th><th>Initials</th><th>Tee</th><th>HCP</th><th></th><th>Box</th><th></th></tr>' +
-    players.map((p, i) => '<tr><td><input class="name' + (p.name ? '' : ' need') + '" data-i="' + i + '" data-f="name" value="' + esc(p.name) + '"></td><td><input class="initials' + (p.initials ? '' : ' need') + '" data-i="' + i + '" data-f="initials" value="' + esc(p.initials) + '" maxlength="3" autocapitalize="characters"></td><td><select data-i="' + i + '">' +
+  document.getElementById('players').innerHTML = '<tr><th>Name</th><th>Initials</th><th>Tee</th><th>Course hcp</th><th></th><th>Box</th><th></th></tr>' +
+    players.map((p, i) => '<tr><td><input class="name' + (p.name ? '' : ' need') + '" data-i="' + i + '" data-f="name" value="' + esc(p.name) + '" autocapitalize="words"></td><td><input class="initials' + (p.initials ? '' : ' need') + '" data-i="' + i + '" data-f="initials" value="' + esc(p.initials) + '" maxlength="3" autocapitalize="characters"></td><td><select data-i="' + i + '">' +
       courseData().tees.map(t => '<option' + (t === p.tee ? ' selected' : '') + '>' + esc(t) + '</option>').join('') +
       '</select></td><td><input class="hcp' + (String(p.hcp).startsWith('+') ? ' plus' : '') + (p.hcp ? '' : ' need') + '" data-i="' + i + '" data-f="hcp" value="' + esc(p.hcp) + '" maxlength="3" inputmode="numeric"></td><td><button type="button" tabindex="-1" data-plus="' + i + '" class="' + (String(p.hcp).startsWith('+') ? 'plus' : '') + '">' + (String(p.hcp).startsWith('+') ? 'Plus' : '+') + '</button></td><td><button type="button" tabindex="-1" data-box="' + i + '" class="' + (p.box ? 'on' : '') + '">' + (p.box ? 'In' : 'Off') + '</button></td><td><button type="button" tabindex="-1" data-remove="' + i + '">Remove</button></td></tr>').join('');
   drawBets();
@@ -400,11 +409,28 @@ function draw() {
           if (pos != null) el.setSelectionRange(pos, pos);
         }
       }
+      if (el.dataset.f === 'name') {
+        const capped = capWords(el.value);
+        if (capped !== el.value) {
+          const pos = el.selectionStart;
+          el.value = capped;
+          if (pos != null) el.setSelectionRange(pos, pos);
+        }
+      }
       players[el.dataset.i][el.dataset.f] = el.value;
       if (el.dataset.f === 'initials') drawBets();
     };
     el.onfocus = () => { setTimeout(() => { try { el.select(); } catch (e) {} }, 10); };
-    el.onblur = () => { if (el.dataset.f === 'hcp' || el.dataset.f === 'name' || el.dataset.f === 'initials') { rememberPlayers(); drawSavedPlayers(); } };
+    el.onblur = () => {
+      if (el.dataset.f === 'name') {
+        const capped = capWords(el.value);
+        if (capped !== el.value) {
+          el.value = capped;
+          players[el.dataset.i].name = capped;
+        }
+      }
+      if (el.dataset.f === 'hcp' || el.dataset.f === 'name' || el.dataset.f === 'initials') { rememberPlayers(); drawSavedPlayers(); }
+    };
     el.onkeydown = e => {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -776,7 +802,7 @@ function persistSetup() {
   } catch (e) {}
 }
 function showHandicapNote(missingHcp) {
-  const text = missingHcp ? 'A handicap is blank, so it counts as 0 until you enter one. Scores and junk still work.' : '';
+  const text = missingHcp ? 'A course handicap is blank, so it counts as 0 until you enter one. Scores and junk still work.' : '';
   const holeNote = document.getElementById('holeNote');
   if (holeNote) holeNote.textContent = text;
   if (missingHcp) {
@@ -846,18 +872,8 @@ function startHole() {
 }
 function hcpNum(p) { return Number(String(p && p.hcp != null ? p.hcp : 0).replace('+','-')) || 0; }
 function roundHalfUp(n) { return Math.floor(n + 0.5); }
-function ratingFor(tee) {
-  const table = (courseData().rating) || {};
-  const row = tee && table[tee];
-  if (!row || !row.slope || row.rating == null) return null;
-  return row;
-}
 function courseHandicap(p) {
-  const index = hcpNum(p || { hcp: 0 });
-  const row = ratingFor(p && p.tee);
-  if (!row) return index;
-  const par = row.par != null ? row.par : playedHoles().reduce((n, h) => n + (courseData().par[h] || 0), 0);
-  return roundHalfUp(index * (row.slope / 113) + (row.rating - par));
+  return hcpNum(p || { hcp: 0 });
 }
 function currentPct() {
   const el = document.getElementById('dPct');
@@ -887,6 +903,17 @@ function strokesOnHole(strokeIndex, strokes) {
   const rank = strokes > 0 ? strokeIndex : (19 - strokeIndex);
   const count = full + (rank <= extra ? 1 : 0);
   return strokes > 0 ? count : -count;
+}
+function netDoubleBogey(i, h) {
+  const p = holePlayers[i] || { hcp: 0, tee: defaultTee() };
+  const si = (indexFor(p.tee) || [])[h] || 0;
+  return (courseData().par[h] || 0) + 2 + strokesOnHole(si, courseHandicap(p));
+}
+function countedScore(i, h) {
+  const g = holeScores[i] && holeScores[i][h];
+  if (typeof g === 'number') return g;
+  if (g === 'X') return netDoubleBogey(i, h);
+  return null;
 }
 function holeNet(i, h, ids) {
   const g = holeScores[i][h];
@@ -1075,11 +1102,10 @@ function junkShareLine(nets) {
 }
 function hcpLabel(p) {
   if (!p) return '';
-  const raw = String(p.hcp == null ? '' : p.hcp);
-  if (!ratingFor(p.tee)) return raw;
-  const ch = courseHandicap(p);
-  const shown = ch < 0 ? '+' + Math.abs(ch) : String(ch);
-  return raw + ' CH ' + shown;
+  const raw = String(p.hcp == null ? '' : p.hcp).trim();
+  if (!raw) return '';
+  const n = courseHandicap(p);
+  return n < 0 ? '+' + Math.abs(n) : String(n);
 }
 function sidesOf(name) {
   const box = holePlayers.filter(p => p.box).map(p => p.id);
@@ -1175,7 +1201,7 @@ function holeStanding() {
       score += an < bn ? 1 : an > bn ? -1 : 0;
       played += 1;
     }
-    if (!played) return '<p><b>' + name + '</b> ' + matchIds.map(id => { const p = holePlayers.find(x => x.id === id); return id + ' ' + (p ? p.hcp : ''); }).join(' · ') + '<br>No holes yet.</p>';
+    if (!played) return '<p><b>' + name + '</b> ' + matchIds.map(id => { const p = holePlayers.find(x => x.id === id); return id + ' ' + hcpLabel(p); }).join(' · ') + '<br>No holes yet.</p>';
     const label = score === 0 ? 'AS' : score > 0 ? score + ' up' : Math.abs(score) + ' dn';
     const open = name === detailName;
     const row = open ? '<br>' + holesOfNine(0).map(h => {
@@ -1564,15 +1590,28 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     return '<div class="grid"><b>' + p.id + '</b><span>' + String(p.tee).slice(0,2) + '</span><span>' + strokeMark(p) + '</span><button data-i="' + i + '" data-d="-1">−</button><button data-i="' + i + '" data-set="1" class="score ' + scoreCls + '"' + aria + '>' + shown + '</button><button data-i="' + i + '" data-d="1">+</button><button data-i="' + i + '" data-x="1">X</button><span class="junkbtns">' + junkBtns + '</span></div>';
   }).join('');
   document.getElementById('holeJunk').innerHTML = holeBirdieLabel();
-  const shape = (score, par) => {
-    if (score === 'X' || score == null) return score === 'X' ? 'X' : '';
-    const diff = score - par;
+  const shape = (i, h) => {
+    const score = holeScores[i][h];
+    if (score == null) return '';
+    if (score === 'X') return '<span class="xscore">X<sup>' + netDoubleBogey(i, h) + '</sup></span>';
+    const diff = score - courseData().par[h];
     let cls = '';
     if (diff === -1) cls = 'birdie';
     else if (diff <= -2) cls = 'eagle';
     else if (diff === 1) cls = 'bogey';
     else if (diff >= 2) cls = 'dblbogey';
     return '<span class="shape ' + cls + '">' + score + '</span>';
+  };
+  const totalCell = (i, holes) => {
+    let sum = 0, any = false, picked = false;
+    holes.forEach(h => {
+      const v = countedScore(i, h);
+      if (v == null) return;
+      sum += v;
+      any = true;
+      if (holeScores[i][h] === 'X') picked = true;
+    });
+    return '<td class="tot">' + (any ? sum + (picked ? '<sup>x</sup>' : '') : '') + '</td>';
   };
   const sideTable = (holes, label) => {
     const head = '<tr><th>Hole</th><th>Par</th>' + holePlayers.map(p => {
@@ -1584,27 +1623,17 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
       const cells = holePlayers.map((p, i) => {
         const score = holeScores[i][h];
         if (score == null) return holeLeftBehind(h) ? '<td class="missing"></td>' : '<td></td>';
-        return '<td>' + shape(score, par) + '</td>';
+        return '<td>' + shape(i, h) + '</td>';
       }).join('');
       return '<tr class="' + (h === holeNo ? 'current' : '') + '"><td>' + (h+1) + '</td><td class="par">' + par + '</td>' + cells + '</tr>';
     }).join('');
-    const tot = holePlayers.map((p, i) => {
-      const sum = holes.reduce((n, h) => n + (typeof holeScores[i][h] === 'number' ? holeScores[i][h] : 0), 0);
-      const any = holes.some(h => holeScores[i][h] != null);
-      const picked = holes.some(h => holeScores[i][h] === 'X');
-      return '<td class="tot">' + (any ? sum + (picked ? '<sup>x</sup>' : '') : '') + '</td>';
-    }).join('');
+    const tot = holePlayers.map((p, i) => totalCell(i, holes)).join('');
     const parTot = holes.reduce((n, h) => n + courseData().par[h], 0);
     return '<table>' + head + body + '<tr><td class="tot">' + label + '</td><td class="tot">' + parTot + '</td>' + tot + '</tr></table>';
   };
   const totalRow = () => {
     const holes = playedHoles();
-    const tot = holePlayers.map((p, i) => {
-      const sum = holes.reduce((n, h) => n + (typeof holeScores[i][h] === 'number' ? holeScores[i][h] : 0), 0);
-      const any = holes.some(h => holeScores[i][h] != null);
-      const picked = holes.some(h => holeScores[i][h] === 'X');
-      return '<td class="tot">' + (any ? sum + (picked ? '<sup>x</sup>' : '') : '') + '</td>';
-    }).join('');
+    const tot = holePlayers.map((p, i) => totalCell(i, holes)).join('');
     const parTot = holes.reduce((n, h) => n + (courseData().par[h] || 0), 0);
     return '<table><tr><td class="tot">Total</td><td class="tot">' + parTot + '</td>' + tot + '</tr></table>';
   };
@@ -1619,8 +1648,11 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
       let n = 0, any = false, picked = false;
       holes.forEach(h => {
         const g = holeScores[i] && holeScores[i][h];
+        const v = countedScore(i, h);
+        if (v == null) return;
+        n += v;
+        any = true;
         if (g === 'X') picked = true;
-        if (typeof g === 'number') { n += g; any = true; }
       });
       return any ? n + (picked ? '<sup>x</sup>' : '') : '';
     };
@@ -1629,7 +1661,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
       const dots = strokeDots(holePlayers[i], h);
       const mark = dots ? '<span class="dots">' + dots + '</span>' : '';
       if (score == null) return '<td' + (holeLeftBehind(h) ? ' class="missing"' : '') + '>' + mark + '</td>';
-      if (score === 'X') return '<td>X' + mark + '</td>';
+      if (score === 'X') return '<td><span class="xscore">X<sup>' + netDoubleBogey(i, h) + '</sup></span>' + mark + '</td>';
       return '<td>' + score + mark + '</td>';
     };
     const head = '<tr><th class="lab"></th>' + front.map(h => '<th>' + (h + 1) + '</th>').join('') + '<th class="sum">Out</th>' + back.map(h => '<th>' + (h + 1) + '</th>').join('') + '<th class="sum">In</th><th class="sum">Tot</th></tr>';
@@ -1643,18 +1675,18 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
   if (review) {
     const ids = holePlayers.map(p => p.id);
     const halfNet = (i, h) => {
-      const g = holeScores[i][h];
-      if (g === 'X' || g == null) return null;
-      const hcp = hcpNum(holePlayers[i]);
+      const g = countedScore(i, h);
+      if (g == null) return null;
+      const hcp = courseHandicap(holePlayers[i]);
       const strokes = Math.max(0, Math.floor(Math.abs(hcp)));
       const gets = indexFor(holePlayers[i].tee)[h] <= strokes;
       const adj = hcp >= 0 ? (gets ? 0.5 : 0) : (gets ? -0.5 : 0);
       return g - adj;
     };
     const fullNet = (i, h) => {
-      const g = holeScores[i][h];
-      if (g === 'X' || g == null) return null;
-      const hcp = hcpNum(holePlayers[i]);
+      const g = countedScore(i, h);
+      if (g == null) return null;
+      const hcp = courseHandicap(holePlayers[i]);
       const strokes = Math.max(0, Math.floor(Math.abs(hcp)));
       const gets = indexFor(holePlayers[i].tee)[h] <= strokes;
       return g - (hcp >= 0 ? (gets ? 1 : 0) : (gets ? -1 : 0));
@@ -1670,7 +1702,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     for (const h of playedHoles()) {
       const any = holeScores.some(row => row[h] != null);
       if (!any) continue;
-      holeRows.push('<tr><td>' + (h+1) + '</td><td>' + lowOf(h, (i, hh) => holeScores[i][hh] === 'X' || holeScores[i][hh] == null ? null : holeScores[i][hh]) + '</td><td>' + lowOf(h, halfNet) + '</td></tr>');
+      holeRows.push('<tr><td>' + (h+1) + '</td><td>' + lowOf(h, countedScore) + '</td><td>' + lowOf(h, halfNet) + '</td></tr>');
     }
     const overall = (fn) => {
       const tots = holePlayers.map((p, i) => {
@@ -1684,8 +1716,8 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
       return who + ' ' + best;
     };
     review.innerHTML = holeRows.length
-      ? '<table><tr><th>Hole</th><th>Low gross</th><th>Low net (½)</th></tr>' + holeRows.join('') + '</table><p>Overall low gross ' + overall((i,h) => holeScores[i][h] === 'X' || holeScores[i][h] == null ? null : holeScores[i][h]) + '<br>Overall low net ' + overall(fullNet) + '</p>'
-      : '<p>No scores posted.</p>';
+      ? '<table><tr><th>Hole</th><th>Low gross</th><th>Low net (½)</th></tr>' + holeRows.join('') + '</table><p>Overall low gross ' + overall(countedScore) + '<br>Overall low net ' + overall(fullNet) + '</p>'
+      : '<p>No scores yet.</p>';
   }
   const junkEl = document.getElementById('junkSummary');
   const boxIds = holePlayers.filter(p => p.box).map(p => p.id);
@@ -1786,7 +1818,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     }
   });
   rows.sort((a, b) => a.hole - b.hole || a.player.localeCompare(b.player));
-  const table = rows.length ? '<table><tr><th>Player</th><th>Hole</th><th>Type</th><th>Matches</th><th>Total</th></tr>' + rows.map(r => '<tr><td>' + r.player + '</td><td>#' + r.hole + '</td><td>' + r.type + '</td><td>' + r.matches + '</td><td>' + cashText(r.total) + '</td></tr>').join('') + '</table>' : '<p>No junk posted.</p>';
+  const table = rows.length ? '<table><tr><th>Player</th><th>Hole</th><th>Type</th><th>Matches</th><th>Total</th></tr>' + rows.map(r => '<tr><td>' + r.player + '</td><td>#' + r.hole + '</td><td>' + r.type + '</td><td>' + r.matches + '</td><td>' + cashText(r.total) + '</td></tr>').join('') + '</table>' : '<p>No junk yet.</p>';
   junkEl.innerHTML = table;
   let standingHtml = '';
   try { standingHtml = holeStanding(); }
