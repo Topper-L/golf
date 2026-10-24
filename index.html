@@ -1295,14 +1295,18 @@ function thruText() {
   if (ids.length) for (const h of playOrder()) if (holeReady(ids, h)) last = h;
   return last == null ? '' : 'thru ' + (last + 1);
 }
+function sharePlayerName(p) {
+  const setup = (players || []).find(x => String(x.initials || '').toUpperCase() === p.id);
+  const full = setup && String(setup.name || '').trim();
+  return full || p.id;
+}
 function shareText() {
   const thru = thruText();
   const head = [currentCourse, roundDate, thru].filter(Boolean).join(' · ');
-  const who = holePlayers.map(p => p.id + ' ' + (hcpLabel(p) || '0')).join(', ');
-  const lines = [head, who, ''];
+  const lines = [head, ''];
   const token = (i, h) => {
     const g = holeScores[i] && holeScores[i][h];
-    if (g == null) return '·';
+    if (g == null) return '';
     if (g === 'X') return 'X(' + countedScore(i, h) + ')';
     return String(g);
   };
@@ -1317,14 +1321,25 @@ function shareText() {
     });
     return { n: n, any: any, picked: picked };
   };
+  const totalLine = (f, b) => {
+    const parts = [];
+    if (f.any) parts.push('Out ' + f.n);
+    if (b.any) parts.push('In ' + b.n);
+    const total = (f.any ? f.n : 0) + (b.any ? b.n : 0);
+    const mark = (f.picked || b.picked) ? 'x' : '';
+    if (parts.length === 1) return parts[0] + ' = ' + total + mark;
+    return parts.join('  ') + '  = ' + total + mark;
+  };
   holePlayers.forEach((p, i) => {
+    if (i) lines.push('');
+    lines.push(sharePlayerName(p) + ' (' + (hcpLabel(p) || '0') + '):');
     const front = holesOfNine(0), back = holesOfNine(1);
     const f = sumOf(i, front), b = sumOf(i, back);
-    let line = p.id + ': ' + front.map(h => token(i, h)).join(' ');
-    if (f.any) line += '  Out ' + f.n;
-    if (b.any) line += '  ' + back.map(h => token(i, h)).join(' ') + '  In ' + b.n;
-    if (f.any || b.any) line += '  = ' + (f.n + b.n) + ((f.picked || b.picked) ? 'x' : '');
-    lines.push(line);
+    const fScores = front.map(h => token(i, h)).filter(Boolean);
+    const bScores = back.map(h => token(i, h)).filter(Boolean);
+    if (fScores.length) lines.push(fScores.join(' '));
+    if (bScores.length) lines.push(bScores.join(' '));
+    if (f.any || b.any) lines.push(totalLine(f, b));
   });
   const boards = matchBoards();
   if (boards.length) {
