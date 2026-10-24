@@ -65,6 +65,19 @@ try {
   #paperCard th.lab { text-align:left; min-width:36px; background:#f3f6f4; }
   #paperCard td.sum, #paperCard th.sum { font-weight:700; background:#f3f6f4; }
   #paperCard .dots { color:#1f6b45; font-size:10px; font-weight:700; }
+  #card tr.matchrow th, #card tr.pressrow th, #paperCard tr.matchrow th, #paperCard tr.pressrow th { text-align:left; white-space:nowrap; font-weight:700; }
+  #card tr.pressrow, #paperCard tr.pressrow { color:#5e6f64; }
+  #card .pmark, #paperCard .pmark { color:#1f6b45; font-weight:700; }
+  #card table.matches { margin-top:6px; }
+  .card-tools { display:flex; align-items:center; gap:8px; margin:0 0 6px; }
+  .card-tools h2 { margin:0; flex:1; }
+  .card-tools button { min-height:32px; font-size:var(--text); padding:2px 8px; }
+  .view-note { margin:0 0 8px; font-size:var(--text); }
+  .match-strip { position:sticky; top:calc(46px + env(safe-area-inset-top)); z-index:15; margin:0 0 8px; padding:4px 0; background:#e7efe6; font-size:var(--text); line-height:1.35; max-width:100%; max-height:calc(var(--text) * 2.9); overflow:auto; }
+  .match-strip[hidden] { display:none; }
+  .match-strip .bit { display:inline-block; white-space:nowrap; margin:0 10px 2px 0; }
+  #toast { position:fixed; left:50%; bottom:72px; transform:translateX(-50%); background:#1c2b22; color:#fff; padding:8px 14px; border-radius:999px; font-size:var(--text); z-index:40; display:none; }
+  #toast.on { display:block; }
   @media (orientation: landscape) {
     #screen-card #card { display:none; }
     #screen-card #paperCard { display:block; }
@@ -199,6 +212,7 @@ try {
   <section id="holeView" class="screen">
     <p class="empty-round">Start scoring from Setup.</p>
     <div class="round-body">
+    <div id="matchStrip" class="match-strip" hidden></div>
     <h1 id="holeTitle">Hole 1</h1>
     <p id="postNote"></p>
     <p id="holeNote"></p>
@@ -219,14 +233,14 @@ try {
     <div class="round-body">
       <div class="card"><h2>Standing</h2><div id="cardStanding"></div></div>
       <div class="card"><h2>Junk</h2><div id="junkSummary" class="hscroll"></div></div>
-      <div class="card"><h2>Card</h2><div id="card" class="hscroll"></div><div id="paperCard" class="hscroll"></div></div>
+      <div class="card"><div class="card-tools"><h2>Card</h2><button type="button" id="cardView" aria-pressed="false">Gross | Net</button><button type="button" id="shareCard">Share</button></div><p id="cardViewNote" class="view-note">Gross scores</p><div id="card" class="hscroll"></div><div id="paperCard" class="hscroll"></div></div>
       <div class="card"><h2>Group review</h2><div id="review" class="hscroll"></div></div>
     </div>
   </section>
   <section id="screen-settle" class="screen">
     <p class="empty-round">Start scoring from Setup.</p>
     <div class="round-body">
-      <div class="card"><h2>Settle</h2><div id="settle"></div></div>
+      <div class="card"><div class="card-tools"><h2>Settle</h2><button type="button" id="shareSettle">Share</button></div><div id="settle"></div></div>
     </div>
   </section>
 </div>
@@ -291,6 +305,9 @@ let roundDate = localDateStr();
 let roundId = '';
 let suppressAutoSave = false;
 let strokePct = 100;
+let cardView = 'gross';
+let holdThru = false;
+try { if (localStorage.getItem('golf-card-view') === 'net') cardView = 'net'; } catch (e) {}
 // Box 2v2 matches keep full strokes. A later setting can change this number. There is no control for it on the setup screen.
 const BOX_STROKE_PCT = 100;
 function courseData() { return courses[currentCourse]; }
@@ -482,11 +499,19 @@ document.addEventListener('touchend', e => {
   const raw = e.target;
   const el = raw && raw.closest ? raw : raw && raw.parentElement;
   const btn = el && el.closest ? el.closest('button') : null;
-  if (!btn || btn.disabled) return;
+  if (btn && !btn.disabled) {
+    e.preventDefault();
+    syntheticClick = true;
+    btn.click();
+    syntheticClick = false;
+    swallowGhost = true;
+    setTimeout(() => { swallowGhost = false; }, 800);
+    return;
+  }
+  const cell = el && el.closest ? el.closest('[data-hole]') : null;
+  if (!cell) return;
   e.preventDefault();
-  syntheticClick = true;
-  btn.click();
-  syntheticClick = false;
+  openHole(cell.dataset.hole);
   swallowGhost = true;
   setTimeout(() => { swallowGhost = false; }, 800);
 }, { passive: false });
@@ -915,6 +940,16 @@ function countedScore(i, h) {
   if (g === 'X') return netDoubleBogey(i, h);
   return null;
 }
+function ownStrokes(i, h) {
+  const p = holePlayers[i] || { hcp: 0, tee: defaultTee() };
+  const si = (indexFor(p.tee) || [])[h] || 0;
+  return strokesOnHole(si, courseHandicap(p));
+}
+function viewNum(i, h) {
+  const base = countedScore(i, h);
+  if (base == null) return null;
+  return cardView === 'net' ? base - ownStrokes(i, h) : base;
+}
 function holeNet(i, h, ids) {
   const g = holeScores[i][h];
   if (g === 'X' || g == null) return 99;
@@ -1124,6 +1159,221 @@ function teamTag(ids) {
 function shortMatch(name) {
   const sides = sidesOf(name);
   return teamTag(sides.a) + ' vs ' + teamTag(sides.b);
+}
+function cardMatchLabel(name) {
+  const sides = sidesOf(name);
+  return teamTag(sides.a) + ' v ' + teamTag(sides.b);
+}
+function activeMatchNames() {
+  let names = [];
+  try {
+    const m = matchNames();
+    names = m.side.concat(m.team);
+  } catch (e) { return []; }
+  return names.filter(name => {
+    const saved = amountFor(name);
+    return !saved || saved.on !== false;
+  });
+}
+function matchBoards() {
+  return activeMatchNames().map(name => {
+    const sides = sidesOf(name);
+    return { name: name, label: cardMatchLabel(name), sides: sides, sim: simulateMatch(name, sides.a, sides.b) };
+  });
+}
+function holeMark(n) {
+  if (!n) return 'AS';
+  return n > 0 ? String(n) : '−' + Math.abs(n);
+}
+function upMark(n) {
+  if (!n) return 'AS';
+  return n > 0 ? n + 'up' : Math.abs(n) + 'dn';
+}
+function runningScore(board) {
+  const ids = board.sides.a.concat(board.sides.b);
+  let score = 0, played = 0, last = null;
+  for (const h of playOrder()) {
+    if (!holeReady(ids, h)) continue;
+    last = h;
+    const an = sideNet(board.sides.a, h, ids), bn = sideNet(board.sides.b, h, ids);
+    score += an < bn ? 1 : an > bn ? -1 : 0;
+    played += 1;
+  }
+  return { score: score, played: played, last: last };
+}
+function lastMark(leg, holes) {
+  if (!leg) return '';
+  let last = null;
+  playOrder().forEach(h => {
+    if (holes.indexOf(h) >= 0 && leg.cells[h] != null) last = leg.cells[h];
+  });
+  return last == null ? '' : holeMark(last);
+}
+function matchCell(h, leg, starts) {
+  const v = leg && leg.cells[h] != null ? holeMark(leg.cells[h]) : '';
+  const p = starts && starts[h] ? '<sup class="pmark">P</sup>' : '';
+  return '<td class="mcell" data-hole="' + h + '">' + v + p + '</td>';
+}
+function matchTable(holes, boards) {
+  if (!boards.length || !holes.length) return '';
+  const seg = segmentIndex(holes[0]);
+  const head = '<tr><th>Match</th>' + holes.map(h => '<th data-hole="' + h + '">' + (h + 1) + '</th>').join('') + '<th></th></tr>';
+  const body = boards.map(board => {
+    const nine = board.sim.legs.find(l => l.kind === 'nine' && l.seg === seg);
+    const presses = board.sim.legs.filter(l => l.kind === 'press' && holes.some(h => l.holes.indexOf(h) >= 0));
+    const starts = {};
+    presses.forEach(leg => { if (holes.indexOf(leg.from - 1) >= 0) starts[leg.from - 1] = true; });
+    const row = '<tr class="matchrow"><th class="mlab">' + esc(board.label) + '</th>' + holes.map(h => matchCell(h, nine, starts)).join('') + '<td class="tot">' + lastMark(nine, holes) + '</td></tr>';
+    const prows = presses.map(leg => '<tr class="pressrow"><th class="mlab">P' + leg.from + '</th>' + holes.map(h => matchCell(h, leg, null)).join('') + '<td class="tot">' + lastMark(leg, holes) + '</td></tr>').join('');
+    return row + prows;
+  }).join('');
+  return '<table class="matches">' + head + body + '</table>';
+}
+function paperMatchRows(boards, front, back) {
+  return boards.map(board => {
+    const nineAt = h => board.sim.legs.find(l => l.kind === 'nine' && l.holes.indexOf(h) >= 0);
+    const presses = board.sim.legs.filter(l => l.kind === 'press');
+    const starts = {};
+    presses.forEach(leg => { starts[leg.from - 1] = true; });
+    const td = (h, leg, mark) => matchCell(h, leg, mark ? starts : null);
+    const frontLeg = nineAt(front[0]);
+    const backLeg = nineAt(back[0]);
+    const fp = frontLeg && frontLeg.played ? frontLeg.score : null;
+    const bp = backLeg && backLeg.played ? backLeg.score : null;
+    const tot = fp == null && bp == null ? '' : holeMark((fp || 0) + (bp || 0));
+    const row = '<tr class="matchrow"><th class="lab">' + esc(board.label) + '</th>' + front.map(h => td(h, nineAt(h), true)).join('') + '<td class="sum">' + lastMark(frontLeg, front) + '</td>' + back.map(h => td(h, nineAt(h), true)).join('') + '<td class="sum">' + lastMark(backLeg, back) + '</td><td class="sum">' + tot + '</td></tr>';
+    const prows = presses.map(leg => '<tr class="pressrow"><th class="lab">P' + leg.from + '</th>' + front.map(h => td(h, leg, false)).join('') + '<td class="sum">' + lastMark(leg, front) + '</td>' + back.map(h => td(h, leg, false)).join('') + '<td class="sum">' + lastMark(leg, back) + '</td><td class="sum">' + (leg.played ? holeMark(leg.score) : '') + '</td></tr>').join('');
+    return row + prows;
+  }).join('');
+}
+function stripBit(board) {
+  const run = runningScore(board);
+  if (!run.played) return '';
+  const presses = board.sim.legs.filter(l => l.kind === 'press' && l.played);
+  const ptxt = presses.length === 1 ? 'P: ' + holeMark(presses[0].score) : presses.map(l => 'P' + l.from + ' ' + holeMark(l.score)).join(' · ');
+  return board.label + ' ' + upMark(run.score) + (ptxt ? ' · ' + ptxt : '');
+}
+function paintMatchStrip(boards) {
+  const strip = document.getElementById('matchStrip');
+  if (!strip) return;
+  const bits = (boards || []).map(stripBit).filter(Boolean);
+  strip.innerHTML = bits.map(t => '<span class="bit">' + esc(t) + '</span>').join('');
+  strip.hidden = !bits.length;
+}
+function thruText() {
+  const ids = holePlayers.map(p => p.id);
+  let last = null;
+  if (ids.length) for (const h of playOrder()) if (holeReady(ids, h)) last = h;
+  return last == null ? '' : 'thru ' + (last + 1);
+}
+function shareText() {
+  const thru = thruText();
+  const head = [currentCourse, roundDate, thru].filter(Boolean).join(' · ');
+  const who = holePlayers.map(p => p.id + ' ' + (hcpLabel(p) || '0')).join(', ');
+  const lines = [head, who, ''];
+  const token = (i, h) => {
+    const g = holeScores[i] && holeScores[i][h];
+    if (g == null) return '·';
+    if (g === 'X') return 'X(' + countedScore(i, h) + ')';
+    return String(g);
+  };
+  const sumOf = (i, holes) => {
+    let n = 0, any = false, picked = false;
+    holes.forEach(h => {
+      const v = countedScore(i, h);
+      if (v == null) return;
+      n += v;
+      any = true;
+      if (holeScores[i][h] === 'X') picked = true;
+    });
+    return { n: n, any: any, picked: picked };
+  };
+  holePlayers.forEach((p, i) => {
+    const front = holesOfNine(0), back = holesOfNine(1);
+    const f = sumOf(i, front), b = sumOf(i, back);
+    let line = p.id + ': ' + front.map(h => token(i, h)).join(' ');
+    if (f.any) line += '  Out ' + f.n;
+    if (b.any) line += '  ' + back.map(h => token(i, h)).join(' ') + '  In ' + b.n;
+    if (f.any || b.any) line += '  = ' + (f.n + b.n) + ((f.picked || b.picked) ? 'x' : '');
+    lines.push(line);
+  });
+  const boards = matchBoards();
+  if (boards.length) {
+    lines.push('');
+    boards.forEach(board => {
+      const run = runningScore(board);
+      if (!run.played) { lines.push(board.label); return; }
+      const presses = board.sim.legs.filter(l => l.kind === 'press');
+      const extra = presses.map(l => l.played ? 'P' + l.from + ' ' + holeMark(l.score) : 'P' + l.from).join(' · ');
+      lines.push(board.label + ' ' + upMark(run.score) + ' thru ' + (run.last + 1) + (extra ? ' · ' + extra : ''));
+    });
+  }
+  lines.push('', 'Settle');
+  try { settle(); } catch (e) {}
+  const pays = [...document.querySelectorAll('#settle p')].map(p => p.textContent.trim()).filter(t => /pays/.test(t));
+  lines.push(pays.length ? pays.join('\n') : 'Even');
+  return lines.join('\n');
+}
+function showToast(msg) {
+  let el = document.getElementById('toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.className = 'on';
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => { el.className = ''; }, 1600);
+}
+function shareCard() {
+  const text = shareText();
+  const copy = () => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(() => showToast('Copied'));
+    }
+    const area = document.createElement('textarea');
+    area.value = text;
+    document.body.appendChild(area);
+    area.select();
+    try { document.execCommand('copy'); showToast('Copied'); } catch (e) { showToast('Could not copy'); }
+    area.remove();
+  };
+  if (navigator.share) {
+    navigator.share({ title: 'Golf card', text: text }).catch(err => {
+      if (err && err.name === 'AbortError') return;
+      copy();
+    });
+    return;
+  }
+  copy();
+}
+function paintCardView() {
+  const btn = document.getElementById('cardView');
+  const note = document.getElementById('cardViewNote');
+  const net = cardView === 'net';
+  if (btn) {
+    btn.innerHTML = net ? 'Gross | <b>Net</b>' : '<b>Gross</b> | Net';
+    btn.setAttribute('aria-pressed', net ? 'true' : 'false');
+    btn.setAttribute('aria-label', net ? 'Showing net scores' : 'Showing gross scores');
+  }
+  if (note) note.textContent = net ? 'Net vs the course. Each score minus that player’s full course handicap on the hole.' : 'Gross scores';
+}
+function setCardView(next) {
+  cardView = next === 'net' ? 'net' : 'gross';
+  try { localStorage.setItem('golf-card-view', cardView); } catch (e) {}
+  paintCardView();
+  try { drawHole(); } catch (e) {}
+}
+function openHole(h) {
+  const par = courseData().par || [];
+  h = Number(h);
+  if (!(h >= 0) || h >= par.length) return;
+  holdThru = true;
+  holeNo = h;
+  showScreen('score');
+  try { drawHole(); } catch (e) {}
+  holdThru = false;
 }
 function sideNet(ids, h, all) {
   const match = all || ids;
@@ -1468,6 +1718,7 @@ if (pressEl) pressEl.onclick = e => {
 };
 function holeVal(i) { return holeScores[i][holeNo] == null ? courseData().par[holeNo] : holeScores[i][holeNo]; }
 function rememberThru() {
+  if (holdThru) return;
   const i = playOrder().indexOf(holeNo);
   if (i > playedThru) playedThru = i;
 }
@@ -1593,19 +1844,20 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
   const shape = (i, h) => {
     const score = holeScores[i][h];
     if (score == null) return '';
-    if (score === 'X') return '<span class="xscore">X<sup>' + netDoubleBogey(i, h) + '</sup></span>';
-    const diff = score - courseData().par[h];
+    const n = viewNum(i, h);
+    if (score === 'X') return '<span class="xscore">X<sup>' + n + '</sup></span>';
+    const diff = n - courseData().par[h];
     let cls = '';
     if (diff === -1) cls = 'birdie';
     else if (diff <= -2) cls = 'eagle';
     else if (diff === 1) cls = 'bogey';
     else if (diff >= 2) cls = 'dblbogey';
-    return '<span class="shape ' + cls + '">' + score + '</span>';
+    return '<span class="shape ' + cls + '">' + n + '</span>';
   };
   const totalCell = (i, holes) => {
     let sum = 0, any = false, picked = false;
     holes.forEach(h => {
-      const v = countedScore(i, h);
+      const v = viewNum(i, h);
       if (v == null) return;
       sum += v;
       any = true;
@@ -1622,10 +1874,10 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
       const par = courseData().par[h];
       const cells = holePlayers.map((p, i) => {
         const score = holeScores[i][h];
-        if (score == null) return holeLeftBehind(h) ? '<td class="missing"></td>' : '<td></td>';
-        return '<td>' + shape(i, h) + '</td>';
+        if (score == null) return holeLeftBehind(h) ? '<td class="missing" data-hole="' + h + '"></td>' : '<td data-hole="' + h + '"></td>';
+        return '<td data-hole="' + h + '">' + shape(i, h) + '</td>';
       }).join('');
-      return '<tr class="' + (h === holeNo ? 'current' : '') + '"><td>' + (h+1) + '</td><td class="par">' + par + '</td>' + cells + '</tr>';
+      return '<tr data-hole="' + h + '" class="' + (h === holeNo ? 'current' : '') + '"><td data-hole="' + h + '">' + (h+1) + '</td><td class="par" data-hole="' + h + '">' + par + '</td>' + cells + '</tr>';
     }).join('');
     const tot = holePlayers.map((p, i) => totalCell(i, holes)).join('');
     const parTot = holes.reduce((n, h) => n + courseData().par[h], 0);
@@ -1637,7 +1889,10 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     const parTot = holes.reduce((n, h) => n + (courseData().par[h] || 0), 0);
     return '<table><tr><td class="tot">Total</td><td class="tot">' + parTot + '</td>' + tot + '</tr></table>';
   };
-  document.getElementById('card').innerHTML = sideTable(holesOfNine(0), '1st 9') + sideTable(holesOfNine(1), '2nd 9') + totalRow();
+  const boards = matchBoards();
+  document.getElementById('card').innerHTML = sideTable(holesOfNine(0), '1st 9') + matchTable(holesOfNine(0), boards) + sideTable(holesOfNine(1), '2nd 9') + matchTable(holesOfNine(1), boards) + totalRow();
+  paintMatchStrip(boards);
+  paintCardView();
   const paper = document.getElementById('paperCard');
   if (paper) {
     const pars = courseData().par;
@@ -1648,7 +1903,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
       let n = 0, any = false, picked = false;
       holes.forEach(h => {
         const g = holeScores[i] && holeScores[i][h];
-        const v = countedScore(i, h);
+        const v = viewNum(i, h);
         if (v == null) return;
         n += v;
         any = true;
@@ -1660,16 +1915,17 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
       const score = holeScores[i] && holeScores[i][h];
       const dots = strokeDots(holePlayers[i], h);
       const mark = dots ? '<span class="dots">' + dots + '</span>' : '';
-      if (score == null) return '<td' + (holeLeftBehind(h) ? ' class="missing"' : '') + '>' + mark + '</td>';
-      if (score === 'X') return '<td><span class="xscore">X<sup>' + netDoubleBogey(i, h) + '</sup></span>' + mark + '</td>';
-      return '<td>' + score + mark + '</td>';
+      const attr = ' data-hole="' + h + '"';
+      if (score == null) return '<td' + attr + (holeLeftBehind(h) ? ' class="missing"' : '') + '>' + mark + '</td>';
+      if (score === 'X') return '<td' + attr + '><span class="xscore">X<sup>' + viewNum(i, h) + '</sup></span>' + mark + '</td>';
+      return '<td' + attr + '>' + viewNum(i, h) + mark + '</td>';
     };
-    const head = '<tr><th class="lab"></th>' + front.map(h => '<th>' + (h + 1) + '</th>').join('') + '<th class="sum">Out</th>' + back.map(h => '<th>' + (h + 1) + '</th>').join('') + '<th class="sum">In</th><th class="sum">Tot</th></tr>';
+    const head = '<tr><th class="lab"></th>' + front.map(h => '<th data-hole="' + h + '">' + (h + 1) + '</th>').join('') + '<th class="sum">Out</th>' + back.map(h => '<th data-hole="' + h + '">' + (h + 1) + '</th>').join('') + '<th class="sum">In</th><th class="sum">Tot</th></tr>';
     const sumPar = holes => holes.reduce((n, h) => n + (pars[h] || 0), 0);
-    const parRow = '<tr><th class="lab">Par</th>' + front.map(h => '<td>' + pars[h] + '</td>').join('') + '<td class="sum">' + sumPar(front) + '</td>' + back.map(h => '<td>' + pars[h] + '</td>').join('') + '<td class="sum">' + sumPar(back) + '</td><td class="sum">' + sumPar(front.concat(back)) + '</td></tr>';
-    const siRow = '<tr><th class="lab">SI</th>' + front.map(h => '<td>' + (si[h] || '') + '</td>').join('') + '<td class="sum"></td>' + back.map(h => '<td>' + (si[h] || '') + '</td>').join('') + '<td class="sum"></td><td class="sum"></td></tr>';
+    const parRow = '<tr><th class="lab">Par</th>' + front.map(h => '<td data-hole="' + h + '">' + pars[h] + '</td>').join('') + '<td class="sum">' + sumPar(front) + '</td>' + back.map(h => '<td data-hole="' + h + '">' + pars[h] + '</td>').join('') + '<td class="sum">' + sumPar(back) + '</td><td class="sum">' + sumPar(front.concat(back)) + '</td></tr>';
+    const siRow = '<tr><th class="lab">SI</th>' + front.map(h => '<td data-hole="' + h + '">' + (si[h] || '') + '</td>').join('') + '<td class="sum"></td>' + back.map(h => '<td data-hole="' + h + '">' + (si[h] || '') + '</td>').join('') + '<td class="sum"></td><td class="sum"></td></tr>';
     const who = holePlayers.map((p, i) => '<tr><th class="lab">' + esc(p.id) + '</th>' + front.map(h => paperCell(i, h)).join('') + '<td class="sum">' + nineSum(i, front) + '</td>' + back.map(h => paperCell(i, h)).join('') + '<td class="sum">' + nineSum(i, back) + '</td><td class="sum">' + nineSum(i, front.concat(back)) + '</td></tr>').join('');
-    paper.innerHTML = '<table>' + head + parRow + siRow + who + '</table>';
+    paper.innerHTML = '<table>' + head + parRow + siRow + who + paperMatchRows(boards, front, back) + '</table>';
   }
   const review = document.getElementById('review');
   if (review) {
@@ -2350,6 +2606,23 @@ document.getElementById('tabbar').onclick = e => {
   }
   showScreen(name);
 };
+function onCardTap(e) {
+  if (!e.target.closest || e.target.closest('button')) return;
+  const cell = e.target.closest('[data-hole]');
+  if (!cell) return;
+  openHole(cell.dataset.hole);
+}
+const cardEl = document.getElementById('card');
+const paperEl = document.getElementById('paperCard');
+if (cardEl) cardEl.onclick = onCardTap;
+if (paperEl) paperEl.onclick = onCardTap;
+const cardViewBtn = document.getElementById('cardView');
+if (cardViewBtn) cardViewBtn.onclick = () => setCardView(cardView === 'net' ? 'gross' : 'net');
+const shareCardBtn = document.getElementById('shareCard');
+if (shareCardBtn) shareCardBtn.onclick = () => shareCard();
+const shareSettleBtn = document.getElementById('shareSettle');
+if (shareSettleBtn) shareSettleBtn.onclick = () => shareCard();
+paintCardView();
 initCourseSelect();
 syncStartButton();
 drawSaved();
