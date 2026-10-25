@@ -276,9 +276,19 @@ try {
   .file { padding:6px 10px; border:1px solid #c5d1c8; border-radius:8px; background:#fff; }
   .grid { display:grid; grid-template-columns:28px 18px 16px 52px 68px 52px 40px minmax(40px,1fr); align-items:center; gap:2px; margin:8px 0; min-width:0; }
   .grid > * { min-width:0; }
+  .grid > .who { grid-column:1; grid-row:1 / span 2; height:auto; align-self:stretch; }
+  .grid > .tee { grid-column:2; grid-row:1 / span 2; align-self:center; }
+  .grid > .dots { grid-column:3; grid-row:1 / span 2; align-self:center; text-align:center; }
+  .grid > .rels { grid-column:4 / 8; grid-row:1; display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:2px; }
+  .rels button { min-height:34px; min-width:0; padding:0 1px; font-size:11px; font-weight:750; line-height:1.05; white-space:nowrap; }
+  .grid > button.step.down { grid-column:4; grid-row:2; }
+  .grid > button.score { grid-column:5; grid-row:2; }
+  .grid > button.step.up { grid-column:6; grid-row:2; }
+  .grid > button.pick { grid-column:7; grid-row:2; }
+  .grid > .junkbtns { grid-column:8; grid-row:1 / span 2; align-self:center; }
   .junkbtns { display:flex; gap:4px; justify-content:flex-start; min-width:0; }
   .grid > button { box-sizing:border-box; width:100%; min-width:0; min-height:52px; padding:0; font-size:26px; font-weight:700; }
-  .grid > button.who { min-height:36px; height:36px; font-size:12px; font-weight:800; letter-spacing:-0.04em; line-height:1; }
+  .grid > button.who { min-height:36px; height:auto; align-self:stretch; font-size:12px; font-weight:800; letter-spacing:-0.04em; line-height:1; }
   .grid.on { background:#e7f3ec; border-radius:10px; box-shadow:inset 0 0 0 2px #1f6b45; }
   .grid > button.score { font-size:var(--score); line-height:1; min-height:60px; font-weight:750; }
   .junkbtns button { min-width:0; min-height:40px; padding:2px 4px; font-size:var(--text); font-weight:650; }
@@ -405,7 +415,7 @@ try {
     <div id="holeJump" class="hscroll"></div>
     <p id="postNote"></p>
     <p id="holeNote"></p>
-    <p>Tap the gross score, or + or − to change it, or X if the player picked up. The next player is ready after each score. Tap a name or a hole to jump.</p>
+    <p>Tap Birdie, Par, Bogey, or Double, or tap the gross score, or + or − for any other number, or X if the player picked up. The next player is ready after each score. Tap a name or a hole to jump.</p>
     <div class="card">
       <h2>Scores and junk</h2>
       <p>Birdies and eagles come from the gross score. A birdie pays one junk, an eagle two, and an albatross three. Tap Junk up to four times. On a par 3, tap KP for closest.</p>
@@ -2136,47 +2146,159 @@ function sharePlayerName(p) {
   const full = setup && String(setup.name || '').trim();
   return full || p.id;
 }
-function shareText() {
-  const thru = thruText();
-  const head = [currentCourse, roundDate, thru].filter(Boolean).join(' · ');
-  const lines = [head, ''];
-  const token = (i, h) => {
-    const g = holeScores[i] && holeScores[i][h];
-    if (g == null) return '';
-    if (g === 'X') return 'X(' + countedScore(i, h) + ')';
-    return String(g);
+function shareMeasurer() {
+  const probe = document.createElement('span');
+  probe.setAttribute('aria-hidden', 'true');
+  probe.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;white-space:pre;font:16px -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,sans-serif;';
+  (document.body || document.documentElement).appendChild(probe);
+  const measure = text => {
+    probe.textContent = text == null ? '' : String(text);
+    const rect = probe.getBoundingClientRect();
+    return rect && rect.width ? rect.width : 0;
   };
-  const sumOf = (i, holes) => {
-    let n = 0, any = false, picked = false;
+  measure.done = () => { if (probe.parentNode) probe.parentNode.removeChild(probe); };
+  return measure;
+}
+function shareText() {
+  const FIG = '\u2007';
+  const HAIR = '\u200a';
+  const measure = shareMeasurer();
+  try {
+  const thru = thruText();
+  const tees = [];
+  holePlayers.forEach(p => { if (p.tee && tees.indexOf(p.tee) < 0) tees.push(p.tee); });
+  const head = [currentCourse, tees.join(' / '), roundDate, thru].filter(Boolean).join(' · ');
+  const lines = [head, ''];
+  const cell = n => {
+    const s = String(n);
+    return s.length < 2 ? FIG + s : s;
+  };
+  const fit = (n, width) => {
+    let s = String(n);
+    while (s.length < width) s = FIG + s;
+    return s;
+  };
+  const digits = cells => cells.join(FIG);
+  const widthOf = text => {
+    const w = measure(text);
+    return w > 0 ? w : 0;
+  };
+  const padTo = (text, target) => {
+    if (!(target > 0)) return text;
+    let out = text;
+    let w = widthOf(out);
+    if (!(w > 0)) return text;
+    for (let n = 0; n < 40 && w + 0.35 < target; n++) {
+      const next = out + HAIR;
+      const nw = widthOf(next);
+      if (!(nw > w) || nw > target + 0.5) break;
+      out = next;
+      w = nw;
+    }
+    return out;
+  };
+  const indent = target => {
+    if (!(target > 0)) return '';
+    const figW = widthOf(FIG);
+    if (!(figW > 0)) return '';
+    let n = Math.max(0, Math.floor((target + 0.5) / figW));
+    let out = FIG.repeat(n);
+    let w = n ? widthOf(out) : 0;
+    while (n > 0 && w > target + 0.5) {
+      n -= 1;
+      out = FIG.repeat(n);
+      w = n ? widthOf(out) : 0;
+    }
+    for (let k = 0; k < 20 && w + 0.35 < target; k++) {
+      const next = out + HAIR;
+      const nw = widthOf(next);
+      if (!(nw > w) || nw > target + 0.5) break;
+      out = next;
+      w = nw;
+    }
+    return out;
+  };
+  const scoreCell = (i, h) => {
+    const g = holeScores[i] && holeScores[i][h];
+    if (g == null) return FIG + FIG;
+    const v = countedScore(i, h);
+    if (v == null) return FIG + FIG;
+    return cell(v);
+  };
+  const nineSum = (i, holes) => {
+    let n = 0, any = false;
     holes.forEach(h => {
       const v = countedScore(i, h);
       if (v == null) return;
       n += v;
       any = true;
-      if (holeScores[i][h] === 'X') picked = true;
     });
-    return { n: n, any: any, picked: picked };
+    return any ? n : null;
   };
-  const totalLine = (f, b) => {
-    const parts = [];
-    if (f.any) parts.push('Out ' + f.n);
-    if (b.any) parts.push('In ' + b.n);
-    const total = (f.any ? f.n : 0) + (b.any ? b.n : 0);
-    const mark = (f.picked || b.picked) ? 'x' : '';
-    if (parts.length === 1) return parts[0] + ' = ' + total + mark;
-    return parts.join('  ') + '  = ' + total + mark;
+  const addNine = seg => {
+    const holes = holesOfNine(seg);
+    if (!holes.length) return;
+    const sums = holePlayers.map((p, i) => nineSum(i, holes));
+    let width = 2;
+    sums.forEach(n => { if (n != null) width = Math.max(width, String(Math.round(n)).length); });
+    const prefixes = holePlayers.map((p, i) => p.id + ' = ' + (sums[i] == null ? FIG.repeat(width) : fit(sums[i], width)));
+    let target = 0;
+    prefixes.forEach(text => { target = Math.max(target, widthOf(text)); });
+    const lead = target > 0 ? indent(target) + FIG : '';
+    lines.push(nineHead(seg));
+    lines.push(lead + digits(holes.map(h => cell(cardHoleLabel(h)))));
+    lines.push(lead + digits(holes.map(h => cell(courseData().par[h] || 0))));
+    holePlayers.forEach((p, i) => {
+      lines.push(padTo(prefixes[i], target) + FIG + digits(holes.map(h => scoreCell(i, h))));
+    });
+    lines.push('');
+  };
+  addNine(0);
+  addNine(1);
+  const gross18 = holePlayers.map((p, i) => {
+    const a = nineSum(i, holesOfNine(0));
+    const b = nineSum(i, holesOfNine(1));
+    if (a == null && b == null) return null;
+    return (a || 0) + (b || 0);
+  });
+  const numText = n => {
+    const r = Math.round(Number(n) * 10) / 10;
+    if (Math.abs(r - Math.round(r)) < 0.05) return String(Math.round(r));
+    return r.toFixed(1);
   };
   holePlayers.forEach((p, i) => {
-    if (i) lines.push('');
-    lines.push(sharePlayerName(p) + ' (' + (hcpLabel(p) || '0') + '):');
-    const front = holesOfNine(0), back = holesOfNine(1);
-    const f = sumOf(i, front), b = sumOf(i, back);
-    const fScores = front.map(h => token(i, h)).filter(Boolean);
-    const bScores = back.map(h => token(i, h)).filter(Boolean);
-    if (fScores.length) lines.push(fScores.join(' '));
-    if (bScores.length) lines.push(bScores.join(' '));
-    if (f.any || b.any) lines.push(totalLine(f, b));
+    if (gross18[i] == null) return;
+    lines.push(p.id);
+    lines.push('18 = ' + numText(gross18[i]));
+    lines.push('Total = ' + numText(gross18[i] - courseHandicap(p)));
+    lines.push('');
   });
+  const birds = [];
+  const strokes = [];
+  const picked = [];
+  holePlayers.forEach((p, i) => {
+    const birdH = [];
+    const up = [];
+    const miss = [];
+    const xs = [];
+    playOrder().forEach(h => {
+      const g = holeScores[i] && holeScores[i][h];
+      if (g === 'X') xs.push(cardHoleLabel(h));
+      if (typeof g === 'number' && g === (courseData().par[h] || 0) - 1) birdH.push(cardHoleLabel(h));
+      if (ownStrokes(i, h) > 0) up.push(cardHoleLabel(h));
+      else miss.push(cardHoleLabel(h));
+    });
+    if (birdH.length) birds.push(p.id + ' ' + birdH.join(', '));
+    if (up.length) {
+      if (!miss.length) strokes.push(p.id + ' all');
+      else if (miss.length < up.length && miss.length <= 6) strokes.push(p.id + ' all but ' + miss.join(', '));
+      else strokes.push(p.id + ' ' + up.join(', '));
+    }
+    if (xs.length) picked.push(p.id + ' ' + xs.join(', '));
+  });
+  if (birds.length) lines.push('Birdies', ...birds, '');
+  if (strokes.length) lines.push('Strokes', ...strokes, '');
+  if (picked.length) lines.push('Picked up', ...picked, '');
   const boards = matchBoards();
   if (boards.length) {
     lines.push('');
@@ -2202,6 +2324,9 @@ function shareText() {
   const pays = [...document.querySelectorAll('#settle .settleup')].map(p => p.textContent.trim()).filter(Boolean);
   lines.push(pays.length ? pays.join('\n') : 'Even');
   return lines.join('\n');
+  } finally {
+    measure.done();
+  }
 }
 function showToast(msg) {
   let el = document.getElementById('toast');
@@ -2870,7 +2995,15 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     const shown = unset ? '' : (v === 'X' ? 'X' : v);
     const aria = unset ? ' aria-label="Par ' + courseData().par[holeNo] + '"' : '';
     const scoreCls = unset ? (holeLeftBehind(holeNo) ? 'missing' : 'open') : 'set';
-    return '<div class="grid' + (i === scoreCursor ? ' on' : '') + '"><button type="button" class="who" data-who="' + i + '" aria-label="Select ' + esc(p.id) + '">' + esc(p.id) + '</button><span class="tee" title="' + esc(p.tee) + '">' + esc(teeCode(p.tee)) + '</span><span>' + strokeMark(p) + '</span><button class="step" data-i="' + i + '" data-d="-1" aria-label="Lower score">−</button><button data-i="' + i + '" data-set="1" class="score ' + scoreCls + '"' + aria + '>' + shown + '</button><button class="step" data-i="' + i + '" data-d="1" aria-label="Raise score">+</button><button data-i="' + i + '" data-x="1">X</button><span class="junkbtns">' + junkBtns + '</span></div>';
+    const parNow = courseData().par[holeNo];
+    const relOn = d => (!unset && v !== 'X' && Number(v) === parNow + d) ? ' on' : '';
+    const rels = '<div class="rels">'
+      + '<button type="button" data-i="' + i + '" data-rel="-1" class="' + relOn(-1) + '">Birdie</button>'
+      + '<button type="button" data-i="' + i + '" data-rel="0" class="' + relOn(0) + '">Par</button>'
+      + '<button type="button" data-i="' + i + '" data-rel="1" class="' + relOn(1) + '">Bogey</button>'
+      + '<button type="button" data-i="' + i + '" data-rel="2" class="' + relOn(2) + '">Double</button>'
+      + '</div>';
+    return '<div class="grid' + (i === scoreCursor ? ' on' : '') + '"><button type="button" class="who" data-who="' + i + '" aria-label="Select ' + esc(p.id) + '">' + esc(p.id) + '</button><span class="tee" title="' + esc(p.tee) + '">' + esc(teeCode(p.tee)) + '</span><span class="dots">' + strokeMark(p) + '</span>' + rels + '<button type="button" class="step down" data-i="' + i + '" data-d="-1" aria-label="Lower score">−</button><button type="button" data-i="' + i + '" data-set="1" class="score ' + scoreCls + '"' + aria + '>' + shown + '</button><button type="button" class="step up" data-i="' + i + '" data-d="1" aria-label="Raise score">+</button><button type="button" class="pick" data-i="' + i + '" data-x="1">X</button><span class="junkbtns">' + junkBtns + '</span></div>';
   }).join('');
   paintHoleJump();
   paintUndo();
@@ -3217,6 +3350,7 @@ document.getElementById('scores').onclick = e => {
   }
   pushScoreHistory();
   if (btn.dataset.x) holeScores[i][holeNo] = 'X';
+  else if (btn.dataset.rel != null) holeScores[i][holeNo] = Math.max(1, (Number(courseData().par[holeNo]) || 4) + Number(btn.dataset.rel));
   else if (btn.dataset.set) holeScores[i][holeNo] = holeVal(i);
   else if (btn.dataset.d) holeScores[i][holeNo] = Math.max(1, (holeVal(i) === 'X' ? courseData().par[holeNo] : Number(holeVal(i))) + Number(btn.dataset.d));
   scoreCursor = i;
