@@ -71,11 +71,13 @@ try {
   #card th.who { color:#1c2b22; font-weight:800; font-size:12px !important; line-height:1.05; letter-spacing:0; }
   #paperCard table.scorecard td, #paperCard table.scorecard th { min-width:0; }
   #card td.hno, #card th.hno { white-space:nowrap; padding-left:2px; padding-right:2px; }
-  #card th.mlab, #card td.mcell { font-size:min(var(--card), 15px) !important; line-height:1.15; border-left:2px solid #c5d4c8; padding:4px 2px; white-space:nowrap; }
-  #card th.mlab { font-size:11px !important; font-weight:750; white-space:normal; }
-  #card th.mlab .opp { display:block; font-weight:650; color:#5e6f64; }
-  #card td.mcell .mbit { display:flex; flex-direction:column; align-items:center; margin-top:2px; }
-  #card td.mcell .mbit i { font-style:normal; font-size:10px; font-weight:650; color:#5e6f64; line-height:1.1; }
+  #card th.mlab, #card td.mcell { font-size:min(var(--card), 15px) !important; line-height:1.15; border-left:2px solid #c5d4c8; padding:4px 2px; }
+  #card th.mlab { font-size:12px !important; font-weight:750; line-height:1.05; white-space:normal; overflow:visible; padding:3px 1px; }
+  #card th.mlab .opp { display:block; font-weight:650; color:#5e6f64; white-space:nowrap; }
+  #card td.mcell { white-space:normal; }
+  #card td.mcell .marrow, #card td.mcell .pline { display:block; white-space:nowrap; }
+  #card td.mcell .pline { margin-top:1px; font-size:10px !important; font-weight:650; line-height:1.15; color:#3d4f44; }
+  #card td.mcell .pline b { font-size:10px !important; }
   #card .playoffhead, #paperCard .playoffhead { margin:10px 0 4px; font-weight:750; color:#1c2b22; }
   #card table.playoffcard, #paperCard table.playoffcard { width:100%; table-layout:fixed; margin-top:0; }
   #standing .playoffhead, #cardStanding .playoffhead { margin:10px 0 4px; font-weight:750; color:#1c2b22; }
@@ -119,6 +121,9 @@ try {
   .card-tools h2 { margin:0; flex:1; }
   .card-tools button { min-height:32px; font-size:var(--text); padding:2px 8px; }
   .view-note { margin:0 0 8px; font-size:var(--text); }
+  #matchPick { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 8px; max-width:100%; }
+  #matchPick[hidden] { display:none; }
+  #matchPick button { box-sizing:border-box; flex:0 1 auto; max-width:100%; min-height:36px; padding:4px 8px; font-size:var(--text); font-weight:700; line-height:1.15; white-space:normal; text-align:center; }
   .match-strip { position:sticky; top:calc(46px + env(safe-area-inset-top)); z-index:15; margin:0 0 8px; padding:6px 0 5px; background:#e7efe6; font-size:var(--lead); line-height:1.25; max-width:100%; overflow-x:auto; overflow-y:hidden; white-space:nowrap; }
   .match-strip[hidden] { display:none; }
   .match-strip .bit { display:inline-block; white-space:nowrap; margin:0 14px 0 0; }
@@ -127,6 +132,7 @@ try {
   #toast.on { display:block; }
   @media (orientation: landscape) {
     #screen-card #card { display:none; }
+    #screen-card #matchPick { display:none; }
     #screen-card #paperCard { display:block; }
   }
   #bets select[data-cap] { min-width:5.6em; font-size:var(--text); }
@@ -298,7 +304,7 @@ try {
   <section id="screen-card" class="screen">
     <p class="empty-round">Start scoring from Setup.</p>
     <div class="round-body">
-      <div class="card"><div class="card-tools"><h2>Card</h2><button type="button" id="cardView" aria-pressed="false">Gross | Net</button><button type="button" id="shareCard">Share</button></div><p id="cardViewNote" class="view-note">Gross scores</p><div id="card" class="hscroll"></div><div id="paperCard" class="hscroll"></div></div>
+      <div class="card"><div class="card-tools"><h2>Card</h2><button type="button" id="cardView" aria-pressed="false">Gross | Net</button><button type="button" id="shareCard">Share</button></div><p id="cardViewNote" class="view-note">Gross scores</p><div id="matchPick" hidden></div><div id="card" class="hscroll"></div><div id="paperCard" class="hscroll"></div></div>
       <p><button type="button" id="reviewToggle">Group review</button></p>
       <div class="card" id="reviewCard" hidden><h2>Group review</h2><div id="review" class="hscroll"></div></div>
     </div>
@@ -386,6 +392,7 @@ let roundId = '';
 let suppressAutoSave = false;
 let strokePct = 100;
 let cardView = 'gross';
+let cardMatchName = '';
 let holdThru = false;
 try { if (localStorage.getItem('golf-card-view') === 'net') cardView = 'net'; } catch (e) {}
 // Box 2v2 matches keep full strokes. A later setting can change this number. There is no control for it on the setup screen.
@@ -734,6 +741,7 @@ document.getElementById('newRound').onclick = () => {
   ninesPlayed = null;
   playoffs = {};
   roundId = '';
+  cardMatchName = '';
   try { localStorage.removeItem('golf-card'); localStorage.removeItem('round-setup'); } catch (e) {}
   showHandicapNote(false);
   draw();
@@ -941,7 +949,8 @@ function persistSetup() {
       ninesPlayed: playedPair().map(n => n.id),
       roundId: roundId,
       defaults: defaults,
-      strokePct: strokePct
+      strokePct: strokePct,
+      cardMatch: cardMatchName
     }));
   } catch (e) {}
 }
@@ -1385,9 +1394,7 @@ function playoffCardHtml(boards) {
     if (!rows.length) return '';
     const cols = '<colgroup><col class="chol"><col class="hgap"><col class="cpar">' + holePlayers.map(() => '<col class="cplayer">').join('') + '<col class="cgap"><col class="mmatch"></colgroup>';
     const partsHead = String(board.label || '').split(' v ');
-    const matchHead = list.length > 1
-      ? '<th class="mlab">Match</th>'
-      : '<th class="mlab">' + esc(partsHead[0] || 'Match') + '<span class="opp">' + esc(partsHead[1] || '') + '</span></th>';
+    const matchHead = '<th class="mlab">' + esc(partsHead[0] || 'Match') + '<span class="opp">' + esc(partsHead[1] || '') + '</span></th>';
     const head = '<tr><th class="hno" aria-label="Hole">#</th><th class="hgap"></th><th class="parh">Par</th>' + holePlayers.map(p => cardWhoHtml(p)).join('') + '<th class="cgap"></th>' + matchHead + '</tr>';
     const body = rows.map(row => {
       const par = courseData().par[row.h];
@@ -1542,6 +1549,37 @@ function cardMatchLabel(name) {
   const sides = sidesOf(name);
   return teamTag(sides.a) + ' v ' + teamTag(sides.b);
 }
+function cardMatchList() {
+  let names = [];
+  try {
+    const m = matchNames();
+    names = m.team.concat(m.side);
+  } catch (e) { return []; }
+  return names.filter(name => {
+    const saved = amountFor(name);
+    return !saved || saved.on !== false;
+  });
+}
+function chosenCardMatch(names) {
+  const list = names || cardMatchList();
+  if (list.indexOf(cardMatchName) >= 0) return cardMatchName;
+  let team = [];
+  try { team = matchNames().team.filter(n => list.indexOf(n) >= 0); } catch (e) {}
+  cardMatchName = team[0] || list[0] || '';
+  return cardMatchName;
+}
+function paintMatchPick(names) {
+  const el = document.getElementById('matchPick');
+  if (!el) return;
+  const list = names || [];
+  const chosen = chosenCardMatch(list);
+  if (list.length < 2) { el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  el.innerHTML = list.map(name => {
+    const on = name === chosen;
+    return '<button type="button" data-match="' + esc(name) + '" class="' + (on ? 'on' : '') + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(cardMatchLabel(name)) + '</button>';
+  }).join('');
+}
 function activeMatchNames() {
   let names = [];
   try {
@@ -1620,7 +1658,6 @@ function matchCell(h, leg, starts, lastH) {
 }
 function portraitMatchLines(h, boards) {
   if (!boards.length) return '';
-  const many = boards.length > 1;
   const lines = [];
   boards.forEach(board => {
     let score = null;
@@ -1630,15 +1667,12 @@ function portraitMatchLines(h, boards) {
       const nine = board.sim.legs.find(l => l.kind === 'nine' && l.cells[h] != null);
       if (nine) score = nine.cells[h];
     }
-    const presses = (board.sim && board.sim.legs || []).filter(l => l.kind === 'press');
+    const presses = (board.sim && board.sim.legs || []).filter(l => l.kind === 'press' && pressAmt(board.sim.bet, l.from));
     const started = presses.some(leg => leg.from - 1 === h);
-    if (score != null) {
-      const mark = arrowMark(score) + (started ? '<sup class="pmark">P</sup>' : '');
-      lines.push(many ? '<span class="mbit"><i>' + esc(board.label) + '</i>' + mark + '</span>' : mark);
-    }
+    if (score != null) lines.push('<span class="marrow">' + arrowMark(score) + (started ? '<sup class="pmark">P</sup>' : '') + '</span>');
     presses.forEach(leg => {
       if (leg.cells[h] == null) return;
-      lines.push('<span class="mbit"><i>P' + leg.from + '</i>' + arrowMark(leg.cells[h]) + '</span>');
+      lines.push('<span class="pline">P' + leg.from + ' ' + arrowMark(leg.cells[h]) + '</span>');
     });
   });
   return lines.join('');
@@ -2468,15 +2502,16 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     return '<td class="tot">' + (any ? sum + (picked ? '<sup>x</sup>' : '') : '') + '</td>';
   };
   const boards = matchBoards();
-  const matchCol = boards.length ? '<col class="mmatch">' : '';
+  const pickNames = cardMatchList();
+  paintMatchPick(pickNames);
+  const shown = boards.filter(b => b.name === cardMatchName);
+  const column = shown.length ? shown : [];
+  const matchCol = column.length ? '<col class="mmatch">' : '';
   const colgroup = '<colgroup><col class="chol"><col class="hgap"><col class="cpar">' + holePlayers.map(() => '<col class="cplayer">').join('') + '<col class="cgap">' + matchCol + '</colgroup>';
   const matchHead = () => {
-    if (!boards.length) return '';
-    if (boards.length === 1) {
-      const parts = String(boards[0].label || '').split(' v ');
-      return '<th class="mlab">' + esc(parts[0] || 'Match') + '<span class="opp">' + esc(parts[1] || '') + '</span></th>';
-    }
-    return '<th class="mlab">Match</th>';
+    if (!column.length) return '';
+    const parts = String(column[0].label || '').split(' v ');
+    return '<th class="mlab">' + esc(parts[0] || '') + '<span class="opp">' + esc(parts[1] || '') + '</span></th>';
   };
   const sideTable = (holes, label) => {
     const head = '<tr><th class="hno" aria-label="Hole">#</th><th class="hgap"></th><th class="parh">Par</th>' + holePlayers.map(p => cardWhoHtml(p)).join('') + '<th class="cgap"></th>' + matchHead() + '</tr>';
@@ -2487,24 +2522,24 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
         if (score == null) return holeLeftBehind(h) ? '<td class="missing" data-hole="' + h + '"></td>' : '<td data-hole="' + h + '"></td>';
         return '<td data-hole="' + h + '">' + shape(i, h) + '</td>';
       }).join('');
-      const status = portraitMatchLines(h, boards);
-      const matchTd = boards.length ? '<td class="mcell" data-hole="' + h + '">' + status + '</td>' : '';
+      const status = portraitMatchLines(h, column);
+      const matchTd = column.length ? '<td class="mcell" data-hole="' + h + '">' + status + '</td>' : '';
       return '<tr data-hole="' + h + '" class="' + (h === holeNo ? 'current' : '') + '"><td class="hno" data-hole="' + h + '">' + (h+1) + '</td><td class="hgap"></td><td class="par" data-hole="' + h + '">' + par + '</td>' + cells + '<td class="cgap"></td>' + matchTd + '</tr>';
     }).join('');
     const tot = holePlayers.map((p, i) => totalCell(i, holes)).join('');
     const parTot = holes.reduce((n, h) => n + courseData().par[h], 0);
-    const matchTot = boards.length ? '<td class="tot mcell">' + portraitMatchFinal(holes, boards) + '</td>' : '';
+    const matchTot = column.length ? '<td class="tot mcell">' + portraitMatchFinal(holes, column) + '</td>' : '';
     return '<table class="scorecard">' + colgroup + head + body + '<tr class="totrow"><td class="tot">' + label + '</td><td class="tot hgap"></td><td class="tot">' + parTot + '</td>' + tot + '<td class="tot cgap"></td>' + matchTot + '</tr></table>';
   };
   const totalRow = () => {
     const holes = playedHoles();
     const tot = holePlayers.map((p, i) => totalCell(i, holes)).join('');
     const parTot = holes.reduce((n, h) => n + (courseData().par[h] || 0), 0);
-    const matchTot = boards.length ? '<td class="tot mcell">' + portraitMatchFinal(holes, boards) + '</td>' : '';
+    const matchTot = column.length ? '<td class="tot mcell">' + portraitMatchFinal(holes, column) + '</td>' : '';
     return '<table class="scorecard">' + colgroup + '<tr class="totrow"><td class="tot">Total</td><td class="tot hgap"></td><td class="tot">' + parTot + '</td>' + tot + '<td class="tot cgap"></td>' + matchTot + '</tr></table>';
   };
   const gap = '<div class="card-gap"></div>';
-  document.getElementById('card').innerHTML = sideTable(holesOfNine(0), '1st 9') + gap + sideTable(holesOfNine(1), '2nd 9') + gap + totalRow() + playoffCardHtml(boards);
+  document.getElementById('card').innerHTML = sideTable(holesOfNine(0), '1st 9') + gap + sideTable(holesOfNine(1), '2nd 9') + gap + totalRow() + playoffCardHtml(column);
   paintMatchStrip(boards);
   paintCardView();
   const paper = document.getElementById('paperCard');
@@ -2718,7 +2753,8 @@ function saveCard() {
       roundId: roundId,
       course: currentCourse,
       roundDate: roundDate,
-      playoffs: playoffs
+      playoffs: playoffs,
+      cardMatch: cardMatchName
     }));
   } catch (e) {}
 }
@@ -2893,6 +2929,7 @@ function loadSavedSetup() {
     if (setup.roundId) roundId = setup.roundId;
     if (setup.defaults) applyDefaultFields(setup.defaults);
     if (setup.strokePct != null) strokePct = Number(setup.strokePct);
+    if (setup.cardMatch) cardMatchName = setup.cardMatch;
   }
   if (!cardPlayers) { syncPlayedNines(); return; }
   const formIds = players.filter(p => p.initials).map(p => String(p.initials).toUpperCase()).join();
@@ -2926,6 +2963,7 @@ function loadSavedSetup() {
   if (card.roundId) roundId = card.roundId;
   if (card.roundDate) roundDate = card.roundDate;
   playoffs = card.playoffs && typeof card.playoffs === 'object' ? card.playoffs : {};
+  if (card.cardMatch) cardMatchName = card.cardMatch;
   syncPlayedNines();
   padCard();
 }
@@ -2962,7 +3000,8 @@ function snapshot(isAuto) {
     playoffs: playoffs,
     course: currentCourse,
     when: day + 'T12:00:00',
-    auto: isAuto === true
+    auto: isAuto === true,
+    cardMatch: cardMatchName
   };
 }
 function findAutoSlot(list, snap) {
@@ -3065,6 +3104,7 @@ holePlayers = r.players || [];
     if (r.when) { roundDate = r.when.slice(0, 10); const d = document.getElementById('roundDate'); if (d) d.value = roundDate; }
     amounts = Object.assign({}, r.amounts || {});
     playoffs = r.playoffs && typeof r.playoffs === 'object' ? r.playoffs : {};
+    cardMatchName = r.cardMatch || '';
     holePlayers.forEach(p => { if (p && !courseData().tees.includes(p.tee)) p.tee = validTee(p.tee); });
     roundId = (r.id && r.auto !== false) ? r.id : (r.auto === false ? newRoundId() : '');
     players = holePlayers.map(p => {
@@ -3282,6 +3322,13 @@ const cardEl = document.getElementById('card');
 const paperEl = document.getElementById('paperCard');
 if (cardEl) cardEl.onclick = onCardTap;
 if (paperEl) paperEl.onclick = onCardTap;
+const matchPickEl = document.getElementById('matchPick');
+if (matchPickEl) matchPickEl.onclick = e => {
+  const btn = e.target.closest('button[data-match]');
+  if (!btn || !btn.dataset.match || btn.dataset.match === cardMatchName) return;
+  cardMatchName = btn.dataset.match;
+  try { drawHole(); } catch (err) {}
+};
 const cardViewBtn = document.getElementById('cardView');
 if (cardViewBtn) cardViewBtn.onclick = () => setCardView(cardView === 'net' ? 'gross' : 'net');
 const shareCardBtn = document.getElementById('shareCard');
