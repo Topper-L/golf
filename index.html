@@ -298,6 +298,9 @@ try {
   #holeNote { color:#8a5a00; font-weight:600; }
   #holeNote:empty, #postNote:empty { display:none; }
   #postNote { color:#8a5a00; font-weight:700; margin:0 0 8px; }
+  #postReady { display:none; width:100%; box-sizing:border-box; margin-top:10px; min-height:52px; font-size:18px; font-weight:800; }
+  #postReady.on { display:block; }
+  #post.ready { flex:1 1 100%; min-height:56px; font-size:18px; box-shadow:0 0 0 3px #b7e0c8; }
   .stop-note { margin:0 0 8px; font-weight:750; color:#8a5a00; }
   .quit-panel { margin:8px 0 12px; padding:12px; background:#fff; border:1px solid #c5d1c8; border-radius:12px; }
   .quit-panel h2 { margin:0 0 6px; }
@@ -415,12 +418,13 @@ try {
     <div id="holeJump" class="hscroll"></div>
     <p id="postNote"></p>
     <p id="holeNote"></p>
-    <p>Tap Birdie, Par, Bogey, or Double, or tap the gross score, or + or − for any other number, or X if the player picked up. The next player is ready after each score. Tap a name or a hole to jump.</p>
+    <p>Tap Birdie, Par, Bogey, or Double, or the score, or X. That moves to the next player and stays on this hole. + and − only change the number. Press Next hole when everyone has a score.</p>
     <div class="card">
       <h2>Scores and junk</h2>
       <p>Birdies and eagles come from the gross score. A birdie pays one junk, an eagle two, and an albatross three. Tap Junk up to four times. On a par 3, tap KP for closest.</p>
       <p id="kpTip" class="note"></p><div id="scores"></div>
       <div id="holeJunk"></div>
+      <button type="button" id="postReady" class="primary">Next hole</button>
     </div>
     <p class="actions"><button type="button" id="back">Back a hole</button> <button type="button" id="post" class="primary">Next hole</button> <button type="button" id="clearHole">Clear hole</button> <button type="button" id="toSetup">Back to setup</button></p>
     <p id="scoreStop" class="stop-note" hidden></p>
@@ -3007,6 +3011,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
   }).join('');
   paintHoleJump();
   paintUndo();
+  paintNextHole();
   document.getElementById('holeJunk').innerHTML = holeBirdieLabel();
   const shape = (i, h) => {
     const score = holeScores[i][h];
@@ -3349,10 +3354,14 @@ document.getElementById('scores').onclick = e => {
     return;
   }
   pushScoreHistory();
+  if (btn.dataset.d) {
+    holeScores[i][holeNo] = Math.max(1, (holeVal(i) === 'X' ? courseData().par[holeNo] : Number(holeVal(i))) + Number(btn.dataset.d));
+    drawHole();
+    return;
+  }
   if (btn.dataset.x) holeScores[i][holeNo] = 'X';
   else if (btn.dataset.rel != null) holeScores[i][holeNo] = Math.max(1, (Number(courseData().par[holeNo]) || 4) + Number(btn.dataset.rel));
   else if (btn.dataset.set) holeScores[i][holeNo] = holeVal(i);
-  else if (btn.dataset.d) holeScores[i][holeNo] = Math.max(1, (holeVal(i) === 'X' ? courseData().par[holeNo] : Number(holeVal(i))) + Number(btn.dataset.d));
   scoreCursor = i;
   advanceScore();
   drawHole();
@@ -3393,12 +3402,15 @@ function stepHole(dir) {
 function missingNames(h) {
   return holePlayers.filter((p, i) => !holeScores[i] || holeScores[i][h] == null).map(p => p.id);
 }
-document.getElementById('post').onclick = () => {
+function goNextHole() {
   const names = missingNames(holeNo);
   const note = document.getElementById('postNote');
   if (note) note.textContent = names.length ? names.join(', ') + ': no score on ' + (holeNo + 1) : '';
   stepHole(1);
-};
+}
+document.getElementById('post').onclick = () => goNextHole();
+const postReadyBtn = document.getElementById('postReady');
+if (postReadyBtn) postReadyBtn.onclick = () => goNextHole();
 function clearPressesFrom(hole1) {
   Object.keys(amounts).forEach(k => {
     const bet = amounts[k];
@@ -4429,17 +4441,22 @@ function resumeStoppedRound() {
   quitChoice = '';
   drawHole();
 }
+function holeComplete(h) {
+  const hole = h == null ? holeNo : h;
+  return holePlayers.length > 0 && holePlayers.every((p, i) => holeScores[i] && holeScores[i][hole] != null);
+}
+function paintNextHole() {
+  const ready = holeComplete();
+  const post = document.getElementById('post');
+  const banner = document.getElementById('postReady');
+  if (post) post.classList.toggle('ready', ready);
+  if (banner) banner.classList.toggle('on', ready);
+}
 function advanceScore() {
   const n = holePlayers.length;
   if (!n) return;
   if (scoreCursor < 0 || scoreCursor >= n) scoreCursor = 0;
-  if (scoreCursor < n - 1) { scoreCursor += 1; return; }
-  const order = playOrder();
-  const at = order.indexOf(holeNo);
-  if (at >= 0 && at + 1 < order.length) {
-    holeNo = order[at + 1];
-    scoreCursor = 0;
-  }
+  if (scoreCursor < n - 1) scoreCursor += 1;
 }
 function paintHoleJump() {
   const el = document.getElementById('holeJump');
