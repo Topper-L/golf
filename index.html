@@ -38,6 +38,7 @@ try {
   .fontctl { display:flex; align-items:center; gap:4px; flex:none; }
   .fontctl button { box-sizing:border-box; flex:none; width:44px; min-width:44px; padding:4px 0; text-align:center; font-weight:700; background:#fff; }
   .wrap { max-width:920px; margin:0 auto; padding:12px 16px 8px; }
+  @media (max-width:389px) { .wrap { padding-left:10px; padding-right:10px; } }
   .screen { display:none; }
   .screen.on { display:block; }
   .tabbar { position:fixed; left:0; right:0; bottom:0; z-index:20; display:flex; gap:6px; background:#e7efe6; border-top:1px solid #d5e0d4; padding:6px 8px calc(6px + env(safe-area-inset-bottom)); }
@@ -274,30 +275,31 @@ try {
   .file { display:inline-block; }
   .file input { display:none; }
   .file { padding:6px 10px; border:1px solid #c5d1c8; border-radius:8px; background:#fff; }
-  .grid { display:grid; grid-template-columns:28px 18px 16px 52px 68px 52px 40px minmax(40px,1fr); align-items:center; gap:2px; margin:8px 0; min-width:0; }
+  .grid { display:grid; grid-template-columns:28px 18px 16px 52px 68px 52px 40px minmax(40px,1fr); align-items:stretch; gap:2px; margin:8px 0; min-width:0; }
   .grid > * { min-width:0; }
-  .grid > .who { grid-column:1; grid-row:1 / span 2; height:auto; align-self:stretch; }
-  .grid > .tee { grid-column:2; grid-row:1 / span 2; align-self:center; }
-  .grid > .dots { grid-column:3; grid-row:1 / span 2; align-self:center; text-align:center; }
-  .grid > .rels { grid-column:4 / 8; grid-row:1; display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:2px; }
+  .grid > .who { grid-column:1; align-self:stretch; }
+  .grid > .tee { grid-column:2; align-self:center; }
+  .grid > .dots { grid-column:3; align-self:center; text-align:center; }
+  .grid > .scorecol { grid-column:4 / 8; display:flex; flex-direction:column; gap:2px; min-width:0; align-self:center; }
+  .rels { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:2px; }
   .rels button { min-height:34px; min-width:0; padding:0 1px; font-size:11px; font-weight:750; line-height:1.05; white-space:nowrap; }
-  .grid > button.step.down { grid-column:4; grid-row:2; }
-  .grid > button.score { grid-column:5; grid-row:2; }
-  .grid > button.step.up { grid-column:6; grid-row:2; }
-  .grid > button.pick { grid-column:7; grid-row:2; }
-  .grid > .junkbtns { grid-column:8; grid-row:1 / span 2; align-self:center; }
-  .junkbtns { display:flex; gap:4px; justify-content:flex-start; min-width:0; }
-  .grid > button { box-sizing:border-box; width:100%; min-width:0; min-height:52px; padding:0; font-size:26px; font-weight:700; }
-  .grid > button.who { min-height:36px; height:auto; align-self:stretch; font-size:12px; font-weight:800; letter-spacing:-0.04em; line-height:1; }
-  .grid.on { background:#e7f3ec; border-radius:10px; box-shadow:inset 0 0 0 2px #1f6b45; }
-  .grid > button.score { font-size:var(--score); line-height:1; min-height:60px; font-weight:750; }
-  .junkbtns button { min-width:0; min-height:40px; padding:2px 4px; font-size:var(--text); font-weight:650; }
+  .steps { display:grid; grid-template-columns:52px 68px 52px 40px; gap:2px; min-width:0; }
+  .grid > .junkbtns { grid-column:8; align-self:center; }
+  .junkbtns { display:flex; gap:4px; justify-content:flex-start; min-width:0; max-width:100%; overflow:hidden; }
+  .steps > button { box-sizing:border-box; width:100%; min-width:0; min-height:52px; padding:0; font-size:26px; font-weight:700; }
+  .grid > button.who { box-sizing:border-box; width:100%; min-width:0; min-height:36px; height:auto; align-self:stretch; padding:0; font-size:12px; font-weight:800; letter-spacing:-0.04em; line-height:1; }
+  .grid.on { background:#e7f3ec; border-radius:10px; box-shadow:0 0 0 2px #1f6b45; }
+  .steps > button.score { font-size:var(--score); line-height:1; min-height:52px; font-weight:750; }
+  .junkbtns button { min-width:0; max-width:100%; overflow:hidden; min-height:40px; padding:2px 4px; font-size:var(--text); font-weight:650; }
   .score.open { color:#9aa89e; }
   .score.set { color:#1f6b45; }
   .score.missing { background:#fff4e5; color:#8a5a00; box-shadow:inset 0 0 0 2px #e0a84a; }
   #holeNote { color:#8a5a00; font-weight:600; }
   #holeNote:empty, #postNote:empty { display:none; }
   #postNote { color:#8a5a00; font-weight:700; margin:0 0 8px; }
+  #postReady { display:none; width:100%; box-sizing:border-box; margin-top:10px; min-height:52px; font-size:18px; font-weight:800; }
+  #postReady.on { display:block; }
+  #post.ready { flex:1 1 100%; min-height:56px; font-size:18px; box-shadow:0 0 0 3px #b7e0c8; }
   .stop-note { margin:0 0 8px; font-weight:750; color:#8a5a00; }
   .quit-panel { margin:8px 0 12px; padding:12px; background:#fff; border:1px solid #c5d1c8; border-radius:12px; }
   .quit-panel h2 { margin:0 0 6px; }
@@ -415,12 +417,13 @@ try {
     <div id="holeJump" class="hscroll"></div>
     <p id="postNote"></p>
     <p id="holeNote"></p>
-    <p>Tap Birdie, Par, Bogey, or Double, or tap the gross score, or + or − for any other number, or X if the player picked up. The next player is ready after each score. Tap a name or a hole to jump.</p>
+    <p>Tap Birdie, Par, Bogey, or Double, or the score, or X. That moves to the next player and stays on this hole. + and − only change the number. Press Next hole when everyone has a score.</p>
     <div class="card">
       <h2>Scores and junk</h2>
       <p>Birdies and eagles come from the gross score. A birdie pays one junk, an eagle two, and an albatross three. Tap Junk up to four times. On a par 3, tap KP for closest.</p>
       <p id="kpTip" class="note"></p><div id="scores"></div>
       <div id="holeJunk"></div>
+      <button type="button" id="postReady" class="primary">Next hole</button>
     </div>
     <p class="actions"><button type="button" id="back">Back a hole</button> <button type="button" id="post" class="primary">Next hole</button> <button type="button" id="clearHole">Clear hole</button> <button type="button" id="toSetup">Back to setup</button></p>
     <p id="scoreStop" class="stop-note" hidden></p>
@@ -3003,10 +3006,17 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
       + '<button type="button" data-i="' + i + '" data-rel="1" class="' + relOn(1) + '">Bogey</button>'
       + '<button type="button" data-i="' + i + '" data-rel="2" class="' + relOn(2) + '">Double</button>'
       + '</div>';
-    return '<div class="grid' + (i === scoreCursor ? ' on' : '') + '"><button type="button" class="who" data-who="' + i + '" aria-label="Select ' + esc(p.id) + '">' + esc(p.id) + '</button><span class="tee" title="' + esc(p.tee) + '">' + esc(teeCode(p.tee)) + '</span><span class="dots">' + strokeMark(p) + '</span>' + rels + '<button type="button" class="step down" data-i="' + i + '" data-d="-1" aria-label="Lower score">−</button><button type="button" data-i="' + i + '" data-set="1" class="score ' + scoreCls + '"' + aria + '>' + shown + '</button><button type="button" class="step up" data-i="' + i + '" data-d="1" aria-label="Raise score">+</button><button type="button" class="pick" data-i="' + i + '" data-x="1">X</button><span class="junkbtns">' + junkBtns + '</span></div>';
+    const steps = '<div class="steps">'
+      + '<button type="button" class="step down" data-i="' + i + '" data-d="-1" aria-label="Lower score">−</button>'
+      + '<button type="button" data-i="' + i + '" data-set="1" class="score ' + scoreCls + '"' + aria + '>' + shown + '</button>'
+      + '<button type="button" class="step up" data-i="' + i + '" data-d="1" aria-label="Raise score">+</button>'
+      + '<button type="button" class="pick" data-i="' + i + '" data-x="1">X</button>'
+      + '</div>';
+    return '<div class="grid' + (i === scoreCursor ? ' on' : '') + '"><button type="button" class="who" data-who="' + i + '" aria-label="Select ' + esc(p.id) + '">' + esc(p.id) + '</button><span class="tee" title="' + esc(p.tee) + '">' + esc(teeCode(p.tee)) + '</span><span class="dots">' + strokeMark(p) + '</span><div class="scorecol">' + rels + steps + '</div><span class="junkbtns">' + junkBtns + '</span></div>';
   }).join('');
   paintHoleJump();
   paintUndo();
+  paintNextHole();
   document.getElementById('holeJunk').innerHTML = holeBirdieLabel();
   const shape = (i, h) => {
     const score = holeScores[i][h];
@@ -3349,10 +3359,14 @@ document.getElementById('scores').onclick = e => {
     return;
   }
   pushScoreHistory();
+  if (btn.dataset.d) {
+    holeScores[i][holeNo] = Math.max(1, (holeVal(i) === 'X' ? courseData().par[holeNo] : Number(holeVal(i))) + Number(btn.dataset.d));
+    drawHole();
+    return;
+  }
   if (btn.dataset.x) holeScores[i][holeNo] = 'X';
   else if (btn.dataset.rel != null) holeScores[i][holeNo] = Math.max(1, (Number(courseData().par[holeNo]) || 4) + Number(btn.dataset.rel));
   else if (btn.dataset.set) holeScores[i][holeNo] = holeVal(i);
-  else if (btn.dataset.d) holeScores[i][holeNo] = Math.max(1, (holeVal(i) === 'X' ? courseData().par[holeNo] : Number(holeVal(i))) + Number(btn.dataset.d));
   scoreCursor = i;
   advanceScore();
   drawHole();
@@ -3393,12 +3407,15 @@ function stepHole(dir) {
 function missingNames(h) {
   return holePlayers.filter((p, i) => !holeScores[i] || holeScores[i][h] == null).map(p => p.id);
 }
-document.getElementById('post').onclick = () => {
+function goNextHole() {
   const names = missingNames(holeNo);
   const note = document.getElementById('postNote');
   if (note) note.textContent = names.length ? names.join(', ') + ': no score on ' + (holeNo + 1) : '';
   stepHole(1);
-};
+}
+document.getElementById('post').onclick = () => goNextHole();
+const postReadyBtn = document.getElementById('postReady');
+if (postReadyBtn) postReadyBtn.onclick = () => goNextHole();
 function clearPressesFrom(hole1) {
   Object.keys(amounts).forEach(k => {
     const bet = amounts[k];
@@ -4429,17 +4446,22 @@ function resumeStoppedRound() {
   quitChoice = '';
   drawHole();
 }
+function holeComplete(h) {
+  const hole = h == null ? holeNo : h;
+  return holePlayers.length > 0 && holePlayers.every((p, i) => holeScores[i] && holeScores[i][hole] != null);
+}
+function paintNextHole() {
+  const ready = holeComplete();
+  const post = document.getElementById('post');
+  const banner = document.getElementById('postReady');
+  if (post) post.classList.toggle('ready', ready);
+  if (banner) banner.classList.toggle('on', ready);
+}
 function advanceScore() {
   const n = holePlayers.length;
   if (!n) return;
   if (scoreCursor < 0 || scoreCursor >= n) scoreCursor = 0;
-  if (scoreCursor < n - 1) { scoreCursor += 1; return; }
-  const order = playOrder();
-  const at = order.indexOf(holeNo);
-  if (at >= 0 && at + 1 < order.length) {
-    holeNo = order[at + 1];
-    scoreCursor = 0;
-  }
+  if (scoreCursor < n - 1) scoreCursor += 1;
 }
 function paintHoleJump() {
   const el = document.getElementById('holeJump');
