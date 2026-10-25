@@ -121,9 +121,12 @@ try {
   .card-tools h2 { margin:0; flex:1; }
   .card-tools button { min-height:32px; font-size:var(--text); padding:2px 8px; }
   .view-note { margin:0 0 8px; font-size:var(--text); }
-  #matchPick { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 8px; max-width:100%; }
+  #matchPick { display:flex; flex-direction:column; align-items:flex-start; gap:6px; margin:0 0 8px; max-width:100%; }
   #matchPick[hidden] { display:none; }
+  #matchPick .pickrow { display:flex; flex-wrap:wrap; gap:6px; max-width:100%; }
   #matchPick button { box-sizing:border-box; flex:0 1 auto; max-width:100%; min-height:36px; padding:4px 8px; font-size:var(--text); font-weight:700; line-height:1.15; white-space:normal; text-align:center; }
+  #card .stack { display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1; max-width:100%; }
+  #card .dots { display:block; height:9px; line-height:9px; font-size:9px !important; letter-spacing:-0.08em; color:#1f6b45; font-weight:700; white-space:nowrap; }
   .match-strip { position:sticky; top:calc(46px + env(safe-area-inset-top)); z-index:15; margin:0 0 8px; padding:6px 0 5px; background:#e7efe6; font-size:var(--lead); line-height:1.25; max-width:100%; overflow-x:auto; overflow-y:hidden; white-space:nowrap; }
   .match-strip[hidden] { display:none; }
   .match-strip .bit { display:inline-block; white-space:nowrap; margin:0 14px 0 0; }
@@ -393,6 +396,7 @@ let suppressAutoSave = false;
 let strokePct = 100;
 let cardView = 'gross';
 let cardMatchName = '';
+let cardPick = '';
 let holdThru = false;
 try { if (localStorage.getItem('golf-card-view') === 'net') cardView = 'net'; } catch (e) {}
 // Box 2v2 matches keep full strokes. A later setting can change this number. There is no control for it on the setup screen.
@@ -742,6 +746,7 @@ document.getElementById('newRound').onclick = () => {
   playoffs = {};
   roundId = '';
   cardMatchName = '';
+  cardPick = '';
   try { localStorage.removeItem('golf-card'); localStorage.removeItem('round-setup'); } catch (e) {}
   showHandicapNote(false);
   draw();
@@ -950,7 +955,8 @@ function persistSetup() {
       roundId: roundId,
       defaults: defaults,
       strokePct: strokePct,
-      cardMatch: cardMatchName
+      cardMatch: cardMatchName,
+      cardPick: cardPick
     }));
   } catch (e) {}
 }
@@ -1393,8 +1399,10 @@ function playoffCardHtml(boards) {
     const rows = playoffProgress(board.name, board.sides.a, board.sides.b);
     if (!rows.length) return '';
     const cols = '<colgroup><col class="chol"><col class="hgap"><col class="cpar">' + holePlayers.map(() => '<col class="cplayer">').join('') + '<col class="cgap"><col class="mmatch"></colgroup>';
-    const partsHead = String(board.label || '').split(' v ');
-    const matchHead = '<th class="mlab">' + esc(partsHead[0] || 'Match') + '<span class="opp">' + esc(partsHead[1] || '') + '</span></th>';
+    const flip = !!board.flip;
+    const topIds = flip ? board.sides.b : board.sides.a;
+    const botIds = flip ? board.sides.a : board.sides.b;
+    const matchHead = '<th class="mlab">' + esc(teamTag(topIds)) + '<span class="opp">' + esc(teamTag(botIds)) + '</span></th>';
     const head = '<tr><th class="hno" aria-label="Hole">#</th><th class="hgap"></th><th class="parh">Par</th>' + holePlayers.map(p => cardWhoHtml(p)).join('') + '<th class="cgap"></th>' + matchHead + '</tr>';
     const body = rows.map(row => {
       const par = courseData().par[row.h];
@@ -1403,7 +1411,8 @@ function playoffCardHtml(boards) {
         if (n == null) return '<td></td>';
         return '<td>' + scoreShape(n, par) + '</td>';
       }).join('');
-      return '<tr><td class="hno">' + playoffHoleNo(row.i) + '</td><td class="hgap"></td><td class="par">' + par + '</td>' + scores + '<td class="cgap"></td><td class="mcell">' + playoffStatus(row.score, board.sides.a, board.sides.b) + '</td></tr>';
+      const shown = flip ? -row.score : row.score;
+      return '<tr><td class="hno">' + playoffHoleNo(row.i) + '</td><td class="hgap"></td><td class="par">' + par + '</td>' + scores + '<td class="cgap"></td><td class="mcell">' + playoffStatus(shown, topIds, botIds) + '</td></tr>';
     }).join('');
     const title = list.filter(b => b.mp && playoffProgress(b.name, b.sides.a, b.sides.b).length).length > 1
       ? 'Playoff ' + esc(board.label)
@@ -1549,36 +1558,78 @@ function cardMatchLabel(name) {
   const sides = sidesOf(name);
   return teamTag(sides.a) + ' v ' + teamTag(sides.b);
 }
-function cardMatchList() {
-  let names = [];
-  try {
-    const m = matchNames();
-    names = m.team.concat(m.side);
-  } catch (e) { return []; }
-  return names.filter(name => {
-    const saved = amountFor(name);
-    return !saved || saved.on !== false;
+function matchIsOn(name) {
+  const saved = amountFor(name);
+  return !saved || saved.on !== false;
+}
+function activeTeamNames() {
+  try { return matchNames().team.filter(matchIsOn); } catch (e) { return []; }
+}
+function activeSideNames() {
+  try { return matchNames().side.filter(matchIsOn); } catch (e) { return []; }
+}
+function playerSideMatches(id) {
+  return activeSideNames().filter(name => {
+    const sides = sidesOf(name);
+    return sides.a.indexOf(id) >= 0 || sides.b.indexOf(id) >= 0;
   });
 }
-function chosenCardMatch(names) {
-  const list = names || cardMatchList();
-  if (list.indexOf(cardMatchName) >= 0) return cardMatchName;
-  let team = [];
-  try { team = matchNames().team.filter(n => list.indexOf(n) >= 0); } catch (e) {}
-  cardMatchName = team[0] || list[0] || '';
-  return cardMatchName;
+function row2Label(name, pick) {
+  const sides = sidesOf(name);
+  if (pick === 'box') return 'v ' + teamTag(sides.b);
+  const opp = sides.a.indexOf(pick) >= 0 ? sides.b : sides.a;
+  return 'v ' + teamTag(opp);
 }
-function paintMatchPick(names) {
+function cardSideFlip(board) {
+  if (!board || cardPick === 'all' || cardPick === 'box' || !cardPick) return false;
+  return board.sides.b.indexOf(cardPick) >= 0 && board.sides.a.indexOf(cardPick) < 0;
+}
+function fallbackCardPick() {
+  const teams = activeTeamNames();
+  const sides = activeSideNames();
+  if (!teams.length && !sides.length) { cardPick = 'all'; cardMatchName = ''; return; }
+  if (teams.length) { cardPick = 'box'; cardMatchName = teams[0]; return; }
+  cardMatchName = sides[0];
+  let sideA = '';
+  try { sideA = sidesOf(sides[0]).a[0] || ''; } catch (e) {}
+  cardPick = sideA || 'all';
+}
+function resolveCardPick() {
+  if (!cardPick && cardMatchName) {
+    cardPick = String(cardMatchName).indexOf('Box') === 0 ? 'box' : ((sidesOf(cardMatchName).a || [])[0] || '');
+  }
+  const teams = activeTeamNames();
+  const sides = activeSideNames();
+  const live = teams.concat(sides);
+  if (!live.length) { cardPick = 'all'; cardMatchName = ''; return; }
+  if (cardPick === 'all') return;
+  const pickOk = cardPick === 'box' ? teams.length > 0 : holePlayers.some(p => p.id === cardPick);
+  const group = cardPick === 'box' ? teams : (pickOk ? playerSideMatches(cardPick) : []);
+  if (pickOk && group.indexOf(cardMatchName) >= 0) return;
+  if (pickOk && !group.length) { fallbackCardPick(); return; }
+  if (cardMatchName && live.indexOf(cardMatchName) < 0) { fallbackCardPick(); return; }
+  if (pickOk) { cardMatchName = group[0]; return; }
+  fallbackCardPick();
+}
+function pickButton(attrs, label, on) {
+  return '<button type="button" ' + attrs + ' class="' + (on ? 'on' : '') + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(label) + '</button>';
+}
+function paintMatchPick() {
   const el = document.getElementById('matchPick');
   if (!el) return;
-  const list = names || [];
-  const chosen = chosenCardMatch(list);
-  if (list.length < 2) { el.hidden = true; el.innerHTML = ''; return; }
+  resolveCardPick();
+  const teams = activeTeamNames();
+  const sides = activeSideNames();
+  if (!teams.length && !sides.length) { el.hidden = true; el.innerHTML = ''; return; }
   el.hidden = false;
-  el.innerHTML = list.map(name => {
-    const on = name === chosen;
-    return '<button type="button" data-match="' + esc(name) + '" class="' + (on ? 'on' : '') + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(cardMatchLabel(name)) + '</button>';
-  }).join('');
+  const row1 = [pickButton('data-pick="all"', 'All', cardPick === 'all')];
+  if (teams.length) row1.push(pickButton('data-pick="box"', 'Box', cardPick === 'box'));
+  holePlayers.forEach(p => row1.push(pickButton('data-pick="' + esc(p.id) + '"', p.id, cardPick === p.id)));
+  const group = cardPick === 'box' ? teams : (cardPick === 'all' ? [] : playerSideMatches(cardPick));
+  const row2 = group.length >= 2
+    ? '<div class="pickrow">' + group.map(name => pickButton('data-match="' + esc(name) + '"', row2Label(name, cardPick), name === cardMatchName)).join('') + '</div>'
+    : '';
+  el.innerHTML = '<div class="pickrow">' + row1.join('') + '</div>' + row2;
 }
 function activeMatchNames() {
   let names = [];
@@ -1667,12 +1718,15 @@ function portraitMatchLines(h, boards) {
       const nine = board.sim.legs.find(l => l.kind === 'nine' && l.cells[h] != null);
       if (nine) score = nine.cells[h];
     }
+    const flip = !!board.flip;
+    const shown = score == null ? null : (flip ? -score : score);
     const presses = (board.sim && board.sim.legs || []).filter(l => l.kind === 'press' && pressAmt(board.sim.bet, l.from));
     const started = presses.some(leg => leg.from - 1 === h);
-    if (score != null) lines.push('<span class="marrow">' + arrowMark(score) + (started ? '<sup class="pmark">P</sup>' : '') + '</span>');
+    if (shown != null) lines.push('<span class="marrow">' + arrowMark(shown) + (started ? '<sup class="pmark">P</sup>' : '') + '</span>');
     presses.forEach(leg => {
       if (leg.cells[h] == null) return;
-      lines.push('<span class="pline">P' + leg.from + ' ' + arrowMark(leg.cells[h]) + '</span>');
+      const pressScore = flip ? -leg.cells[h] : leg.cells[h];
+      lines.push('<span class="pline">P' + leg.from + ' ' + arrowMark(pressScore) + '</span>');
     });
   });
   return lines.join('');
@@ -2378,6 +2432,19 @@ function strokeDots(p, h) {
   if (n > 0) return n <= 3 ? '•'.repeat(n) : String(n);
   return n === -1 ? '−' : '−' + Math.abs(n);
 }
+function courseStrokeCount(p, h) {
+  const si = (indexFor(p.tee) || [])[h] || 0;
+  return strokesOnHole(si, courseHandicap(p));
+}
+function matchStrokeCount(p, h, ids) {
+  if (!p || !ids || ids.indexOf(p.id) < 0) return 0;
+  const si = (indexFor(p.tee) || [])[h] || 0;
+  return strokesOnHole(si, strokesReceived(ids, p.id));
+}
+function dotHtml(n) {
+  if (!(n > 0)) return '';
+  return '<span class="dots">' + (n <= 3 ? '•'.repeat(n) : String(n)) + '</span>';
+}
 function holeBirdieLabel() {
   let names = [];
   try { const m = matchNames(); names = m.team.concat(m.side); } catch (e) { return ''; }
@@ -2502,16 +2569,21 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     return '<td class="tot">' + (any ? sum + (picked ? '<sup>x</sup>' : '') : '') + '</td>';
   };
   const boards = matchBoards();
-  const pickNames = cardMatchList();
-  paintMatchPick(pickNames);
-  const shown = boards.filter(b => b.name === cardMatchName);
-  const column = shown.length ? shown : [];
+  paintMatchPick();
+  const shown = cardPick === 'all' ? [] : boards.filter(b => b.name === cardMatchName);
+  const column = shown.map(b => Object.assign({}, b, { flip: cardSideFlip(b) }));
   const matchCol = column.length ? '<col class="mmatch">' : '';
   const colgroup = '<colgroup><col class="chol"><col class="hgap"><col class="cpar">' + holePlayers.map(() => '<col class="cplayer">').join('') + '<col class="cgap">' + matchCol + '</colgroup>';
   const matchHead = () => {
     if (!column.length) return '';
-    const parts = String(column[0].label || '').split(' v ');
-    return '<th class="mlab">' + esc(parts[0] || '') + '<span class="opp">' + esc(parts[1] || '') + '</span></th>';
+    const b = column[0];
+    const top = teamTag(b.flip ? b.sides.b : b.sides.a);
+    const bot = teamTag(b.flip ? b.sides.a : b.sides.b);
+    return '<th class="mlab">' + esc(top) + '<span class="opp">' + esc(bot) + '</span></th>';
+  };
+  const strokeN = (p, h) => {
+    if (!column.length) return courseStrokeCount(p, h);
+    return matchStrokeCount(p, h, column[0].sides.a.concat(column[0].sides.b));
   };
   const sideTable = (holes, label) => {
     const head = '<tr><th class="hno" aria-label="Hole">#</th><th class="hgap"></th><th class="parh">Par</th>' + holePlayers.map(p => cardWhoHtml(p)).join('') + '<th class="cgap"></th>' + matchHead() + '</tr>';
@@ -2519,8 +2591,11 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
       const par = courseData().par[h];
       const cells = holePlayers.map((p, i) => {
         const score = holeScores[i][h];
-        if (score == null) return holeLeftBehind(h) ? '<td class="missing" data-hole="' + h + '"></td>' : '<td data-hole="' + h + '"></td>';
-        return '<td data-hole="' + h + '">' + shape(i, h) + '</td>';
+        const dots = dotHtml(strokeN(p, h));
+        const body = score == null ? '' : shape(i, h);
+        const missing = score == null && holeLeftBehind(h);
+        if (!dots && !body) return '<td data-hole="' + h + '"' + (missing ? ' class="missing"' : '') + '></td>';
+        return '<td data-hole="' + h + '"' + (missing ? ' class="missing"' : '') + '><span class="stack">' + dots + body + '</span></td>';
       }).join('');
       const status = portraitMatchLines(h, column);
       const matchTd = column.length ? '<td class="mcell" data-hole="' + h + '">' + status + '</td>' : '';
@@ -2754,7 +2829,8 @@ function saveCard() {
       course: currentCourse,
       roundDate: roundDate,
       playoffs: playoffs,
-      cardMatch: cardMatchName
+      cardMatch: cardMatchName,
+      cardPick: cardPick
     }));
   } catch (e) {}
 }
@@ -2930,6 +3006,7 @@ function loadSavedSetup() {
     if (setup.defaults) applyDefaultFields(setup.defaults);
     if (setup.strokePct != null) strokePct = Number(setup.strokePct);
     if (setup.cardMatch) cardMatchName = setup.cardMatch;
+    if (setup.cardPick) cardPick = setup.cardPick;
   }
   if (!cardPlayers) { syncPlayedNines(); return; }
   const formIds = players.filter(p => p.initials).map(p => String(p.initials).toUpperCase()).join();
@@ -2964,6 +3041,7 @@ function loadSavedSetup() {
   if (card.roundDate) roundDate = card.roundDate;
   playoffs = card.playoffs && typeof card.playoffs === 'object' ? card.playoffs : {};
   if (card.cardMatch) cardMatchName = card.cardMatch;
+  if (card.cardPick) cardPick = card.cardPick;
   syncPlayedNines();
   padCard();
 }
@@ -3001,7 +3079,8 @@ function snapshot(isAuto) {
     course: currentCourse,
     when: day + 'T12:00:00',
     auto: isAuto === true,
-    cardMatch: cardMatchName
+    cardMatch: cardMatchName,
+    cardPick: cardPick
   };
 }
 function findAutoSlot(list, snap) {
@@ -3105,6 +3184,7 @@ holePlayers = r.players || [];
     amounts = Object.assign({}, r.amounts || {});
     playoffs = r.playoffs && typeof r.playoffs === 'object' ? r.playoffs : {};
     cardMatchName = r.cardMatch || '';
+    cardPick = r.cardPick || '';
     holePlayers.forEach(p => { if (p && !courseData().tees.includes(p.tee)) p.tee = validTee(p.tee); });
     roundId = (r.id && r.auto !== false) ? r.id : (r.auto === false ? newRoundId() : '');
     players = holePlayers.map(p => {
@@ -3324,8 +3404,15 @@ if (cardEl) cardEl.onclick = onCardTap;
 if (paperEl) paperEl.onclick = onCardTap;
 const matchPickEl = document.getElementById('matchPick');
 if (matchPickEl) matchPickEl.onclick = e => {
-  const btn = e.target.closest('button[data-match]');
-  if (!btn || !btn.dataset.match || btn.dataset.match === cardMatchName) return;
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  if (btn.dataset.pick) {
+    if (btn.dataset.pick === cardPick) return;
+    cardPick = btn.dataset.pick;
+    try { drawHole(); } catch (err) {}
+    return;
+  }
+  if (!btn.dataset.match || btn.dataset.match === cardMatchName) return;
   cardMatchName = btn.dataset.match;
   try { drawHole(); } catch (err) {}
 };
