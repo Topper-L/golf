@@ -6,6 +6,14 @@
 <meta http-equiv="Expires" content="0">
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="theme-color" content="#1f6b45" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Golf" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<link rel="icon" href="icon-192.png" />
 <title>Golf</title>
 <script>
 try {
@@ -127,7 +135,14 @@ try {
   #matchPick button { box-sizing:border-box; flex:0 1 auto; max-width:100%; min-height:36px; padding:4px 8px; font-size:var(--text); font-weight:700; line-height:1.15; white-space:normal; text-align:center; }
   #card .stack { display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1; max-width:100%; }
   #card .dots { display:block; height:9px; line-height:9px; font-size:9px !important; letter-spacing:-0.08em; color:#1f6b45; font-weight:700; white-space:nowrap; }
-  .match-strip { position:sticky; top:calc(46px + env(safe-area-inset-top)); z-index:15; margin:0 0 8px; padding:6px 0 5px; background:#e7efe6; font-size:var(--lead); line-height:1.25; max-width:100%; overflow-x:auto; overflow-y:hidden; white-space:nowrap; }
+  .match-strip { position:sticky; top:calc(96px + env(safe-area-inset-top)); z-index:15; margin:0 0 8px; padding:6px 0 5px; background:#e7efe6; font-size:var(--lead); line-height:1.25; max-width:100%; overflow-x:auto; overflow-y:hidden; white-space:nowrap; }
+  .score-history { position:sticky; top:calc(48px + env(safe-area-inset-top)); z-index:17; display:flex; gap:8px; margin:0 0 8px; padding:4px 0; background:#e7efe6; }
+  .score-history button { flex:1; min-height:36px; font-weight:750; }
+  #holeJump { display:flex; gap:4px; margin:0 0 8px; }
+  #holeJump button { flex:0 0 auto; box-sizing:border-box; min-width:36px; min-height:36px; padding:0 6px; font-weight:750; }
+  #runningMoney:empty { display:none; }
+  .runline { display:flex; justify-content:space-between; gap:8px; margin:0 0 4px; color:#1c2b22; font-weight:650; }
+  .runline span:first-child { min-width:0; overflow:hidden; text-overflow:ellipsis; }
   .match-strip[hidden] { display:none; }
   .match-strip .bit { display:inline-block; white-space:nowrap; margin:0 14px 0 0; }
   .match-strip .bit:last-child { margin-right:0; }
@@ -188,8 +203,30 @@ try {
   button.on { background:#1f6b45; color:white; border-color:#1f6b45; }
   button.press-off { background:#b42318; color:white; border-color:#b42318; }
   sup { font-size:9px; }
-  #savedPlayers .plist { display:grid; grid-template-rows:repeat(5, auto); grid-auto-flow:column; grid-auto-columns:max-content; gap:4px 16px; overflow-x:auto; padding:6px 0; }
-  #savedPlayers label { white-space:nowrap; font-size:13px; }
+  #savedPlayers { max-width:100%; }
+  #playerSearch, #roundSearch, #courseName, #nineEditor .nine-name { width:100%; box-sizing:border-box; min-height:36px; margin:0 0 8px; }
+  .nine-top { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:8px 0 2px; }
+  .nine-top .flab { margin:0; }
+  .nine-remove { flex:none; }
+  #playerList { max-height:240px; overflow-y:auto; }
+  #playerList .psec { margin:4px 0 2px; }
+  .psec { margin:8px 0 4px; font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:#5e6f64; font-weight:750; }
+  .prow { display:flex; gap:4px; align-items:center; margin:0 0 2px; }
+  #screen-setup .prow button { box-sizing:border-box; min-height:36px; height:36px; padding:0 8px; line-height:1; white-space:nowrap; }
+  .prow button[data-add] { flex:1; min-width:0; display:flex; align-items:center; gap:8px; text-align:left; overflow:hidden; }
+  .prow button[data-add] b { flex:none; }
+  .prow button[data-add] .pname { overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  .prow button[data-add] .phcp { margin-left:auto; flex:none; color:#5e6f64; }
+  .prow button[data-detail] { flex:none; min-width:52px; }
+  #playerDetail { margin-top:8px; padding-top:8px; border-top:1px solid #d5e0d4; }
+  #playerDetail input, #playerDetail select { max-width:100%; }
+  .flab { display:block; font-size:11px; color:#5e6f64; font-weight:650; margin:0 0 2px; }
+  .pdgrid { display:flex; flex-wrap:wrap; gap:8px; }
+  .pdgrid .field { flex:1 1 5.5em; min-width:0; }
+  #pdName { width:100%; box-sizing:border-box; }
+  .nine-picks { display:flex; flex-wrap:wrap; gap:8px; }
+  .nine-picks label { flex:1 1 8em; min-width:0; }
+  .nine-picks select { width:100%; min-height:36px; }
   input[type="number"] { width:40px; font-size:13px; padding:2px; text-align:center; }
   input.name { width:90px; }
   input.initials { text-transform:uppercase; width:36px; text-align:center; }
@@ -198,20 +235,61 @@ try {
   .dn { color:#b42318; font-weight:700; }
   input.hcp { width:42px; text-align:center; }
   input.hcp.plus { background:#1f6b45; color:white; font-weight:700; }
-  .defaults { display:grid; grid-template-columns:repeat(auto-fit, minmax(72px, 1fr)); gap:6px; align-items:end; }
-  .defaults .col { display:flex; flex-direction:column; align-items:center; gap:2px; }
-  .defaults .lab { font-size:11px; color:#5e6f64; font-weight:600; }
-  .defaults .ctrl { display:flex; align-items:center; gap:2px; }
-  .defaults button { min-height:28px; padding:0 6px; font-size:13px; }
-  .defaults input[type="number"] { width:32px; font-size:13px; padding:1px; text-align:center; }
+  .defaults { display:flex; flex-wrap:wrap; gap:8px 10px; align-items:flex-end; }
+  .defaults .col { flex:1 1 calc(50% - 10px); min-width:min(100%, max-content); max-width:100%; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; gap:2px; }
+  .defaults .lab { font-size:11px; color:#5e6f64; font-weight:600; text-align:center; }
+  .defaults .ctrl { display:flex; flex-wrap:nowrap; align-items:center; justify-content:center; gap:2px; max-width:100%; }
+  .defaults button { min-height:32px; padding:0 6px; flex:0 0 auto; }
+  #screen-setup .defaults .ctrl input { width:3em; max-width:3.6em; flex:0 0 auto; padding:2px 0; text-align:center; }
+  .setup-actions { display:flex; flex-wrap:wrap; gap:8px; }
+  .setup-actions button { flex:1 1 auto; min-width:max-content; max-width:100%; }
+  .amt { display:inline-flex; align-items:center; gap:1px; vertical-align:middle; }
+  .amt button { min-height:28px; min-width:22px; padding:0 4px; }
+  .amt input { width:3em; text-align:center; padding:2px 0; }
+  .course-line { display:flex; gap:8px; align-items:center; }
+  .course-line select { flex:1; min-width:0; min-height:36px; }
+  button.star { flex:none; min-width:44px; font-size:18px; }
+  .tee-row { display:flex; flex-wrap:wrap; gap:4px; margin:0 0 6px; }
+  .tee-row input { flex:1 1 5.5em; min-width:0; box-sizing:border-box; }
+  .holegrid { display:grid; grid-template-columns:1fr; gap:2px; }
+  .holehead, .hrow { display:grid; grid-template-columns:1.5em minmax(0,1fr) minmax(0,1fr); gap:4px; align-items:center; }
+  .holehead { font-size:11px; color:#5e6f64; font-weight:650; margin:0 0 2px; }
+  .holehead span:nth-child(n+2) { text-align:center; }
+  .hrow .hn { font-weight:650; }
+  .hrow .amt { width:100%; min-width:0; }
+  #screen-setup .hrow button { box-sizing:border-box; min-height:36px; min-width:36px; padding:0; }
+  #screen-setup .hrow .amt input { width:auto; flex:1 1 1.5em; min-width:0; padding:2px 0; text-align:center; }
+  #addCourse input { max-width:100%; }
+  h3.month { margin:12px 0 4px; font-size:12px; letter-spacing:.06em; color:#5e6f64; font-weight:750; }
+  button.round-open .r1 { display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
+  button.round-open .title { flex:1; min-width:0; }
+  button.round-open .r2 { display:block; margin-top:2px; color:#5e6f64; font-weight:600; }
+  button.round-name { display:block; width:100%; text-align:left; font-weight:750; font-size:var(--lead); background:transparent; border-color:transparent; padding:2px 0; white-space:normal; }
+  .round-name-input { width:100%; box-sizing:border-box; font:inherit; font-weight:750; }
+  .autosave-note { font-size:12px; margin:0 0 8px; }
+  #saveNote:empty { display:none; }
+  #saveNote.banner { display:block; background:#fff4e5; color:#8a5a00; border:1px solid #e0a84a; border-radius:8px; padding:8px 10px; font-weight:700; }
+  .grid .tee { display:block; font-size:8px; font-weight:800; letter-spacing:-0.08em; line-height:1; text-align:center; overflow:hidden; }
   button.plus { background:#1f6b45; color:white; border-color:#1f6b45; }
   .file { display:inline-block; }
   .file input { display:none; }
   .file { padding:6px 10px; border:1px solid #c5d1c8; border-radius:8px; background:#fff; }
   .grid { display:grid; grid-template-columns:28px 18px 16px 52px 68px 52px 40px minmax(40px,1fr); align-items:center; gap:2px; margin:8px 0; min-width:0; }
   .grid > * { min-width:0; }
+  .grid > .who { grid-column:1; grid-row:1 / span 2; height:auto; align-self:stretch; }
+  .grid > .tee { grid-column:2; grid-row:1 / span 2; align-self:center; }
+  .grid > .dots { grid-column:3; grid-row:1 / span 2; align-self:center; text-align:center; }
+  .grid > .rels { grid-column:4 / 8; grid-row:1; display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:2px; }
+  .rels button { min-height:34px; min-width:0; padding:0 1px; font-size:11px; font-weight:750; line-height:1.05; white-space:nowrap; }
+  .grid > button.step.down { grid-column:4; grid-row:2; }
+  .grid > button.score { grid-column:5; grid-row:2; }
+  .grid > button.step.up { grid-column:6; grid-row:2; }
+  .grid > button.pick { grid-column:7; grid-row:2; }
+  .grid > .junkbtns { grid-column:8; grid-row:1 / span 2; align-self:center; }
   .junkbtns { display:flex; gap:4px; justify-content:flex-start; min-width:0; }
   .grid > button { box-sizing:border-box; width:100%; min-width:0; min-height:52px; padding:0; font-size:26px; font-weight:700; }
+  .grid > button.who { min-height:36px; height:auto; align-self:stretch; font-size:12px; font-weight:800; letter-spacing:-0.04em; line-height:1; }
+  .grid.on { background:#e7f3ec; border-radius:10px; box-shadow:inset 0 0 0 2px #1f6b45; }
   .grid > button.score { font-size:var(--score); line-height:1; min-height:60px; font-weight:750; }
   .junkbtns button { min-width:0; min-height:40px; padding:2px 4px; font-size:var(--text); font-weight:650; }
   .score.open { color:#9aa89e; }
@@ -220,6 +298,12 @@ try {
   #holeNote { color:#8a5a00; font-weight:600; }
   #holeNote:empty, #postNote:empty { display:none; }
   #postNote { color:#8a5a00; font-weight:700; margin:0 0 8px; }
+  .stop-note { margin:0 0 8px; font-weight:750; color:#8a5a00; }
+  .quit-panel { margin:8px 0 12px; padding:12px; background:#fff; border:1px solid #c5d1c8; border-radius:12px; }
+  .quit-panel h2 { margin:0 0 6px; }
+  .quit-panel p { margin:0 0 8px; }
+  .quit-choices { display:flex; flex-direction:column; gap:8px; }
+  button.round-open .r3 { display:block; margin-top:2px; color:#8a5a00; font-weight:750; }
   .empty-round[hidden], .round-body[hidden] { display:none; }
 </style>
 </head>
@@ -246,34 +330,66 @@ try {
     </div>
     <div class="card">
       <h2>Saved rounds</h2>
+      <div id="runningMoney"></div>
+      <input id="roundSearch" type="search" placeholder="Search rounds" autocomplete="off" hidden>
       <div id="savedList"></div>
       <p id="savedNote"></p>
       <p><button type="button" id="exportRound" tabindex="-1">Export current</button> <label class="file"><input type="file" id="importRound" accept="application/json"> Import file</label></p>
     </div>
   </section>
   <section id="screen-setup" class="screen">
-  <p><label>Course <select id="courseSelect"></select></label></p>
+  <div class="card" id="courseCard">
+    <h2>Course</h2>
+    <p class="course-line"><select id="courseSelect" aria-label="Course"></select><button type="button" id="homeCourse" class="star" aria-label="Set as home course">☆</button></p>
+    <p id="homeNote" class="note"></p>
+    <div id="ninePick" hidden>
+      <p class="note">Which two nines are played</p>
+      <div class="nine-picks">
+        <label><span class="flab">1st 9</span><select id="nineFirst" aria-label="1st 9"></select></label>
+        <label><span class="flab">2nd 9</span><select id="nineSecond" aria-label="2nd 9"></select></label>
+      </div>
+    </div>
+    <p><button type="button" id="showAddCourse">Add course</button></p>
+    <div id="addCourse" hidden>
+      <p><input id="courseName" type="text" placeholder="Course name" autocapitalize="words"></p>
+      <div id="nineEditor"></div>
+      <p><button type="button" id="addNine">Add another 9</button></p>
+      <p class="psec">Tees</p>
+      <div id="teeRows"></div>
+      <p><button type="button" id="addTee">Add tee</button></p>
+      <p class="psec">Holes</p>
+      <p id="holeNoteForm" class="note">Par starts at 4. Handicap index is 1 to 18, once each on the 18 holes you play. Rating and slope on a tee are optional.</p>
+      <div id="nineHoles"></div>
+      <p><button type="button" id="saveCourse" class="primary">Save course</button></p>
+      <p id="courseMsg"></p>
+    </div>
+  </div>
   <p>Return moves to the next field.</p>
   <div class="card">
     <h2>Players</h2>
     <p>Course hcp is the handicap for these tees, not a Handicap Index.</p>
     <div class="hscroll"><table id="players"></table></div>
     <p><button type="button" id="add" tabindex="-1">Add player</button></p>
-    <p id="savedPlayers"></p>
+    <div id="savedPlayers">
+      <p><b>Saved players</b></p>
+      <input id="playerSearch" type="search" placeholder="Search players" autocomplete="off">
+      <div id="playerList"></div>
+      <div id="playerDetail" hidden></div>
+    </div>
   </div>
   <div class="card">
     <h2>Default bet</h2>
     <div class="defaults" id="defaults">
-      <div class="col"><div class="lab">1st 9</div><div class="ctrl"><button type="button" data-step="-1" data-id="dFirst">−</button><input id="dFirst" type="number" inputmode="numeric" value="0"><button type="button" data-step="1" data-id="dFirst">+</button></div></div>
-      <div class="col"><div class="lab">2nd 9</div><div class="ctrl"><button type="button" data-step="-1" data-id="dSecond">−</button><input id="dSecond" type="number" inputmode="numeric" value="0"><button type="button" data-step="1" data-id="dSecond">+</button></div></div>
-      <div class="col"><div class="lab">Overall</div><div class="ctrl"><button type="button" data-step="-1" data-id="dOverall">−</button><input id="dOverall" type="number" inputmode="numeric" value="20"><button type="button" data-step="1" data-id="dOverall">+</button></div></div>
-      <div class="col"><div class="lab">1st 9 press</div><div class="ctrl"><button type="button" data-step="-1" data-id="dPressF">−</button><input id="dPressF" type="number" inputmode="numeric" value="0"><button type="button" data-step="1" data-id="dPressF">+</button></div></div>
-      <div class="col"><div class="lab">2nd 9 press</div><div class="ctrl"><button type="button" data-step="-1" data-id="dPressB">−</button><input id="dPressB" type="number" inputmode="numeric" value="0"><button type="button" data-step="1" data-id="dPressB">+</button></div></div>
-      <div class="col"><div class="lab">Down</div><div class="ctrl"><button type="button" data-step="-1" data-id="dDown">−</button><input id="dDown" type="number" inputmode="numeric" value="2"><button type="button" data-step="1" data-id="dDown">+</button></div></div>
-      <div class="col"><div class="lab">Junk</div><div class="ctrl"><button type="button" data-step="-1" data-id="dJunk">−</button><input id="dJunk" type="number" inputmode="numeric" value="3"><button type="button" data-step="1" data-id="dJunk">+</button></div></div>
-      <div class="col"><div class="lab">Strokes %</div><div class="ctrl"><button type="button" data-step="-1" data-id="dPct">−</button><input id="dPct" type="number" inputmode="numeric" value="100"><button type="button" data-step="1" data-id="dPct">+</button></div></div>
+      <div class="col"><div class="lab">1st 9</div><div class="ctrl"><button type="button" data-step="-1" data-id="dFirst" aria-label="Decrease 1st 9">−</button><input id="dFirst" type="text" inputmode="decimal" value="0"><button type="button" data-step="1" data-id="dFirst" aria-label="Increase 1st 9">+</button></div></div>
+      <div class="col"><div class="lab">2nd 9</div><div class="ctrl"><button type="button" data-step="-1" data-id="dSecond" aria-label="Decrease 2nd 9">−</button><input id="dSecond" type="text" inputmode="decimal" value="0"><button type="button" data-step="1" data-id="dSecond" aria-label="Increase 2nd 9">+</button></div></div>
+      <div class="col"><div class="lab">Overall</div><div class="ctrl"><button type="button" data-step="-1" data-id="dOverall" aria-label="Decrease overall">−</button><input id="dOverall" type="text" inputmode="decimal" value="20"><button type="button" data-step="1" data-id="dOverall" aria-label="Increase overall">+</button></div></div>
+      <div class="col"><div class="lab">1st 9 press</div><div class="ctrl"><button type="button" data-step="-1" data-id="dPressF" aria-label="Decrease 1st 9 press">−</button><input id="dPressF" type="text" inputmode="decimal" value="0"><button type="button" data-step="1" data-id="dPressF" aria-label="Increase 1st 9 press">+</button></div></div>
+      <div class="col"><div class="lab">2nd 9 press</div><div class="ctrl"><button type="button" data-step="-1" data-id="dPressB" aria-label="Decrease 2nd 9 press">−</button><input id="dPressB" type="text" inputmode="decimal" value="0"><button type="button" data-step="1" data-id="dPressB" aria-label="Increase 2nd 9 press">+</button></div></div>
+      <div class="col"><div class="lab">Down</div><div class="ctrl"><button type="button" data-step="-1" data-id="dDown" aria-label="Decrease down">−</button><input id="dDown" type="text" inputmode="decimal" value="2"><button type="button" data-step="1" data-id="dDown" aria-label="Increase down">+</button></div></div>
+      <div class="col"><div class="lab">Junk</div><div class="ctrl"><button type="button" data-step="-1" data-id="dJunk" aria-label="Decrease junk">−</button><input id="dJunk" type="text" inputmode="decimal" value="3"><button type="button" data-step="1" data-id="dJunk" aria-label="Increase junk">+</button></div></div>
+      <div class="col"><div class="lab">Strokes %</div><div class="ctrl"><button type="button" data-step="-1" data-id="dPct" aria-label="Decrease strokes percent">−</button><input id="dPct" type="text" inputmode="decimal" value="100"><button type="button" data-step="1" data-id="dPct" aria-label="Increase strokes percent">+</button></div></div>
     </div>
-    <p><button type="button" id="saveDefault" tabindex="-1">Save as Default</button> <button type="button" id="apply" tabindex="-1" onclick="copyBets()">Copy to matches</button> <button type="button" id="noMoney" tabindex="-1">No money this round</button></p>
+    <p class="setup-actions"><button type="button" id="saveDefault" tabindex="-1">Set Default</button> <button type="button" id="apply" tabindex="-1" onclick="copyBets()">All Matches</button> <button type="button" id="noMoney" tabindex="-1">Set to $0</button></p>
   </div>
   <div class="card">
     <h2>Matches</h2>
@@ -288,18 +404,29 @@ try {
   <section id="holeView" class="screen">
     <p class="empty-round">Start scoring from Setup.</p>
     <div class="round-body">
+    <div class="card" id="roundDetail">
+      <button type="button" id="roundName" class="round-name"></button>
+      <p id="roundSub" class="round-sub"></p>
+      <p><button type="button" id="deleteRound">Delete</button> <button type="button" id="exportThis">Export</button></p>
+    </div>
+    <div class="score-history"><button type="button" id="undoScore" disabled>Undo</button><button type="button" id="redoScore" disabled>Redo</button></div>
     <div id="matchStrip" class="match-strip" hidden></div>
     <h1 id="holeTitle">Hole 1</h1>
+    <div id="holeJump" class="hscroll"></div>
     <p id="postNote"></p>
     <p id="holeNote"></p>
-    <p>Tap the gross score, or + or − to change it, or X if the player picked up.</p>
+    <p>Tap Birdie, Par, Bogey, or Double, or tap the gross score, or + or − for any other number, or X if the player picked up. The next player is ready after each score. Tap a name or a hole to jump.</p>
     <div class="card">
       <h2>Scores and junk</h2>
       <p>Birdies and eagles come from the gross score. A birdie pays one junk, an eagle two, and an albatross three. Tap Junk up to four times. On a par 3, tap KP for closest.</p>
       <p id="kpTip" class="note"></p><div id="scores"></div>
       <div id="holeJunk"></div>
     </div>
-    <p class="actions"><button type="button" id="back">Back a hole</button> <button type="button" id="post" class="primary">Next hole</button> <button type="button" id="saveRound">Save round</button> <button type="button" id="clearHole">Clear hole</button> <button type="button" id="toSetup">Back to setup</button></p>
+    <p class="actions"><button type="button" id="back">Back a hole</button> <button type="button" id="post" class="primary">Next hole</button> <button type="button" id="clearHole">Clear hole</button> <button type="button" id="toSetup">Back to setup</button></p>
+    <p id="scoreStop" class="stop-note" hidden></p>
+    <div id="quitPanel" class="quit-panel" hidden></div>
+    <p class="actions"><button type="button" id="quitRound">Quit round</button> <button type="button" id="resumeRound" hidden>Resume round</button></p>
+    <p class="autosave-note">Rounds save automatically.</p>
     <div class="card"><h2>Standing</h2><div id="standing"></div></div>
     <div class="card"><h2>Presses</h2><div id="presses"></div></div>
     </div>
@@ -307,7 +434,7 @@ try {
   <section id="screen-card" class="screen">
     <p class="empty-round">Start scoring from Setup.</p>
     <div class="round-body">
-      <div class="card"><div class="card-tools"><h2>Card</h2><button type="button" id="cardView" aria-pressed="false">Gross | Net</button><button type="button" id="shareCard">Share</button></div><p id="cardViewNote" class="view-note">Gross scores</p><div id="matchPick" hidden></div><div id="card" class="hscroll"></div><div id="paperCard" class="hscroll"></div></div>
+      <div class="card"><div class="card-tools"><h2>Card</h2><button type="button" id="cardView" aria-pressed="false">Gross | Net</button><button type="button" id="shareCard">Share</button></div><p id="cardViewNote" class="view-note">Gross scores</p><p id="cardStop" class="stop-note" hidden></p><div id="matchPick" hidden></div><div id="card" class="hscroll"></div><div id="paperCard" class="hscroll"></div></div>
       <p><button type="button" id="reviewToggle">Group review</button></p>
       <div class="card" id="reviewCard" hidden><h2>Group review</h2><div id="review" class="hscroll"></div></div>
     </div>
@@ -347,7 +474,7 @@ const courses = {
     par: [4,5,3,4,4,5,3,4,4,4,4,4,3,4,5,4,3,5],
     tees: ['Gold','Blue','White','White tournament','Red','Silver','Blue/White','White/Red','Red/Silver'],
     index: { default: [3,13,15,7,1,9,17,11,5,2,8,4,10,14,16,6,12,18] },
-    // Card nines, in card order. A round plays two of these. "1st 9" and "2nd 9" are the order played, never a nine's name.
+    // Card nines, in card order. A round plays two of these. "1st 9" and "2nd 9" are the order played. A nine's name is shown beside that label when it has one.
     nines: [
       { id: 'n1', name: '', press: 'pressFront', holes: [0,1,2,3,4,5,6,7,8] },
       { id: 'n2', name: '', press: 'pressBack', holes: [9,10,11,12,13,14,15,16,17] }
@@ -383,6 +510,34 @@ const courses = {
       'Red Short': [7,3,1,11,17,5,9,13,15,18,8,16,12,2,4,6,14,10],
       Forward: [7,3,1,11,17,5,9,13,15,18,8,16,12,2,4,6,14,10]
     }
+  },
+  // Valley and Oaks ranks: https://www.northranchcc.org/golf-tour
+  // Lakes ranks: https://www.offcourse.co/courses/scorecard/north-ranch-country-club/
+  // Valley/Oaks men's ratings: https://www.scga.org/images/uploads/pdfs/jobs/18753/north_ranch_-_valley-oaks.pdf
+  // Each nine stores ranks 1–9. The nine played first takes odd strokes and the second takes even strokes.
+  // Men's par from the same tour, rechecked Oct 2026. A 4 is the tour par, not a blank default.
+  // Valley 4,4,3,4,4,4,3,5,4 (ranks 2,3,8,1,7,4,5,9,6). Oaks 4,4,5,3,4,5,4,3,4 (ranks 5,3,6,8,1,7,2,9,4).
+  // Lakes 4,4,3,5,4,5,4,3,4. Valley 1 and Lakes 1 are par 5 for ladies; the card stores the men's par.
+  // The tour prints handicap 11 on every Lakes hole, so Lakes ranks are the Offcourse men's 1–9: 1,6,9,3,2,7,8,4,5.
+  // A four-nine course is test data only and is not listed here.
+  'North Ranch': {
+    abbr: 'NRCC',
+    title: 'North Ranch Country Club, Westlake Village. Valley, Oaks, and Lakes. Men\'s pars. Ratings are the Valley/Oaks 18.',
+    par: [4,4,3,4,4,4,3,5,4, 4,4,5,3,4,5,4,3,4, 4,4,3,5,4,5,4,3,4],
+    tees: ['Black','Blue','White','Red'],
+    indexMode: 'nineRank',
+    index: { default: [2,3,8,1,7,4,5,9,6, 5,3,6,8,1,7,2,9,4, 1,6,9,3,2,7,8,4,5] },
+    nines: [
+      { id: 'n1', name: 'Valley', press: 'pressFront', holes: [0,1,2,3,4,5,6,7,8] },
+      { id: 'n2', name: 'Oaks', press: 'pressBack', holes: [9,10,11,12,13,14,15,16,17] },
+      { id: 'n3', name: 'Lakes', press: 'press_n3', holes: [18,19,20,21,22,23,24,25,26] }
+    ],
+    rating: {
+      Black: { slope: 138, rating: 73.9, par: 71 },
+      Blue: { slope: 135, rating: 73.1, par: 71 },
+      White: { slope: 129, rating: 71.3, par: 71 },
+      Red: { slope: 122, rating: 68.6, par: 71 }
+    }
   }
 };
 let currentCourse = 'Wood Ranch';
@@ -392,6 +547,10 @@ function localDateStr(d) {
 }
 let roundDate = localDateStr();
 let roundId = '';
+let roundName = '';
+let roundQuery = '';
+let playerQuery = '';
+let playerDetailName = '';
 let suppressAutoSave = false;
 let strokePct = 100;
 let cardView = 'gross';
@@ -413,10 +572,50 @@ function defaultTee() {
   if (tees.indexOf('Blue') >= 0) return 'Blue';
   return tees[0] || 'Blue';
 }
+function teeFullName(tee, courseName) {
+  const c = (courseName && courses[courseName]) || courseData() || {};
+  const tees = c.tees || [];
+  const raw = String(tee || '').trim();
+  if (!raw) return '';
+  if (tees.indexOf(raw) >= 0) return raw;
+  const low = raw.toLowerCase();
+  const exact = tees.find(t => t.toLowerCase() === low);
+  if (exact) return exact;
+  const combos = tees.filter(t => t.indexOf('/') >= 0);
+  const table = {
+    blk: ['Black'], black: ['Black'],
+    blu: ['Blue'], blue: ['Blue'], bl: ['Blue', 'Black'],
+    wht: ['White', 'White tournament'], wh: ['White', 'White tournament'], white: ['White'],
+    wtm: ['White tournament'],
+    gld: ['Gold'], gd: ['Gold'], gold: ['Gold'],
+    red: ['Red', 'Red Short'], rd: ['Red', 'Red Short'], re: ['Red'],
+    rds: ['Red Short'],
+    grn: ['Green'], green: ['Green'], gr: ['Green'],
+    sil: ['Silver'], si: ['Silver'], silver: ['Silver'],
+    fwd: ['Forward'], fw: ['Forward'], forward: ['Forward'],
+    cmb: combos, cb: combos, combo: combos
+  };
+  const prefs = table[low] || [];
+  for (let i = 0; i < prefs.length; i++) if (tees.indexOf(prefs[i]) >= 0) return prefs[i];
+  const starts = tees.filter(t => t.toLowerCase().startsWith(low));
+  if (starts.length === 1) return starts[0];
+  return '';
+}
 function validTee(tee) {
-  const tees = courseData().tees || [];
-  if (tee && tees.indexOf(tee) >= 0) return tee;
-  return defaultTee();
+  return teeFullName(tee) || defaultTee();
+}
+function teeCode(tee) {
+  const full = teeFullName(tee) || String(tee || '').trim();
+  const low = full.toLowerCase();
+  if (low.indexOf('/') >= 0) return 'Cmb';
+  const map = {
+    black: 'Blk', blue: 'Blu', white: 'Wht', 'white tournament': 'Wtm',
+    gold: 'Gld', red: 'Red', 'red short': 'Rds', green: 'Grn', silver: 'Sil', forward: 'Fwd'
+  };
+  if (map[low]) return map[low];
+  const legacy = { bl: 'Blu', blu: 'Blu', blk: 'Blk', wh: 'Wht', wht: 'Wht', gd: 'Gld', gld: 'Gld', re: 'Red', rd: 'Red', gr: 'Grn', grn: 'Grn', si: 'Sil', sil: 'Sil', cb: 'Cmb', cmb: 'Cmb' };
+  if (legacy[low]) return legacy[low];
+  return full.replace(/[^A-Za-z]/g, '').slice(0, 3) || full.slice(0, 3);
 }
 function indexFor(tee) {
   const c = courseData();
@@ -425,6 +624,15 @@ function indexFor(tee) {
   if (table.default) return table.default;
   const fallback = (c.tees || []).find(t => table[t]);
   return (fallback && table[fallback]) || table.default;
+}
+function siAt(tee, h) {
+  const table = indexFor(tee) || [];
+  const raw = Number(table[h]) || 0;
+  if (!raw || !courseData() || courseData().indexMode !== 'nineRank') return raw;
+  const pair = playedPair();
+  if (pair[0] && pair[0].holes.indexOf(h) >= 0) return raw * 2 - 1;
+  if (pair[1] && pair[1].holes.indexOf(h) >= 0) return raw * 2;
+  return raw;
 }
 const lastHcp = { TL:'4', KM:'12', DK:'+5', AC:'3', DH:'5' };
 let defaultPlayer = { name:'Topper Larsen', initials:'TL', tee:'Blue' };
@@ -477,17 +685,18 @@ function drawBets() {
     const eName = esc(name);
     const mode = pressModeOf(a);
     const modeLabel = mode === 'off' ? 'Off' : mode === 'manual' ? 'Manual' : 'Auto';
-    const num = f => '<td><input data-bet="' + eName + '" data-f="' + f + '" type="number" inputmode="numeric" value="' + a[f] + '"></td>';
+    const amt = (f, value, extra) => '<span class="amt"><button type="button" tabindex="-1" data-nudge="-1" aria-label="Decrease">−</button><input data-bet="' + eName + '" data-f="' + f + '" type="text" inputmode="decimal" value="' + value + '"' + (extra || '') + '><button type="button" tabindex="-1" data-nudge="1" aria-label="Increase">+</button></span>';
+    const num = f => '<td>' + amt(f, a[f]) + '</td>';
     const capCur = a.maxPresses == null || a.maxPresses === '' ? '' : String(Number(a.maxPresses));
     const capOpt = (v, label) => '<option value="' + v + '"' + (capCur === String(v) ? ' selected' : '') + '>' + label + '</option>';
     const capSelect = '<td><select data-bet="' + eName + '" data-cap="1" aria-label="Max presses per nine">' + capOpt('', 'No limit') + [1, 2, 3, 4].map(n => capOpt(n, String(n))).join('') + '</select></td>';
     const mpBtn = '<button type="button" tabindex="-1" data-format="' + eName + '" class="' + (a.mp18 ? 'on' : '') + '">' + (a.mp18 ? '18 holes' : 'Nines') + '</button>';
-    const mpStake = a.mp18 ? ' <input data-bet="' + eName + '" data-f="mp" type="number" inputmode="numeric" value="' + (Number(a.mp) || 0) + '" aria-label="18-hole stake">' : '';
+    const mpStake = a.mp18 ? ' ' + amt('mp', Number(a.mp) || 0, ' aria-label="18-hole stake"') : '';
     return '<tr><td>' + eName + '<br>' + mpBtn + mpStake + '</td><td><button type="button" tabindex="-1" data-bet="' + eName + '" class="' + (a.on ? 'on' : '') + '">' + (a.on ? 'On' : 'Off') +
       '</button></td>' + ['first','second','overall',pressCols[0],pressCols[1]].map(num).join('') +
-      '<td><button type="button" tabindex="-1" data-mode="' + eName + '" class="' + (mode === 'off' ? 'press-off' : 'on') + '">' + modeLabel + '</button><input data-bet="' + eName + '" data-f="pressDown" type="number" inputmode="numeric" value="' + a.pressDown + '"></td>' +
+      '<td><button type="button" tabindex="-1" data-mode="' + eName + '" class="' + (mode === 'off' ? 'press-off' : 'on') + '">' + modeLabel + '</button>' + amt('pressDown', a.pressDown) + '</td>' +
       capSelect +
-      ids.map(id => '<td><input data-bet="' + eName + '" data-p="' + esc(id) + '" type="number" inputmode="numeric" value="' + (a.player[id] || 0) + '"></td>').join('') + '</tr>';
+      ids.map(id => '<td><span class="amt"><button type="button" tabindex="-1" data-nudge="-1" aria-label="Decrease junk">−</button><input data-bet="' + eName + '" data-p="' + esc(id) + '" type="text" inputmode="decimal" value="' + (a.player[id] || 0) + '"><button type="button" tabindex="-1" data-nudge="1" aria-label="Increase junk">+</button></span></td>').join('') + '</tr>';
   }).join('') : '';
   document.querySelectorAll('#bets input').forEach(el => el.oninput = () => {
     if (el.dataset.p) amounts[el.dataset.bet].player[el.dataset.p] = Number(el.value);
@@ -498,6 +707,7 @@ function drawBets() {
     if (!bet) return;
     bet.maxPresses = el.value === '' ? null : Number(el.value);
   });
+  armAmountFields(document.getElementById('bets'));
 }
 function capWords(value) {
   return String(value).replace(/(^|\s)(\S)/g, (all, lead, ch) => {
@@ -506,6 +716,7 @@ function capWords(value) {
   });
 }
 function draw() {
+  players.forEach(p => { if (p) p.tee = validTee(p.tee); });
   document.getElementById('players').innerHTML = '<tr><th>Name</th><th>Initials</th><th>Tee</th><th>Course hcp</th><th></th><th>Box</th><th></th></tr>' +
     players.map((p, i) => '<tr><td><input class="name' + (p.name ? '' : ' need') + '" data-i="' + i + '" data-f="name" value="' + esc(p.name) + '" autocapitalize="words"></td><td><input class="initials' + (p.initials ? '' : ' need') + '" data-i="' + i + '" data-f="initials" value="' + esc(p.initials) + '" maxlength="3" autocapitalize="characters"></td><td><select data-i="' + i + '">' +
       courseData().tees.map(t => '<option' + (t === p.tee ? ' selected' : '') + '>' + esc(t) + '</option>').join('') +
@@ -632,13 +843,76 @@ document.getElementById('players').onclick = e => {
     draw();
   }
 };
+function armAmountFields(root) {
+  if (!root) return;
+  root.querySelectorAll('input[inputmode="decimal"]').forEach(el => {
+    if (el.dataset.armed) return;
+    el.dataset.armed = '1';
+    el.addEventListener('focus', () => {
+      setTimeout(() => {
+        const n = String(el.value).length;
+        try { el.select(); } catch (e) {}
+        try { el.setSelectionRange(0, n); } catch (e) {
+          try {
+            const v = el.value;
+            const prev = el.type;
+            el.type = 'text';
+            el.value = v;
+            el.setSelectionRange(0, String(v).length);
+            el.type = prev;
+            if (el.value !== v) el.value = v;
+          } catch (e2) {}
+        }
+      }, 30);
+    });
+  });
+}
+function writeAmount(input) {
+  if (!input || !input.dataset.bet || !amounts[input.dataset.bet]) return;
+  const bet = amounts[input.dataset.bet];
+  const n = Number(input.value);
+  const v = isFinite(n) ? n : 0;
+  if (input.dataset.p) {
+    if (!bet.player) bet.player = {};
+    bet.player[input.dataset.p] = v;
+  } else if (input.dataset.f) bet[input.dataset.f] = v;
+}
+function applyStep(btn) {
+  if (!btn) return;
+  const input = btn.dataset.id ? document.getElementById(btn.dataset.id) : (btn.parentElement && btn.parentElement.querySelector('input'));
+  if (!input) return;
+  let min = input.id === 'dDown' ? 1 : 0;
+  let max = Infinity;
+  if (input.dataset.min != null && input.dataset.min !== '') min = Number(input.dataset.min);
+  if (input.dataset.max != null && input.dataset.max !== '') max = Number(input.dataset.max);
+  const next = (Number(input.value) || 0) + Number(btn.dataset.step || btn.dataset.nudge || 0);
+  input.value = String(Math.min(max, Math.max(min, next)));
+  writeAmount(input);
+}
+let stepperTimer = 0, stepperRepeat = 0, stepperFromPointer = false;
+function stopStepRepeat() {
+  clearTimeout(stepperTimer);
+  clearInterval(stepperRepeat);
+  stepperTimer = 0;
+  stepperRepeat = 0;
+}
+document.addEventListener('pointerdown', e => {
+  const btn = e.target.closest && e.target.closest('button[data-step], button[data-nudge]');
+  if (!btn) return;
+  stepperFromPointer = true;
+  applyStep(btn);
+  stopStepRepeat();
+  stepperTimer = setTimeout(() => { stepperRepeat = setInterval(() => applyStep(btn), 80); }, 400);
+});
+document.addEventListener('pointerup', stopStepRepeat);
+document.addEventListener('pointercancel', stopStepRepeat);
 document.getElementById('defaults').onclick = e => {
   const btn = e.target.closest('button[data-step]');
   if (!btn) return;
-  const input = document.getElementById(btn.dataset.id);
-  const min = btn.dataset.id === 'dDown' ? 1 : 0;
-  input.value = Math.max(min, (Number(input.value) || 0) + Number(btn.dataset.step));
+  if (stepperFromPointer) { stepperFromPointer = false; return; }
+  applyStep(btn);
 };
+armAmountFields(document.getElementById('defaults'));
 document.getElementById('bets').onclick = e => {
   const format = e.target.closest('button[data-format]');
   if (format && amounts[format.dataset.format]) {
@@ -662,9 +936,8 @@ document.getElementById('bets').onclick = e => {
   }
   const nudge = e.target.closest('button[data-nudge]');
   if (nudge) {
-    const input = nudge.parentElement.querySelector('input');
-    input.value = Math.max(0, (Number(input.value) || 0) + Number(nudge.dataset.nudge));
-    if (amounts[input.dataset.bet]) amounts[input.dataset.bet][input.dataset.f] = Number(input.value);
+    if (stepperFromPointer) { stepperFromPointer = false; return; }
+    applyStep(nudge);
     return;
   }
   const btn = e.target.closest('button[data-bet]');
@@ -744,11 +1017,17 @@ document.getElementById('newRound').onclick = () => {
   playedThru = -1;
   ninesPlayed = null;
   playoffs = {};
+  resetScoreHistory();
+  roundStop = null;
+  quitChoice = '';
   roundId = '';
+  roundName = '';
   cardMatchName = '';
   cardPick = '';
+  currentCourse = homeCourseName();
   try { localStorage.removeItem('golf-card'); localStorage.removeItem('round-setup'); } catch (e) {}
   showHandicapNote(false);
+  initCourseSelect();
   draw();
   showScreen('setup');
   document.getElementById('status').textContent = 'New round. Add the players.';
@@ -771,7 +1050,7 @@ function copyBets() {
   const names = matchNames();
   const list = names.team.concat(names.side);
   if (!list.length) {
-    document.getElementById('status').textContent = 'No matches yet. Add initials, then Copy.';
+    document.getElementById('status').textContent = 'No matches yet. Add initials, then All Matches.';
     return;
   }
   list.forEach(name => {
@@ -806,11 +1085,14 @@ function noMoneyRound() {
   });
   drawBets();
   const status = document.getElementById('status');
-  if (status) status.textContent = 'No money this round. Saved defaults are unchanged.';
+  if (status) status.textContent = 'Bets set to $0. Saved defaults are unchanged.';
 }
 document.getElementById('noMoney').onclick = noMoneyRound;
 let playoffs = {};
 let holePlayers = [], holeScores = [], holeMarks = [], holeNo = 0, detailName = '', startAt = 0, ninesPlayed = null, playedThru = -1;
+let scorePast = [], scoreFuture = [], scoreCursor = 0, wakeLockSentinel = null;
+let roundStop = null;
+let quitChoice = '';
 function courseNines() {
   const listed = courseData().nines;
   if (Array.isArray(listed) && listed.filter(n => n && Array.isArray(n.holes) && n.holes.length).length >= 2) {
@@ -885,6 +1167,20 @@ function pressKey(nine) {
   return 'pressFront';
 }
 function isFirstNineHole(h) { return playedPair()[0].holes.indexOf(h) >= 0; }
+function cardHoleLabel(h) {
+  if (!courseData() || courseData().indexMode !== 'nineRank') return h + 1;
+  const pair = playedPair();
+  const a = pair[0] && pair[0].holes.indexOf(h);
+  if (a >= 0) return a + 1;
+  const b = pair[1] && pair[1].holes.indexOf(h);
+  if (b >= 0) return b + 10;
+  return h + 1;
+}
+function nineHead(seg) {
+  const nine = playedPair()[seg];
+  const base = seg === 0 ? '1st 9' : '2nd 9';
+  return nine && nine.name ? base + ' ' + nine.name : base;
+}
 function pressFields() {
   const pair = playedPair();
   return [pressKey(pair[0]), pressKey(pair[1])];
@@ -903,42 +1199,66 @@ function setStartHole(n) {
   syncStartButton();
   drawBets();
   persistSetup();
+  paintNinePick();
 }
 function playerBook() { try { return JSON.parse(localStorage.getItem('golf-players') || '[]'); } catch (e) { return []; } }
 function savePlayerBook(list) { try { localStorage.setItem('golf-players', JSON.stringify(list.slice(0, 80))); } catch (e) {} }
 function rememberPlayers() {
   const book = playerBook();
-  players.filter(p => p.name && p.initials).forEach(p => {
+  const now = Date.now();
+  players.filter(p => p.name && p.initials).slice().reverse().forEach(p => {
     const key = p.name.trim().toLowerCase();
     const i = book.findIndex(b => b.name.toLowerCase() === key);
     const prior = i >= 0 ? book[i] : {};
-    const rec = { name: p.name.trim(), initials: String(p.initials).toUpperCase(), hcp: String(p.hcp || '').trim() || prior.hcp || '', tee: p.tee || prior.tee || defaultTee() };
-    if (i >= 0) book[i] = rec; else book.unshift(rec);
+    const rec = { name: p.name.trim(), initials: String(p.initials).toUpperCase(), hcp: String(p.hcp || '').trim() || prior.hcp || '', tee: p.tee || prior.tee || defaultTee(), used: now, uses: (prior.uses || 0) + 1 };
+    if (i >= 0) book.splice(i, 1);
+    book.unshift(rec);
   });
   savePlayerBook(book);
 }
 function syncStartButton() {
   const btn = document.getElementById('startHole');
   if (!btn) return;
-  btn.textContent = String(clampStart(startAt) + 1);
+  btn.textContent = String(cardHoleLabel(clampStart(startAt)));
   btn.className = 'on';
 }
 function drawSavedPlayers() {
-  const box = document.getElementById('savedPlayers');
+  const list = document.getElementById('playerList');
+  if (!list) return;
+  const book = playerBook();
+  const q = playerQuery.trim().toLowerCase();
+  const match = b => !q || String(b.name || '').toLowerCase().indexOf(q) >= 0 || String(b.initials || '').toLowerCase().indexOf(q) >= 0;
+  const ranked = book.map((b, i) => ({ b: b, rank: b.used || (book.length - i) }));
+  ranked.sort((a, b) => b.rank - a.rank);
+  const recent = ranked.map(x => x.b).filter(match).slice(0, 6);
+  const recentKey = recent.map(b => b.name.toLowerCase());
+  const rest = book.filter(b => match(b) && recentKey.indexOf(b.name.toLowerCase()) < 0).sort((a, b) => a.name.localeCompare(b.name));
+  const inRound = players.map(p => String(p.name || '').toLowerCase());
+  const totals = runningBalances();
+  const row = b => {
+    const tee = teeFullName(b.tee) || b.tee || '';
+    const here = inRound.indexOf(b.name.toLowerCase()) >= 0;
+    const bal = Object.prototype.hasOwnProperty.call(totals, b.name) ? cashText(totals[b.name]) : '';
+    const bits = [b.hcp, here ? 'In' : '', bal].filter(Boolean).join(' · ');
+    return '<div class="prow"><button type="button" data-add="' + esc(b.name) + '"><b>' + esc(b.initials) + '</b><span class="pname">' + esc(b.name) + '</span>' + (bits ? '<span class="phcp">' + esc(bits) + '</span>' : '') + '</button><button type="button" data-detail="' + esc(b.name) + '" aria-label="Edit ' + esc(b.name) + '">Edit</button></div>';
+  };
+  if (!book.length) { list.innerHTML = '<p>No saved players yet.</p>'; paintPlayerDetail(); return; }
+  if (!recent.length && !rest.length) { list.innerHTML = '<p>No players match.</p>'; paintPlayerDetail(); return; }
+  let html = '';
+  if (recent.length) html += '<p class="psec">Recent</p>' + recent.map(row).join('');
+  if (rest.length) html += '<p class="psec">All</p>' + rest.map(row).join('');
+  list.innerHTML = html;
+  paintPlayerDetail();
+}
+function paintPlayerDetail() {
+  const box = document.getElementById('playerDetail');
   if (!box) return;
-  const book = playerBook().slice().sort((a, b) => {
-    const owner = n => /topper larsen/i.test(n) || n.trim().startsWith('_');
-    if (owner(a.name) && !owner(b.name)) return -1;
-    if (!owner(a.name) && owner(b.name)) return 1;
-    return a.name.localeCompare(b.name);
-  });
-  if (!book.length) { box.innerHTML = ''; return; }
-  const used = players.map(p => String(p.name || '').toLowerCase());
-  box.innerHTML = '<b>Saved players</b><div class="plist">' + book.map(b => {
-    const inRound = used.includes(b.name.toLowerCase());
-    const name = esc(b.name);
-    return '<label><input type="checkbox" data-add="' + name + '"' + (inRound ? ' checked' : '') + '> ' + name + ' · ' + esc(b.initials) + ' · ' + esc(b.hcp || '') + ' <button type="button" data-drop="' + name + '" style="font-size:11px;padding:0 6px;min-height:22px;">Remove</button></label>';
-  }).join('') + '</div>';
+  const rec = playerBook().find(b => b.name === playerDetailName);
+  if (!rec) { box.hidden = true; box.innerHTML = ''; return; }
+  const tees = (courseData() && courseData().tees) || [];
+  const tee = validTee(rec.tee);
+  box.hidden = false;
+  box.innerHTML = '<div class="field"><span class="flab">Name</span><input id="pdName" value="' + esc(rec.name) + '" autocapitalize="words" aria-label="Name"></div><div class="pdgrid"><div class="field"><span class="flab">Initials</span><input id="pdInit" class="initials" maxlength="3" value="' + esc(rec.initials) + '" aria-label="Initials"></div><div class="field"><span class="flab">Course hcp</span><input id="pdHcp" class="hcp" inputmode="decimal" value="' + esc(rec.hcp || '') + '" aria-label="Course handicap"></div><div class="field"><span class="flab">Tee</span><select id="pdTee" aria-label="Tee">' + tees.map(t => '<option' + (t === tee ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '</select></div></div><p><button type="button" id="pdSave">Save</button> <button type="button" id="pdDelete">Delete</button></p>';
 }
 function persistSetup() {
   const defaults = readDefaults();
@@ -956,18 +1276,22 @@ function persistSetup() {
       defaults: defaults,
       strokePct: strokePct,
       cardMatch: cardMatchName,
-      cardPick: cardPick
+      cardPick: cardPick,
+      roundName: roundName
     }));
   } catch (e) {}
+}
+function noteSave(text, banner) {
+  const el = document.getElementById('saveNote');
+  if (!el) return;
+  el.textContent = text || '';
+  el.classList.toggle('banner', !!(banner && text));
 }
 function showHandicapNote(missingHcp) {
   const text = missingHcp ? 'A course handicap is blank, so it counts as 0 until you enter one. Scores and junk still work.' : '';
   const holeNote = document.getElementById('holeNote');
   if (holeNote) holeNote.textContent = text;
-  if (missingHcp) {
-    const saveNote = document.getElementById('saveNote');
-    if (saveNote) saveNote.textContent = text;
-  }
+  if (missingHcp) noteSave(text, false);
 }
 function startHole() {
   syncPlayers();
@@ -980,7 +1304,8 @@ function startHole() {
     if (empty) missing = true;
   });
   const next = players.filter(p => p.initials).map(p => ({ id: String(p.initials).toUpperCase(), name: String(p.name || '').trim(), tee: validTee(p.tee), hcp: p.hcp || '0', box: !!p.box }));
-  if (!next.length) { document.getElementById('saveNote').textContent = 'Add a player first.'; return; }
+  if (next.length < 2) { noteSave('Add at least 2 players to start scoring.', true); return; }
+  noteSave('');
   const same = holePlayers.length === next.length && holePlayers.every((p, i) => p.id === next[i].id);
   holePlayers = next;
   if (!same) {
@@ -995,6 +1320,7 @@ function startHole() {
         holeNo = saved.hole != null ? saved.hole : startAt;
         playedThru = typeof saved.playedThru === 'number' ? saved.playedThru : -1;
         roundId = saved.roundId || '';
+        roundStop = copyRoundStop(saved.roundStop);
         if (saved.roundDate) roundDate = saved.roundDate;
       } else {
         holeScores = holePlayers.map(freshScores);
@@ -1002,6 +1328,7 @@ function startHole() {
         holeNo = startAt;
         playedThru = -1;
         roundId = newRoundId();
+        roundStop = null;
       }
     } catch (e) {
       holeScores = holePlayers.map(freshScores);
@@ -1009,7 +1336,10 @@ function startHole() {
       holeNo = startAt;
       playedThru = -1;
       roundId = newRoundId();
+      roundStop = null;
     }
+    quitChoice = '';
+    resetScoreHistory();
   }
   syncPlayedNines();
   padCard();
@@ -1065,7 +1395,7 @@ function strokesOnHole(strokeIndex, strokes) {
 }
 function netDoubleBogey(i, h) {
   const p = holePlayers[i] || { hcp: 0, tee: defaultTee() };
-  const si = (indexFor(p.tee) || [])[h] || 0;
+  const si = siAt(p.tee, h);
   return (courseData().par[h] || 0) + 2 + strokesOnHole(si, courseHandicap(p));
 }
 function countedScore(i, h) {
@@ -1076,8 +1406,7 @@ function countedScore(i, h) {
 }
 function ownStrokes(i, h) {
   const p = holePlayers[i] || { hcp: 0, tee: defaultTee() };
-  const si = (indexFor(p.tee) || [])[h] || 0;
-  return strokesOnHole(si, courseHandicap(p));
+  return strokesOnHole(siAt(p.tee, h), courseHandicap(p));
 }
 function viewNum(i, h) {
   const base = countedScore(i, h);
@@ -1087,8 +1416,7 @@ function viewNum(i, h) {
 function holeNet(i, h, ids) {
   const g = holeScores[i][h];
   if (g === 'X' || g == null) return 99;
-  const idx = indexFor(holePlayers[i].tee);
-  const n = ids ? strokesOnHole(idx[h], strokesReceived(ids, holePlayers[i].id)) : 0;
+  const n = ids ? strokesOnHole(siAt(holePlayers[i].tee, h), strokesReceived(ids, holePlayers[i].id)) : 0;
   return g - n;
 }
 function grossBirdieUnits(i, h) {
@@ -1252,8 +1580,7 @@ function grossNet(id, h, gross, ids) {
   if (i < 0) return 99;
   const g = gross ? gross[id] : null;
   if (g == null || g === '' || g === 'X') return 99;
-  const idx = indexFor(holePlayers[i].tee);
-  const n = strokesOnHole(idx[h], strokesReceived(ids, id));
+  const n = strokesOnHole(siAt(holePlayers[i].tee, h), strokesReceived(ids, id));
   return Number(g) - n;
 }
 function bestGross(ids, h, gross, all) {
@@ -1819,47 +2146,159 @@ function sharePlayerName(p) {
   const full = setup && String(setup.name || '').trim();
   return full || p.id;
 }
-function shareText() {
-  const thru = thruText();
-  const head = [currentCourse, roundDate, thru].filter(Boolean).join(' · ');
-  const lines = [head, ''];
-  const token = (i, h) => {
-    const g = holeScores[i] && holeScores[i][h];
-    if (g == null) return '';
-    if (g === 'X') return 'X(' + countedScore(i, h) + ')';
-    return String(g);
+function shareMeasurer() {
+  const probe = document.createElement('span');
+  probe.setAttribute('aria-hidden', 'true');
+  probe.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;white-space:pre;font:16px -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,sans-serif;';
+  (document.body || document.documentElement).appendChild(probe);
+  const measure = text => {
+    probe.textContent = text == null ? '' : String(text);
+    const rect = probe.getBoundingClientRect();
+    return rect && rect.width ? rect.width : 0;
   };
-  const sumOf = (i, holes) => {
-    let n = 0, any = false, picked = false;
+  measure.done = () => { if (probe.parentNode) probe.parentNode.removeChild(probe); };
+  return measure;
+}
+function shareText() {
+  const FIG = '\u2007';
+  const HAIR = '\u200a';
+  const measure = shareMeasurer();
+  try {
+  const thru = thruText();
+  const tees = [];
+  holePlayers.forEach(p => { if (p.tee && tees.indexOf(p.tee) < 0) tees.push(p.tee); });
+  const head = [currentCourse, tees.join(' / '), roundDate, thru].filter(Boolean).join(' · ');
+  const lines = [head, ''];
+  const cell = n => {
+    const s = String(n);
+    return s.length < 2 ? FIG + s : s;
+  };
+  const fit = (n, width) => {
+    let s = String(n);
+    while (s.length < width) s = FIG + s;
+    return s;
+  };
+  const digits = cells => cells.join(FIG);
+  const widthOf = text => {
+    const w = measure(text);
+    return w > 0 ? w : 0;
+  };
+  const padTo = (text, target) => {
+    if (!(target > 0)) return text;
+    let out = text;
+    let w = widthOf(out);
+    if (!(w > 0)) return text;
+    for (let n = 0; n < 40 && w + 0.35 < target; n++) {
+      const next = out + HAIR;
+      const nw = widthOf(next);
+      if (!(nw > w) || nw > target + 0.5) break;
+      out = next;
+      w = nw;
+    }
+    return out;
+  };
+  const indent = target => {
+    if (!(target > 0)) return '';
+    const figW = widthOf(FIG);
+    if (!(figW > 0)) return '';
+    let n = Math.max(0, Math.floor((target + 0.5) / figW));
+    let out = FIG.repeat(n);
+    let w = n ? widthOf(out) : 0;
+    while (n > 0 && w > target + 0.5) {
+      n -= 1;
+      out = FIG.repeat(n);
+      w = n ? widthOf(out) : 0;
+    }
+    for (let k = 0; k < 20 && w + 0.35 < target; k++) {
+      const next = out + HAIR;
+      const nw = widthOf(next);
+      if (!(nw > w) || nw > target + 0.5) break;
+      out = next;
+      w = nw;
+    }
+    return out;
+  };
+  const scoreCell = (i, h) => {
+    const g = holeScores[i] && holeScores[i][h];
+    if (g == null) return FIG + FIG;
+    const v = countedScore(i, h);
+    if (v == null) return FIG + FIG;
+    return cell(v);
+  };
+  const nineSum = (i, holes) => {
+    let n = 0, any = false;
     holes.forEach(h => {
       const v = countedScore(i, h);
       if (v == null) return;
       n += v;
       any = true;
-      if (holeScores[i][h] === 'X') picked = true;
     });
-    return { n: n, any: any, picked: picked };
+    return any ? n : null;
   };
-  const totalLine = (f, b) => {
-    const parts = [];
-    if (f.any) parts.push('Out ' + f.n);
-    if (b.any) parts.push('In ' + b.n);
-    const total = (f.any ? f.n : 0) + (b.any ? b.n : 0);
-    const mark = (f.picked || b.picked) ? 'x' : '';
-    if (parts.length === 1) return parts[0] + ' = ' + total + mark;
-    return parts.join('  ') + '  = ' + total + mark;
+  const addNine = seg => {
+    const holes = holesOfNine(seg);
+    if (!holes.length) return;
+    const sums = holePlayers.map((p, i) => nineSum(i, holes));
+    let width = 2;
+    sums.forEach(n => { if (n != null) width = Math.max(width, String(Math.round(n)).length); });
+    const prefixes = holePlayers.map((p, i) => p.id + ' = ' + (sums[i] == null ? FIG.repeat(width) : fit(sums[i], width)));
+    let target = 0;
+    prefixes.forEach(text => { target = Math.max(target, widthOf(text)); });
+    const lead = target > 0 ? indent(target) + FIG : '';
+    lines.push(nineHead(seg));
+    lines.push(lead + digits(holes.map(h => cell(cardHoleLabel(h)))));
+    lines.push(lead + digits(holes.map(h => cell(courseData().par[h] || 0))));
+    holePlayers.forEach((p, i) => {
+      lines.push(padTo(prefixes[i], target) + FIG + digits(holes.map(h => scoreCell(i, h))));
+    });
+    lines.push('');
+  };
+  addNine(0);
+  addNine(1);
+  const gross18 = holePlayers.map((p, i) => {
+    const a = nineSum(i, holesOfNine(0));
+    const b = nineSum(i, holesOfNine(1));
+    if (a == null && b == null) return null;
+    return (a || 0) + (b || 0);
+  });
+  const numText = n => {
+    const r = Math.round(Number(n) * 10) / 10;
+    if (Math.abs(r - Math.round(r)) < 0.05) return String(Math.round(r));
+    return r.toFixed(1);
   };
   holePlayers.forEach((p, i) => {
-    if (i) lines.push('');
-    lines.push(sharePlayerName(p) + ' (' + (hcpLabel(p) || '0') + '):');
-    const front = holesOfNine(0), back = holesOfNine(1);
-    const f = sumOf(i, front), b = sumOf(i, back);
-    const fScores = front.map(h => token(i, h)).filter(Boolean);
-    const bScores = back.map(h => token(i, h)).filter(Boolean);
-    if (fScores.length) lines.push(fScores.join(' '));
-    if (bScores.length) lines.push(bScores.join(' '));
-    if (f.any || b.any) lines.push(totalLine(f, b));
+    if (gross18[i] == null) return;
+    lines.push(p.id);
+    lines.push('18 = ' + numText(gross18[i]));
+    lines.push('Total = ' + numText(gross18[i] - courseHandicap(p)));
+    lines.push('');
   });
+  const birds = [];
+  const strokes = [];
+  const picked = [];
+  holePlayers.forEach((p, i) => {
+    const birdH = [];
+    const up = [];
+    const miss = [];
+    const xs = [];
+    playOrder().forEach(h => {
+      const g = holeScores[i] && holeScores[i][h];
+      if (g === 'X') xs.push(cardHoleLabel(h));
+      if (typeof g === 'number' && g === (courseData().par[h] || 0) - 1) birdH.push(cardHoleLabel(h));
+      if (ownStrokes(i, h) > 0) up.push(cardHoleLabel(h));
+      else miss.push(cardHoleLabel(h));
+    });
+    if (birdH.length) birds.push(p.id + ' ' + birdH.join(', '));
+    if (up.length) {
+      if (!miss.length) strokes.push(p.id + ' all');
+      else if (miss.length < up.length && miss.length <= 6) strokes.push(p.id + ' all but ' + miss.join(', '));
+      else strokes.push(p.id + ' ' + up.join(', '));
+    }
+    if (xs.length) picked.push(p.id + ' ' + xs.join(', '));
+  });
+  if (birds.length) lines.push('Birdies', ...birds, '');
+  if (strokes.length) lines.push('Strokes', ...strokes, '');
+  if (picked.length) lines.push('Picked up', ...picked, '');
   const boards = matchBoards();
   if (boards.length) {
     lines.push('');
@@ -1885,6 +2324,9 @@ function shareText() {
   const pays = [...document.querySelectorAll('#settle .settleup')].map(p => p.textContent.trim()).filter(Boolean);
   lines.push(pays.length ? pays.join('\n') : 'Even');
   return lines.join('\n');
+  } finally {
+    measure.done();
+  }
 }
 function showToast(msg) {
   let el = document.getElementById('toast');
@@ -1943,6 +2385,7 @@ function openHole(h) {
   if (!(h >= 0) || h >= par.length) return;
   holdThru = true;
   holeNo = h;
+  scoreCursor = 0;
   showScreen('score');
   try { drawHole(); } catch (e) {}
   holdThru = false;
@@ -2159,20 +2602,26 @@ function settle() {
     const parts = name.split(' vs ');
     const a = isBox ? box : [String(parts[0] || '').trim().toUpperCase()];
     const b = isBox ? String(name.split(' vs ')[1] || '').split('+').map(s => s.trim().toUpperCase()) : [String(parts[1] || '').trim().toUpperCase()];
+    const teamMatchEarly = a.length > 1 && b.length > 1;
+    if (roundStop && roundStop.mode === 'cancel') {
+      return { name: name, html: '<p>' + esc(name) + ' cancelled.</p>', owed: 0, a: a, b: b, teamMatch: teamMatchEarly };
+    }
     const sim = simulateMatch(name, a, b);
     const bet = sim.bet;
     const money = (score, amt) => score && amt ? (score < 0 ? amt : -amt) : 0;
     const nineLeg = seg => sim.legs.find(l => l.kind === 'nine' && l.seg === seg);
     const frontLeg = nineLeg(0), backLeg = nineLeg(1);
+    const asIs = !!(roundStop && roundStop.mode === 'asis');
     const backPlayed = !!(backLeg && backLeg.played);
+    const backOpen = backPlayed || asIs;
     const front = money(frontLeg ? frontLeg.score : 0, bet.first);
-    const back = backPlayed ? money(backLeg.score, bet.second) : 0;
+    const back = backOpen ? money(backLeg ? backLeg.score : 0, bet.second) : 0;
     const pressLegs = sim.legs.filter(l => l.kind === 'press').sort((x, y) => x.from - y.from || (x.manual - y.manual));
     const frontPressLegs = pressLegs.filter(p => p.seg === 0);
     const backPressLegs = pressLegs.filter(p => p.seg === 1);
     const frontPress = frontPressLegs.map(p => money(p.score, pressAmt(bet, p.from)));
     const backPress = backPressLegs.map(p => money(p.score, pressAmt(bet, p.from)));
-    const overall = backPlayed ? money((frontLeg ? frontLeg.score : 0) + backLeg.score, bet.overall) : 0;
+    const overall = backOpen ? money((frontLeg ? frontLeg.score : 0) + (backLeg ? backLeg.score : 0), bet.overall) : 0;
     const matchIds = a.concat(b);
     const kp = kpForMatch(matchIds);
     const junkOf = id => {
@@ -2209,7 +2658,7 @@ function settle() {
     frontPressLegs.forEach((leg, i) => {
       if (pressAmt(bet, leg.from)) comps.push({ label: 'Press from ' + leg.from + ' ' + tag(leg), amount: frontPress[i] });
     });
-    if (backPlayed) {
+    if (backOpen) {
       if (Number(bet.second)) comps.push({ label: '2nd 9', amount: back });
       backPressLegs.forEach((leg, i) => {
         if (pressAmt(bet, leg.from)) comps.push({ label: 'Press from ' + leg.from + ' ' + tag(leg), amount: backPress[i] });
@@ -2226,6 +2675,7 @@ function settle() {
       if (mp.closed) unit = mp.closed.score > 0 ? 1 : -1;
       else if (mp.playoff && mp.playoff.winner) unit = mp.playoff.winner === 'a' ? 1 : -1;
       else if (mp.played >= playOrder().length && mp.score) unit = mp.score > 0 ? 1 : -1;
+      else if (asIs && mp.score) unit = mp.score > 0 ? 1 : -1;
       mpPay = money(unit, stake);
       mpSaid = mpPlain(mp, a, b);
       comps.push({ label: (a.length > 1 || b.length > 1) ? '18-hole' : '18-hole ' + mpSaid, amount: mpPay });
@@ -2296,9 +2746,12 @@ function settle() {
   }).join('');
   const anyRoll = holePlayers.some(p => roll[p.id]);
   const settleUp = nets.length ? '<p><b>Settle up</b></p>' + nets.join('') : '';
-  const summary = anyRoll ? '<p><b>Summary</b></p>' + playerLines + settleUp : (anyStake ? '' : '<p><b>No money owed.</b></p>');
+  const cancelled = !!(roundStop && roundStop.mode === 'cancel');
+  const zeroLines = holePlayers.map(p => '<p><b>' + esc(p.id) + '</b> ' + cashText(0) + '</p>').join('');
+  const summary = cancelled ? '<p><b>Summary</b></p>' + zeroLines : (anyRoll ? '<p><b>Summary</b></p>' + playerLines + settleUp : (anyStake ? '' : '<p><b>No money owed.</b></p>'));
   const details = lines.map((line, i) => '<div class="settle-match"><div class="section-head" data-settle="' + i + '"><span>' + esc(line.name || 'Match') + '</span><span class="chev">▶</span></div><div class="section-body collapsed" id="settle-' + i + '">' + line.html + '</div></div>').join('');
-  el.innerHTML = summary + (details ? '<p><b>Details</b></p>' + details : '');
+  const stopped = roundStop ? '<p class="stop-note">' + esc(stopPhrase(roundStop)) + '</p>' : '';
+  el.innerHTML = stopped + summary + (details ? '<p><b>Details</b></p>' + details : '');
   el.querySelectorAll('.section-head[data-settle]').forEach(head => {
     head.onclick = () => {
       const body = document.getElementById('settle-' + head.dataset.settle);
@@ -2420,26 +2873,24 @@ function holeLeftBehind(h) {
 }
 function strokeMark(p) {
   const ids = holePlayers.map(x => x.id);
-  const n = strokesOnHole(indexFor(p.tee)[holeNo], strokesReceived(ids, p.id));
+  const n = strokesOnHole(siAt(p.tee, holeNo), strokesReceived(ids, p.id));
   if (!n) return '';
   if (n === 1) return '•';
   return n > 0 ? String(n) : '−' + Math.abs(n);
 }
 function strokeDots(p, h) {
   const ids = holePlayers.map(x => x.id);
-  const n = strokesOnHole(indexFor(p.tee)[h], strokesReceived(ids, p.id));
+  const n = strokesOnHole(siAt(p.tee, h), strokesReceived(ids, p.id));
   if (!n) return '';
   if (n > 0) return n <= 3 ? '•'.repeat(n) : String(n);
   return n === -1 ? '−' : '−' + Math.abs(n);
 }
 function courseStrokeCount(p, h) {
-  const si = (indexFor(p.tee) || [])[h] || 0;
-  return strokesOnHole(si, courseHandicap(p));
+  return strokesOnHole(siAt(p.tee, h), courseHandicap(p));
 }
 function matchStrokeCount(p, h, ids) {
   if (!p || !ids || ids.indexOf(p.id) < 0) return 0;
-  const si = (indexFor(p.tee) || [])[h] || 0;
-  return strokesOnHole(si, strokesReceived(ids, p.id));
+  return strokesOnHole(siAt(p.tee, h), strokesReceived(ids, p.id));
 }
 function dotHtml(n) {
   if (!(n > 0)) return '';
@@ -2529,7 +2980,8 @@ function sideJunkRows(p, i, h, rows) {
 function drawHole() {
   padCard();
   rememberThru();
-  const idx = indexFor(holePlayers[0] && holePlayers[0].tee); document.getElementById('holeTitle').textContent = 'Hole ' + (holeNo + 1) + ' · Par ' + courseData().par[holeNo] + ' · Handicap ' + idx[holeNo];
+  if (scoreCursor < 0 || scoreCursor >= holePlayers.length) scoreCursor = 0;
+  document.getElementById('holeTitle').textContent = 'Hole ' + cardHoleLabel(holeNo) + ' · Par ' + courseData().par[holeNo] + ' · Handicap ' + siAt(holePlayers[0] && holePlayers[0].tee, holeNo);
   const kinds = courseData().par[holeNo] === 3 ? ['KP','Junk'] : ['Junk'];
   document.getElementById('kpTip').textContent = courseData().par[holeNo] === 3 ? 'Tap KP: KP-1 = closest, KP-2 = 2nd, KP-3 = 3rd, KP-4 = 4th.' : '';
 document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
@@ -2543,8 +2995,18 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     const shown = unset ? '' : (v === 'X' ? 'X' : v);
     const aria = unset ? ' aria-label="Par ' + courseData().par[holeNo] + '"' : '';
     const scoreCls = unset ? (holeLeftBehind(holeNo) ? 'missing' : 'open') : 'set';
-    return '<div class="grid"><b>' + p.id + '</b><span>' + String(p.tee).slice(0,2) + '</span><span>' + strokeMark(p) + '</span><button class="step" data-i="' + i + '" data-d="-1" aria-label="Lower score">−</button><button data-i="' + i + '" data-set="1" class="score ' + scoreCls + '"' + aria + '>' + shown + '</button><button class="step" data-i="' + i + '" data-d="1" aria-label="Raise score">+</button><button data-i="' + i + '" data-x="1">X</button><span class="junkbtns">' + junkBtns + '</span></div>';
+    const parNow = courseData().par[holeNo];
+    const relOn = d => (!unset && v !== 'X' && Number(v) === parNow + d) ? ' on' : '';
+    const rels = '<div class="rels">'
+      + '<button type="button" data-i="' + i + '" data-rel="-1" class="' + relOn(-1) + '">Birdie</button>'
+      + '<button type="button" data-i="' + i + '" data-rel="0" class="' + relOn(0) + '">Par</button>'
+      + '<button type="button" data-i="' + i + '" data-rel="1" class="' + relOn(1) + '">Bogey</button>'
+      + '<button type="button" data-i="' + i + '" data-rel="2" class="' + relOn(2) + '">Double</button>'
+      + '</div>';
+    return '<div class="grid' + (i === scoreCursor ? ' on' : '') + '"><button type="button" class="who" data-who="' + i + '" aria-label="Select ' + esc(p.id) + '">' + esc(p.id) + '</button><span class="tee" title="' + esc(p.tee) + '">' + esc(teeCode(p.tee)) + '</span><span class="dots">' + strokeMark(p) + '</span>' + rels + '<button type="button" class="step down" data-i="' + i + '" data-d="-1" aria-label="Lower score">−</button><button type="button" data-i="' + i + '" data-set="1" class="score ' + scoreCls + '"' + aria + '>' + shown + '</button><button type="button" class="step up" data-i="' + i + '" data-d="1" aria-label="Raise score">+</button><button type="button" class="pick" data-i="' + i + '" data-x="1">X</button><span class="junkbtns">' + junkBtns + '</span></div>';
   }).join('');
+  paintHoleJump();
+  paintUndo();
   document.getElementById('holeJunk').innerHTML = holeBirdieLabel();
   const shape = (i, h) => {
     const score = holeScores[i][h];
@@ -2599,7 +3061,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
       }).join('');
       const status = portraitMatchLines(h, column);
       const matchTd = column.length ? '<td class="mcell" data-hole="' + h + '">' + status + '</td>' : '';
-      return '<tr data-hole="' + h + '" class="' + (h === holeNo ? 'current' : '') + '"><td class="hno" data-hole="' + h + '">' + (h+1) + '</td><td class="hgap"></td><td class="par" data-hole="' + h + '">' + par + '</td>' + cells + '<td class="cgap"></td>' + matchTd + '</tr>';
+      return '<tr data-hole="' + h + '" class="' + (h === holeNo ? 'current' : '') + '"><td class="hno" data-hole="' + h + '">' + cardHoleLabel(h) + '</td><td class="hgap"></td><td class="par" data-hole="' + h + '">' + par + '</td>' + cells + '<td class="cgap"></td>' + matchTd + '</tr>';
     }).join('');
     const tot = holePlayers.map((p, i) => totalCell(i, holes)).join('');
     const parTot = holes.reduce((n, h) => n + courseData().par[h], 0);
@@ -2614,15 +3076,16 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     return '<table class="scorecard">' + colgroup + '<tr class="totrow"><td class="tot">Total</td><td class="tot hgap"></td><td class="tot">' + parTot + '</td>' + tot + '<td class="tot cgap"></td>' + matchTot + '</tr></table>';
   };
   const gap = '<div class="card-gap"></div>';
-  document.getElementById('card').innerHTML = sideTable(holesOfNine(0), '1st 9') + gap + sideTable(holesOfNine(1), '2nd 9') + gap + totalRow() + playoffCardHtml(column);
+  document.getElementById('card').innerHTML = sideTable(holesOfNine(0), nineHead(0)) + gap + sideTable(holesOfNine(1), nineHead(1)) + gap + totalRow() + playoffCardHtml(column);
   paintMatchStrip(boards);
   paintCardView();
   const paper = document.getElementById('paperCard');
   if (paper) {
     const pars = courseData().par;
-    const si = indexFor(defaultTee()) || [];
-    const front = [0, 1, 2, 3, 4, 5, 6, 7, 8].filter(h => h < pars.length);
-    const back = [9, 10, 11, 12, 13, 14, 15, 16, 17].filter(h => h < pars.length);
+    const ranked = courseData().indexMode === 'nineRank';
+    const pair = playedPair();
+    const front = ranked ? pair[0].holes.slice() : [0, 1, 2, 3, 4, 5, 6, 7, 8].filter(h => h < pars.length);
+    const back = ranked ? pair[1].holes.slice() : [9, 10, 11, 12, 13, 14, 15, 16, 17].filter(h => h < pars.length);
     const nineSum = (i, holes) => {
       let n = 0, any = false, picked = false;
       holes.forEach(h => {
@@ -2643,10 +3106,10 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
       if (score == null) return '<td' + attr + (holeLeftBehind(h) ? ' class="missing"' : '') + '><span class="stack">' + mark + '</span></td>';
       return '<td' + attr + '><span class="stack">' + mark + shape(i, h) + '</span></td>';
     };
-    const head = '<tr><th class="lab"></th>' + front.map(h => '<th data-hole="' + h + '">' + (h + 1) + '</th>').join('') + '<th class="sum">Out</th>' + back.map(h => '<th data-hole="' + h + '">' + (h + 1) + '</th>').join('') + '<th class="sum">In</th><th class="sum">Tot</th></tr>';
+    const head = '<tr><th class="lab"></th>' + front.map(h => '<th data-hole="' + h + '">' + cardHoleLabel(h) + '</th>').join('') + '<th class="sum">Out</th>' + back.map(h => '<th data-hole="' + h + '">' + cardHoleLabel(h) + '</th>').join('') + '<th class="sum">In</th><th class="sum">Tot</th></tr>';
     const sumPar = holes => holes.reduce((n, h) => n + (pars[h] || 0), 0);
     const parRow = '<tr><th class="lab">Par</th>' + front.map(h => '<td data-hole="' + h + '">' + pars[h] + '</td>').join('') + '<td class="sum">' + sumPar(front) + '</td>' + back.map(h => '<td data-hole="' + h + '">' + pars[h] + '</td>').join('') + '<td class="sum">' + sumPar(back) + '</td><td class="sum">' + sumPar(front.concat(back)) + '</td></tr>';
-    const siRow = '<tr><th class="lab">SI</th>' + front.map(h => '<td data-hole="' + h + '">' + (si[h] || '') + '</td>').join('') + '<td class="sum"></td>' + back.map(h => '<td data-hole="' + h + '">' + (si[h] || '') + '</td>').join('') + '<td class="sum"></td><td class="sum"></td></tr>';
+    const siRow = '<tr><th class="lab">SI</th>' + front.map(h => '<td data-hole="' + h + '">' + (siAt(defaultTee(), h) || '') + '</td>').join('') + '<td class="sum"></td>' + back.map(h => '<td data-hole="' + h + '">' + (siAt(defaultTee(), h) || '') + '</td>').join('') + '<td class="sum"></td><td class="sum"></td></tr>';
     const who = holePlayers.map((p, i) => '<tr class="player">' + cardLabHtml(p) + front.map(h => paperCell(i, h)).join('') + '<td class="sum">' + nineSum(i, front) + '</td>' + back.map(h => paperCell(i, h)).join('') + '<td class="sum">' + nineSum(i, back) + '</td><td class="sum">' + nineSum(i, front.concat(back)) + '</td></tr>').join('');
     const span = 1 + front.length + 1 + back.length + 2;
     const gapRow = '<tr class="gap"><td colspan="' + span + '"></td></tr>';
@@ -2660,7 +3123,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
       if (g == null) return null;
       const hcp = courseHandicap(holePlayers[i]);
       const strokes = Math.max(0, Math.floor(Math.abs(hcp)));
-      const gets = indexFor(holePlayers[i].tee)[h] <= strokes;
+      const gets = siAt(holePlayers[i].tee, h) <= strokes;
       const adj = hcp >= 0 ? (gets ? 0.5 : 0) : (gets ? -0.5 : 0);
       return g - adj;
     };
@@ -2669,7 +3132,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
       if (g == null) return null;
       const hcp = courseHandicap(holePlayers[i]);
       const strokes = Math.max(0, Math.floor(Math.abs(hcp)));
-      const gets = indexFor(holePlayers[i].tee)[h] <= strokes;
+      const gets = siAt(holePlayers[i].tee, h) <= strokes;
       return g - (hcp >= 0 ? (gets ? 1 : 0) : (gets ? -1 : 0));
     };
     const lowOf = (h, fn) => {
@@ -2809,6 +3272,8 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     if (node) node.innerHTML = standingHtml;
   });
   try { settle(); } catch (err) { document.getElementById('settle').innerHTML = '<p>' + err.message + '</p>'; }
+  paintQuit();
+  paintRoundDetail();
   drawPresses();
   detail();
   saveCard();
@@ -2830,7 +3295,8 @@ function saveCard() {
       roundDate: roundDate,
       playoffs: playoffs,
       cardMatch: cardMatchName,
-      cardPick: cardPick
+      cardPick: cardPick,
+      roundStop: copyRoundStop(roundStop)
     }));
   } catch (e) {}
 }
@@ -2869,25 +3335,49 @@ function saveCard() {
 document.getElementById('scores').onclick = e => {
   const btn = e.target.closest('button');
   if (!btn) return;
+  if (btn.dataset.who != null) {
+    scoreCursor = Number(btn.dataset.who);
+    drawHole();
+    return;
+  }
   const i = Number(btn.dataset.i);
   if (btn.dataset.k) {
+    pushScoreHistory();
     const k = btn.dataset.k;
     if (k === 'KP' || k === 'Junk') holeMarks[i][holeNo][k] = (Number(holeMarks[i][holeNo][k]) + 1) % 5;
     drawHole();
     return;
   }
+  pushScoreHistory();
   if (btn.dataset.x) holeScores[i][holeNo] = 'X';
+  else if (btn.dataset.rel != null) holeScores[i][holeNo] = Math.max(1, (Number(courseData().par[holeNo]) || 4) + Number(btn.dataset.rel));
   else if (btn.dataset.set) holeScores[i][holeNo] = holeVal(i);
   else if (btn.dataset.d) holeScores[i][holeNo] = Math.max(1, (holeVal(i) === 'X' ? courseData().par[holeNo] : Number(holeVal(i))) + Number(btn.dataset.d));
+  scoreCursor = i;
+  advanceScore();
   drawHole();
 };
 document.getElementById('holeJunk').onclick = e => {
   const btn = e.target.closest('button');
   if (!btn) return;
+  pushScoreHistory();
   const i = Number(btn.dataset.i), k = btn.dataset.k;
   if (k === 'KP' || k === 'Junk') holeMarks[i][holeNo][k] = (Number(holeMarks[i][holeNo][k]) + 1) % 5;
   drawHole();
 };
+const holeJumpEl = document.getElementById('holeJump');
+if (holeJumpEl) holeJumpEl.onclick = e => {
+  const btn = e.target.closest('button[data-jump]');
+  if (!btn) return;
+  const h = Number(btn.dataset.jump);
+  if (!(h >= 0)) return;
+  holeNo = h;
+  drawHole();
+};
+const undoScoreBtn = document.getElementById('undoScore');
+if (undoScoreBtn) undoScoreBtn.onclick = () => undoScore();
+const redoScoreBtn = document.getElementById('redoScore');
+if (redoScoreBtn) redoScoreBtn.onclick = () => redoScore();
 document.getElementById('toGate').onclick = () => goHome();
 const homeBtn = document.getElementById('home');
 if (homeBtn) homeBtn.onclick = () => goHome();
@@ -2897,6 +3387,7 @@ function stepHole(dir) {
   const n = i + dir;
   if (i < 0 || n < 0 || n >= order.length) return;
   holeNo = order[n];
+  scoreCursor = 0;
   drawHole();
 }
 function missingNames(h) {
@@ -2921,6 +3412,7 @@ if (clearHoleBtn) clearHoleBtn.onclick = () => {
   if (!holePlayers.length) return;
   const scored = holeScores.some(row => row && row[holeNo] != null);
   if (scored && !window.confirm('Clear this hole?')) return;
+  pushScoreHistory();
   holeScores.forEach(row => { if (row) row[holeNo] = null; });
   holeMarks.forEach(row => { if (row) row[holeNo] = { KP: 0, Birdie: 0, Junk: 0 }; });
   clearPressesFrom(holeNo + 1);
@@ -2928,6 +3420,24 @@ if (clearHoleBtn) clearHoleBtn.onclick = () => {
 };
 const toSetupBtn = document.getElementById('toSetup');
 if (toSetupBtn) toSetupBtn.onclick = () => showScreen('setup');
+const quitRoundBtn = document.getElementById('quitRound');
+if (quitRoundBtn) quitRoundBtn.onclick = () => {
+  if (!holePlayers.length || roundStop) return;
+  quitChoice = 'pick';
+  paintQuit();
+};
+const resumeRoundBtn = document.getElementById('resumeRound');
+if (resumeRoundBtn) resumeRoundBtn.onclick = () => resumeStoppedRound();
+const quitPanelEl = document.getElementById('quitPanel');
+if (quitPanelEl) quitPanelEl.onclick = e => {
+  const btn = e.target.closest('button[data-quit]');
+  if (!btn) return;
+  const act = btn.dataset.quit;
+  if (act === 'asis' || act === 'cancel') { quitChoice = act; paintQuit(); return; }
+  if (act === 'back') { quitChoice = 'pick'; paintQuit(); return; }
+  if (act === 'close') { quitChoice = ''; paintQuit(); return; }
+  if (act === 'apply') applyQuit();
+};
 const clearAllBtn = document.getElementById('clearAll');
 if (clearAllBtn) clearAllBtn.onclick = () => {
   if (!holePlayers.length) return;
@@ -2943,6 +3453,9 @@ if (clearAllBtn) clearAllBtn.onclick = () => {
   holeNo = startAt;
   playedThru = -1;
   playoffs = {};
+  resetScoreHistory();
+  roundStop = null;
+  quitChoice = '';
   Object.keys(amounts).forEach(k => {
     if (!amounts[k]) return;
     amounts[k].manual = [];
@@ -2979,7 +3492,36 @@ function cloneAmounts(src) {
   Object.keys(src || {}).forEach(k => { out[k] = cloneAmount(src[k]); });
   return out;
 }
+function loadCustomCourses() {
+  let extra = [];
+  try { extra = JSON.parse(localStorage.getItem('golf-courses') || '[]'); } catch (e) { extra = []; }
+  (extra || []).forEach(item => {
+    if (!item || !item.name || !item.data || courses[item.name]) return;
+    courses[item.name] = item.data;
+  });
+}
+function homeCourseName() {
+  try {
+    const name = localStorage.getItem('golf-home-course') || '';
+    if (name && courses[name]) return name;
+  } catch (e) {}
+  return courses['Wood Ranch'] ? 'Wood Ranch' : (Object.keys(courses)[0] || 'Wood Ranch');
+}
+function paintHomeStar() {
+  const btn = document.getElementById('homeCourse');
+  const note = document.getElementById('homeNote');
+  const home = homeCourseName();
+  if (btn) {
+    const on = currentCourse === home;
+    btn.textContent = on ? '★' : '☆';
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.setAttribute('aria-label', on ? 'Home course' : 'Set as home course');
+  }
+  if (note) note.textContent = 'Home course: ' + home + '. New rounds start here.';
+}
 function loadSavedSetup() {
+  loadCustomCourses();
+  currentCourse = homeCourseName();
   let setup = null;
   let card = null;
   try { setup = JSON.parse(localStorage.getItem('round-setup') || 'null'); } catch (e) {}
@@ -3007,6 +3549,7 @@ function loadSavedSetup() {
     if (setup.strokePct != null) strokePct = Number(setup.strokePct);
     if (setup.cardMatch) cardMatchName = setup.cardMatch;
     if (setup.cardPick) cardPick = setup.cardPick;
+    if (setup.roundName) roundName = setup.roundName;
   }
   if (!cardPlayers) { syncPlayedNines(); return; }
   const formIds = players.filter(p => p.initials).map(p => String(p.initials).toUpperCase()).join();
@@ -3042,6 +3585,8 @@ function loadSavedSetup() {
   playoffs = card.playoffs && typeof card.playoffs === 'object' ? card.playoffs : {};
   if (card.cardMatch) cardMatchName = card.cardMatch;
   if (card.cardPick) cardPick = card.cardPick;
+  roundStop = copyRoundStop(card.roundStop);
+  quitChoice = '';
   syncPlayedNines();
   padCard();
 }
@@ -3080,7 +3625,11 @@ function snapshot(isAuto) {
     when: day + 'T12:00:00',
     auto: isAuto === true,
     cardMatch: cardMatchName,
-    cardPick: cardPick
+    cardPick: cardPick,
+    name: roundName || '',
+    ownerNet: readOwnerNet(holePlayers),
+    nets: readRoundNets(),
+    roundStop: copyRoundStop(roundStop)
   };
 }
 function findAutoSlot(list, snap) {
@@ -3118,7 +3667,57 @@ function autoSaveRound() {
   if (i >= 0) list[i] = snap; else list.unshift(snap);
   saveRoundArchive(list.slice(0, 20));
   const note = document.getElementById('saveNote');
-  if (note) note.textContent = 'Round auto-saved.';
+  if (note && document.getElementById('holeView') && document.getElementById('holeView').classList.contains('on')) note.textContent = '';
+}
+function ownerInitials(list) {
+  let id = '';
+  const book = playerBook();
+  (list || []).forEach(p => {
+    const pid = String(p.id || p.initials || '').toUpperCase();
+    const rec = book.find(b => String(b.initials || '').toUpperCase() === pid);
+    const name = String(p.name || (rec && rec.name) || '');
+    if (/topper larsen/i.test(name) || name.trim().startsWith('_')) id = pid;
+  });
+  if (id) return id;
+  const tl = (list || []).find(p => String(p.id || p.initials || '').toUpperCase() === 'TL');
+  return tl ? 'TL' : '';
+}
+function readOwnerNet(list) {
+  const id = ownerInitials(list || holePlayers);
+  if (!id) return '';
+  const el = document.getElementById('settle');
+  if (!el) return '';
+  const ps = el.querySelectorAll('p');
+  for (let i = 0; i < ps.length; i++) {
+    const text = ps[i].textContent || '';
+    if (/No money owed/i.test(text)) return '$0';
+    const b = ps[i].querySelector('b');
+    if (!b || b.textContent.trim() !== id) continue;
+    if (ps[i].classList.contains('settlewho') || ps[i].classList.contains('settleup')) continue;
+    const rest = text.replace(b.textContent, '').trim();
+    if (rest) return rest;
+  }
+  return '';
+}
+function roundTeeNames(r) {
+  const seen = [];
+  ((r && r.players) || []).forEach(p => {
+    const full = teeFullName(p.tee, r.course) || p.tee || '';
+    if (full && seen.indexOf(full) < 0) seen.push(full);
+  });
+  return seen.join(' ');
+}
+function roundInitials(r) {
+  return ((r && r.players) || []).map(p => p.id).filter(Boolean).join(' ');
+}
+function autoRoundName(r) {
+  return [roundDayOf(r), (r && r.course) || '', roundTeeNames(r)].filter(Boolean).join(' ');
+}
+function roundTitle(r) {
+  return (r && r.name) ? r.name : autoRoundName(r);
+}
+function liveRoundRecord() {
+  return { name: roundName, when: (roundDate || '') + 'T12:00:00', course: currentCourse, players: holePlayers };
 }
 function formatDay(iso) {
   const s = String(iso || '').slice(0, 10);
@@ -3130,21 +3729,46 @@ function formatDay(iso) {
 function roundBits(date, course, who) {
   return [formatDay(date), course, who].filter(Boolean).join(' · ');
 }
+function paintRoundDetail() {
+  const btn = document.getElementById('roundName');
+  const sub = document.getElementById('roundSub');
+  if (!btn) return;
+  const rec = liveRoundRecord();
+  btn.textContent = roundTitle(rec) || 'Round';
+  if (sub) sub.textContent = roundInitials(rec);
+}
 function drawSaved() {
   const el = document.getElementById('savedList');
+  const search = document.getElementById('roundSearch');
+  paintRunning();
   if (!el) return;
   const list = roundArchive();
   const liveId = roundId || '';
-  const rows = [];
+  const items = [];
   list.forEach((r, i) => {
     if (!r) return;
-    if (r.auto && liveId && r.id === liveId) return;
-    const who = (r.players || []).map(p => p.id).join(', ');
-    const course = (r.course && courses[r.course]) ? r.course : (r.course || '');
-    const label = roundBits(r.when || '', course, who);
-    rows.push('<div class="saved-row"><button type="button" class="round-open" data-open="' + i + '">' + esc(label || 'Saved round') + '</button><p><button type="button" data-export="' + i + '">Export</button> <button type="button" data-del="' + i + '">Delete</button></p></div>');
+    if (r.auto && liveId && r.id === liveId && !copyRoundStop(r.roundStop)) return;
+    items.push({ r: r, i: i });
   });
-  el.innerHTML = rows.length ? rows.join('') : '<p>No saved rounds.</p>';
+  items.sort((a, b) => String(b.r.when || '').localeCompare(String(a.r.when || '')) || (a.i - b.i));
+  if (search) search.hidden = items.length <= 8;
+  const q = items.length > 8 ? roundQuery.trim().toLowerCase() : '';
+  const shown = items.filter(({ r }) => {
+    if (!q) return true;
+    const blob = [roundTitle(r), r.course, roundTeeNames(r), roundInitials(r), roundDayOf(r), r.ownerNet || '', stopPhrase(r.roundStop)].join(' ').toLowerCase();
+    return blob.indexOf(q) >= 0;
+  });
+  let html = '';
+  let month = '';
+  shown.forEach(({ r, i }) => {
+    const m = roundDayOf(r).slice(0, 7) || 'Undated';
+    if (m !== month) { month = m; html += '<h3 class="month">' + esc(m) + '</h3>'; }
+    const net = r.ownerNet || '';
+    const cls = net.charAt(0) === '−' || net.charAt(0) === '-' ? 'dn' : (net.charAt(0) === '+' ? 'up' : '');
+    const stopLine = stopPhrase(r.roundStop);
+    html += '<button type="button" class="round-open" data-open="' + i + '"><span class="r1"><span class="title">' + esc(roundTitle(r) || 'Saved round') + '</span>' + (net ? '<span class="rnet ' + cls + '">' + esc(net) + '</span>' : '') + '</span><span class="r2">' + esc(roundInitials(r)) + '</span>' + (stopLine ? '<span class="r3">' + esc(stopLine) + '</span>' : '') + '</button>';
+  });
+  el.innerHTML = shown.length ? html : '<p>' + (items.length ? 'No rounds match.' : 'No saved rounds.') + '</p>';
 }
 document.getElementById('savedList').onclick = e => {
   const open = e.target.closest('button[data-open]');
@@ -3171,9 +3795,10 @@ document.getElementById('savedList').onclick = e => {
     const r = list[Number(open.dataset.open)];
     if (!r) return;
     if (r.course && courses[r.course]) { currentCourse = r.course; document.getElementById('courseSelect').value = currentCourse; }
-holePlayers = r.players || [];
-    holeScores = r.scores || [];
-    holeMarks = r.marks || [];
+    holePlayers = r.players || [];
+    holeScores = Array.isArray(r.scores) && r.scores.length === holePlayers.length ? r.scores : holePlayers.map(freshScores);
+    holeMarks = Array.isArray(r.marks) && r.marks.length === holePlayers.length ? r.marks : holePlayers.map(freshMarks);
+    padCard();
     holeNo = r.hole != null ? r.hole : clampStart(r.startAt);
     playedThru = typeof r.playedThru === 'number' ? r.playedThru : -1;
     startAt = clampStart(r.startAt);
@@ -3185,8 +3810,17 @@ holePlayers = r.players || [];
     playoffs = r.playoffs && typeof r.playoffs === 'object' ? r.playoffs : {};
     cardMatchName = r.cardMatch || '';
     cardPick = r.cardPick || '';
-    holePlayers.forEach(p => { if (p && !courseData().tees.includes(p.tee)) p.tee = validTee(p.tee); });
+    roundName = r.name || '';
+    holePlayers.forEach(p => {
+      if (!p) return;
+      const full = teeFullName(p.tee);
+      if (full) p.tee = full;
+      else if (!courseData().tees.includes(p.tee)) p.tee = validTee(p.tee);
+    });
     roundId = (r.id && r.auto !== false) ? r.id : (r.auto === false ? newRoundId() : '');
+    roundStop = copyRoundStop(r.roundStop);
+    quitChoice = '';
+    resetScoreHistory();
     players = holePlayers.map(p => {
       const book = playerBook().find(b => String(b.initials).toUpperCase() === String(p.id).toUpperCase());
       return { name: (book && book.name) || p.id, initials: p.id, tee: validTee(p.tee), hcp: p.hcp || '0', box: !!p.box };
@@ -3198,30 +3832,82 @@ holePlayers = r.players || [];
     suppressAutoSave = true;
     try { drawHole(); }
     finally { suppressAutoSave = false; }
-  }
-  if (del) {
-    const r = list[Number(del.dataset.del)];
-    const who = r && r.players ? r.players.map(p => p.id).join(', ') : 'this round';
-    if (!window.confirm('Delete ' + who + ' from Saved rounds?')) return;
-    list.splice(Number(del.dataset.del), 1);
-    saveRoundArchive(list);
-    drawSaved();
+    paintHomeStar();
   }
 };
-document.getElementById('saveRound').onclick = () => {
-  const list = roundArchive();
-  list.unshift(snapshot(false));
-  saveRoundArchive(list.slice(0, 20));
-  document.getElementById('saveNote').textContent = 'Round saved on this device.';
-  drawSaved();
-};
-document.getElementById('exportRound').onclick = () => {
-  const blob = new Blob([JSON.stringify(snapshot(false), null, 2)], { type: 'application/json' });
+function exportRoundFile(r) {
+  const data = r || snapshot(false);
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const abbr = (data.course && courses[data.course] && courses[data.course].abbr) || (courseData() && courseData().abbr) || 'golf';
+  const name = abbr + '-' + String(data.when || localDateStr()).slice(0, 10) + '.json';
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], name)] })) {
+    navigator.share({ files: [new File([blob], name)], title: name }).catch(() => {});
+    return;
+  }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = (courseData().abbr || 'golf') + '-' + localDateStr() + '.json';
+  a.download = name;
   a.click();
+}
+function commitRoundName(value) {
+  const auto = autoRoundName(liveRoundRecord());
+  const v = String(value || '').trim();
+  roundName = v && v !== auto ? v : '';
+  paintRoundDetail();
+  const list = roundArchive();
+  const i = list.findIndex(item => item && roundId && item.id === roundId);
+  if (i >= 0) { list[i].name = roundName; saveRoundArchive(list); }
+  persistSetup();
+}
+document.getElementById('roundName').onclick = () => {
+  const btn = document.getElementById('roundName');
+  if (!btn || btn.hidden) return;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'round-name-input';
+  input.value = btn.textContent || '';
+  input.setAttribute('aria-label', 'Round name');
+  btn.hidden = true;
+  btn.parentElement.insertBefore(input, btn);
+  input.focus();
+  setTimeout(() => { try { input.select(); input.setSelectionRange(0, input.value.length); } catch (e) {} }, 30);
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    const value = input.value;
+    input.remove();
+    btn.hidden = false;
+    commitRoundName(value);
+  };
+  input.onblur = finish;
+  input.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); input.blur(); } };
 };
+document.getElementById('deleteRound').onclick = () => {
+  const label = (document.getElementById('roundName') && document.getElementById('roundName').textContent) || 'this round';
+  if (!window.confirm('Delete ' + label + ' from Saved rounds?')) return;
+  const list = roundArchive();
+  let i = list.findIndex(item => item && roundId && item.id === roundId);
+  if (i < 0) i = list.findIndex(item => item && roundTitle(item) === label);
+  if (i >= 0) { list.splice(i, 1); saveRoundArchive(list); }
+  suppressAutoSave = true;
+  holePlayers = [];
+  holeScores = [];
+  holeMarks = [];
+  roundId = '';
+  roundName = '';
+  roundStop = null;
+  quitChoice = '';
+  resetScoreHistory();
+  players = [{ name: defaultPlayer.name, initials: defaultPlayer.initials, tee: defaultTee(), hcp: '', box: false }];
+  try { localStorage.removeItem('golf-card'); } catch (e) {}
+  suppressAutoSave = false;
+  draw();
+  drawSaved();
+  showScreen('gate');
+};
+document.getElementById('exportThis').onclick = () => exportRoundFile(snapshot(false));
+document.getElementById('exportRound').onclick = () => exportRoundFile(snapshot(false));
 document.getElementById('importRound').onchange = e => {
   const file = e.target.files[0];
   if (!file) return;
@@ -3254,32 +3940,66 @@ document.getElementById('roundDate').onchange = () => {
   autoSaveRound();
 };
 document.getElementById('savedPlayers').onclick = e => {
-  const drop = e.target.closest('button[data-drop]');
-  if (drop) {
-    const book = playerBook().filter(b => b.name !== drop.dataset.drop);
+  const saveBtn = e.target.closest('#pdSave');
+  const delBtn = e.target.closest('#pdDelete');
+  if (saveBtn || delBtn) {
+    const book = playerBook();
+    const i = book.findIndex(b => b.name === playerDetailName);
+    if (i < 0) { playerDetailName = ''; drawSavedPlayers(); return; }
+    if (delBtn) {
+      if (!window.confirm('Delete ' + book[i].name + ' from saved players?')) return;
+      book.splice(i, 1);
+      savePlayerBook(book);
+      playerDetailName = '';
+      drawSavedPlayers();
+      return;
+    }
+    const name = capWords(document.getElementById('pdName').value.trim());
+    const initials = String(document.getElementById('pdInit').value || '').toUpperCase().trim();
+    const hcp = String(document.getElementById('pdHcp').value || '').trim();
+    const tee = document.getElementById('pdTee').value;
+    if (!name || !initials) return;
+    const prior = book[i];
+    book[i] = { name: name, initials: initials, hcp: hcp, tee: tee, used: prior.used || Date.now(), uses: prior.uses || 0 };
     savePlayerBook(book);
-    drawSavedPlayers();
+    players.forEach(p => {
+      if (String(p.name || '').toLowerCase() === String(playerDetailName).toLowerCase()) {
+        p.name = name; p.initials = initials; p.hcp = hcp; p.tee = validTee(tee);
+      }
+    });
+    playerDetailName = name;
+    draw();
     return;
   }
-  const box = e.target.closest('input[data-add]');
-  if (!box) return;
-  syncPlayers();
-  const rec = playerBook().find(b => b.name === box.dataset.add);
-  if (!rec) return;
-  if (box.checked) {
-    let i = players.findIndex(p => !p.name && !p.initials);
-    if (i < 0) { players.push({ name:'', initials:'', tee:defaultTee(), hcp:'', box:false }); i = players.length - 1; }
-    players[i].name = rec.name;
-    players[i].initials = rec.initials;
-    players[i].hcp = rec.hcp || '';
-    players[i].tee = validTee(rec.tee);
-  } else {
-    const i = players.findIndex(p => p.name.toLowerCase() === rec.name.toLowerCase());
-    if (i >= 0) players.splice(i, 1);
-    if (!players.length) players.push({ name:'', initials:'', tee:defaultTee(), hcp:'', box:false });
+  const detail = e.target.closest('button[data-detail]');
+  if (detail) {
+    playerDetailName = detail.dataset.detail;
+    paintPlayerDetail();
+    return;
   }
+  const add = e.target.closest('button[data-add]');
+  if (!add) return;
+  syncPlayers();
+  const rec = playerBook().find(b => b.name === add.dataset.add);
+  if (!rec) return;
+  if (players.some(p => String(p.name || '').toLowerCase() === rec.name.toLowerCase())) return;
+  let i = players.findIndex(p => !p.name && !p.initials);
+  if (i < 0) { players.push({ name:'', initials:'', tee:defaultTee(), hcp:'', box:false }); i = players.length - 1; }
+  players[i].name = rec.name;
+  players[i].initials = rec.initials;
+  players[i].hcp = rec.hcp || '';
+  players[i].tee = validTee(rec.tee);
+  const book = playerBook();
+  const bi = book.findIndex(b => b.name === rec.name);
+  if (bi >= 0) { book[bi].used = Date.now(); book[bi].uses = (book[bi].uses || 0) + 1; const moved = book.splice(bi, 1)[0]; book.unshift(moved); savePlayerBook(book); }
   draw();
 };
+document.getElementById('playerSearch').oninput = e => {
+  playerQuery = e.target.value;
+  drawSavedPlayers();
+};
+const roundSearch = document.getElementById('roundSearch');
+if (roundSearch) roundSearch.oninput = e => { roundQuery = e.target.value; drawSaved(); };
 function initCourseSelect() {
   const courseSelect = document.getElementById('courseSelect');
   if (!courseSelect) return;
@@ -3303,10 +4023,579 @@ function initCourseSelect() {
     syncPlayedNines();
     draw();
     persistSetup();
+    paintHomeStar();
+    paintNinePick();
   };
+  paintHomeStar();
+  paintNinePick();
+}
+function blankTeeRow() {
+  const row = document.createElement('div');
+  row.className = 'tee-row';
+  row.innerHTML = '<input class="tee-name" type="text" placeholder="Tee name" autocapitalize="words" aria-label="Tee name"><input class="tee-rating" type="text" inputmode="decimal" placeholder="Rating" aria-label="Course rating"><input class="tee-slope" type="text" inputmode="decimal" placeholder="Slope" aria-label="Slope">';
+  return row;
+}
+function courseMsg(text) {
+  const el = document.getElementById('courseMsg');
+  if (el) el.textContent = text || '';
+}
+const NINE_LABELS = ['1st 9', '2nd 9', '3rd 9', '4th 9'];
+let formNineCount = 0;
+function indexMaxForForm() { return formNineCount > 2 ? 9 : 18; }
+function holeFieldRow(h) {
+  const row = document.createElement('div');
+  row.className = 'hrow';
+  const max = indexMaxForForm();
+  row.innerHTML = '<span class="hn">' + h + '</span>'
+    + '<span class="amt"><button type="button" data-step="-1" aria-label="Lower par on hole ' + h + '">−</button>'
+    + '<input id="par' + h + '" class="par" type="text" inputmode="decimal" value="4" data-min="3" data-max="6" aria-label="Hole ' + h + ' par">'
+    + '<button type="button" data-step="1" aria-label="Raise par on hole ' + h + '">+</button></span>'
+    + '<span class="amt"><button type="button" data-step="-1" aria-label="Lower index on hole ' + h + '">−</button>'
+    + '<input id="si' + h + '" class="si" type="text" inputmode="decimal" data-min="1" data-max="' + max + '" aria-label="Hole ' + h + ' handicap index">'
+    + '<button type="button" data-step="1" aria-label="Raise index on hole ' + h + '">+</button></span>';
+  return row;
+}
+function setFormNineCount(n) {
+  const editor = document.getElementById('nineEditor');
+  if (!editor) return;
+  n = Math.max(2, Math.min(4, n));
+  formNineCount = n;
+  editor.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    const block = document.createElement('div');
+    block.className = 'nine-block';
+    const remove = i >= 2 ? '<button type="button" class="nine-remove" data-remove-nine="' + i + '">Remove</button>' : '';
+    block.innerHTML = '<div class="nine-top"><span class="flab">' + NINE_LABELS[i] + '</span>' + remove + '</div>'
+      + '<input id="nineName' + i + '" class="nine-name" type="text" placeholder="Name (optional)" autocapitalize="words" aria-label="' + NINE_LABELS[i] + ' name">';
+    editor.appendChild(block);
+  }
+  const holes = document.getElementById('nineHoles');
+  if (!holes) return;
+  holes.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    const start = i * 9 + 1;
+    const wrap = document.createElement('div');
+    wrap.innerHTML = '<p class="psec">' + NINE_LABELS[i] + '</p><div class="holehead"><span></span><span>Par</span><span>Index</span></div>';
+    const grid = document.createElement('div');
+    grid.className = 'holegrid';
+    grid.id = 'holeGrid' + i;
+    for (let h = start; h < start + 9; h++) grid.appendChild(holeFieldRow(h));
+    wrap.appendChild(grid);
+    holes.appendChild(wrap);
+  }
+  const add = document.getElementById('addNine');
+  if (add) add.hidden = n >= 4;
+  const note = document.getElementById('holeNoteForm');
+  if (note) note.textContent = n > 2
+    ? 'Par starts at 4. Each nine is ranked 1 to 9 once. The nine you play first takes the odd strokes and the second nine takes the even strokes, so every pairing is 1 to 18.'
+    : 'Par starts at 4. Handicap index is 1 to 18, once each on the 18 holes you play. Rating and slope on a tee are optional.';
+  armAmountFields(document.getElementById('addCourse'));
+}
+function readFormNines() {
+  const out = [];
+  for (let i = 0; i < formNineCount; i++) {
+    const nameEl = document.getElementById('nineName' + i);
+    const holes = [];
+    for (let k = 0; k < 9; k++) {
+      const h = i * 9 + k + 1;
+      const par = document.getElementById('par' + h);
+      const si = document.getElementById('si' + h);
+      holes.push({ par: par ? par.value : '4', si: si ? si.value : '' });
+    }
+    out.push({ name: nameEl ? nameEl.value : '', holes: holes });
+  }
+  return out;
+}
+function writeFormNines(list) {
+  setFormNineCount(list.length);
+  list.forEach((nine, i) => {
+    const name = document.getElementById('nineName' + i);
+    if (name) name.value = nine.name;
+    nine.holes.forEach((hole, k) => {
+      const h = i * 9 + k + 1;
+      const par = document.getElementById('par' + h);
+      const si = document.getElementById('si' + h);
+      if (par) par.value = hole.par;
+      if (si) si.value = hole.si;
+    });
+  });
+}
+function ensureNineEditor() {
+  if (!formNineCount) setFormNineCount(2);
+}
+function readHoleValue(id, lo, hi) {
+  const el = document.getElementById(id);
+  const raw = el ? String(el.value).trim() : '';
+  if (!raw) return null;
+  const n = Number(raw);
+  if (!isFinite(n) || !Number.isInteger(n) || n < lo || n > hi) return null;
+  return n;
+}
+function indexesOnce(list) {
+  if (!list || list.length !== 18) return false;
+  const seen = {};
+  for (let i = 0; i < list.length; i++) {
+    const n = list[i];
+    if (!(n >= 1 && n <= 18) || seen[n]) return false;
+    seen[n] = true;
+  }
+  return true;
+}
+function duplicateIndexNote(list) {
+  const at = {};
+  for (let i = 0; i < list.length; i++) {
+    const n = list[i];
+    if (at[n] != null) return 'Hole ' + (at[n] + 1) + ' and hole ' + (i + 1) + ' both use ' + n + '.';
+    at[n] = i;
+  }
+  return 'These 18 holes do not use each index once.';
+}
+let ninePickBound = false;
+function nineChoiceLabel(nine, i) {
+  if (nine && nine.name) return nine.name;
+  return ['1st 9', '2nd 9', '3rd 9', '4th 9'][i] || ('Nine ' + (i + 1));
+}
+function paintNinePick() {
+  const box = document.getElementById('ninePick');
+  const first = document.getElementById('nineFirst');
+  const second = document.getElementById('nineSecond');
+  if (!box || !first || !second) return;
+  const nines = courseNines();
+  if (nines.length < 3) {
+    box.hidden = true;
+    first.innerHTML = '';
+    second.innerHTML = '';
+    return;
+  }
+  const pair = playedPair();
+  const opts = nines.map((n, i) => '<option value="' + esc(n.id) + '">' + esc(nineChoiceLabel(n, i)) + '</option>').join('');
+  first.innerHTML = opts;
+  second.innerHTML = opts;
+  first.value = pair[0].id;
+  second.value = pair[1].id;
+  box.hidden = false;
+  if (!ninePickBound) {
+    ninePickBound = true;
+    const onPick = () => applyNinePick();
+    first.onchange = onPick;
+    second.onchange = onPick;
+  }
+}
+function applyNinePick() {
+  const firstEl = document.getElementById('nineFirst');
+  const secondEl = document.getElementById('nineSecond');
+  if (!firstEl || !secondEl) return;
+  let firstId = firstEl.value;
+  let secondId = secondEl.value;
+  const nines = courseNines();
+  if (firstId === secondId) {
+    const other = nines.find(n => n.id !== firstId);
+    if (other) secondId = other.id;
+    secondEl.value = secondId;
+  }
+  const first = nineById(firstId);
+  if (first && first.holes.indexOf(clampStart(startAt)) < 0 && first.holes.length) startAt = first.holes[0];
+  ninesPlayed = [firstId, secondId];
+  syncPlayedNines();
+  syncStartButton();
+  drawBets();
+  persistSetup();
+}
+document.getElementById('showAddCourse').onclick = () => {
+  const box = document.getElementById('addCourse');
+  box.hidden = !box.hidden;
+  if (!box.hidden) {
+    ensureNineEditor();
+    const rows = document.getElementById('teeRows');
+    if (rows && !rows.childElementCount) rows.appendChild(blankTeeRow());
+  }
+};
+document.getElementById('addCourse').onclick = e => {
+  const rm = e.target.closest('button[data-remove-nine]');
+  if (rm) {
+    const list = readFormNines();
+    const i = Number(rm.dataset.removeNine);
+    if (i >= 2 && i < list.length) {
+      list.splice(i, 1);
+      writeFormNines(list);
+    }
+    return;
+  }
+  const btn = e.target.closest('button[data-step]');
+  if (!btn) return;
+  if (stepperFromPointer) { stepperFromPointer = false; return; }
+  applyStep(btn);
+};
+document.getElementById('addNine').onclick = () => {
+  ensureNineEditor();
+  if (formNineCount >= 4) return;
+  const list = readFormNines();
+  const blank = [];
+  for (let k = 0; k < 9; k++) blank.push({ par: '4', si: '' });
+  list.push({ name: '', holes: blank });
+  writeFormNines(list);
+};
+document.getElementById('addTee').onclick = () => {
+  ensureNineEditor();
+  document.getElementById('teeRows').appendChild(blankTeeRow());
+};
+document.getElementById('homeCourse').onclick = () => {
+  try { localStorage.setItem('golf-home-course', currentCourse); } catch (e) {}
+  paintHomeStar();
+};
+document.getElementById('saveCourse').onclick = () => {
+  const name = capWords(document.getElementById('courseName').value.trim());
+  if (!name) { courseMsg('Enter a course name.'); return; }
+  if (courses[name] && !courses[name].custom) { courseMsg(name + ' is already on this phone.'); return; }
+  const tees = [...document.querySelectorAll('#teeRows .tee-row')].map(row => ({
+    name: capWords(row.querySelector('.tee-name').value.trim()),
+    rating: row.querySelector('.tee-rating').value.trim(),
+    slope: row.querySelector('.tee-slope').value.trim()
+  })).filter(t => t.name);
+  if (!tees.length) { courseMsg('Add at least one tee.'); return; }
+  ensureNineEditor();
+  const nineCount = formNineCount;
+  const rankMax = nineCount > 2 ? 9 : 18;
+  const par = [];
+  const index = [];
+  for (let h = 1; h <= nineCount * 9; h++) {
+    const p = readHoleValue('par' + h, 3, 6);
+    const si = readHoleValue('si' + h, 1, rankMax);
+    if (p == null) { courseMsg('Par on every hole is 3, 4, 5, or 6.'); return; }
+    if (si == null) { courseMsg(nineCount > 2 ? 'Enter a rank from 1 to 9 on every hole.' : 'Enter a handicap index from 1 to 18 for every hole.'); return; }
+    par.push(p);
+    index.push(si);
+  }
+  const nines = [];
+  for (let i = 0; i < nineCount; i++) {
+    const holes = [];
+    for (let k = 0; k < 9; k++) holes.push(i * 9 + k);
+    const nameEl = document.getElementById('nineName' + i);
+    nines.push({
+      id: 'n' + (i + 1),
+      name: nameEl ? nameEl.value.trim() : '',
+      press: i === 0 ? 'pressFront' : i === 1 ? 'pressBack' : 'press_n' + (i + 1),
+      holes: holes
+    });
+  }
+  if (nineCount === 2) {
+    if (!indexesOnce(index)) {
+      courseMsg('Each handicap index from 1 to 18 is used once. ' + duplicateIndexNote(index));
+      return;
+    }
+  } else {
+    for (let i = 0; i < nineCount; i++) {
+      const slice = index.slice(i * 9, i * 9 + 9);
+      const seen = {};
+      for (let k = 0; k < slice.length; k++) {
+        if (seen[slice[k]]) {
+          courseMsg('Each nine uses ranks 1 through 9 once. ' + NINE_LABELS[i] + ' repeats ' + slice[k] + '.');
+          return;
+        }
+        seen[slice[k]] = true;
+      }
+    }
+  }
+  const rating = {};
+  tees.forEach(t => {
+    if (t.rating || t.slope) rating[t.name] = { slope: Number(t.slope) || 0, rating: Number(t.rating) || 0, par: par.reduce((a, b) => a + b, 0) };
+  });
+  const data = {
+    abbr: (name.replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase() || 'GC'),
+    title: name,
+    par: par,
+    tees: tees.map(t => t.name),
+    index: { default: index },
+    nines: nines,
+    custom: true
+  };
+  if (nineCount > 2) data.indexMode = 'nineRank';
+  if (Object.keys(rating).length) data.rating = rating;
+  courses[name] = data;
+  let stored = [];
+  try { const prev = JSON.parse(localStorage.getItem('golf-courses') || '[]'); if (Array.isArray(prev)) stored = prev.filter(item => item && item.name !== name); } catch (e) {}
+  stored.push({ name: name, data: data });
+  try { localStorage.setItem('golf-courses', JSON.stringify(stored)); } catch (e) {}
+  currentCourse = name;
+  if (startAt >= par.length) startAt = 0;
+  ninesPlayed = null;
+  players.forEach(p => { if (!teeFullName(p.tee)) p.tee = data.tees[0]; });
+  initCourseSelect();
+  draw();
+  persistSetup();
+  courseMsg(name + ' saved.');
+  document.getElementById('addCourse').hidden = true;
+};
+function scoreSnap() {
+  return JSON.stringify({ scores: holeScores, marks: holeMarks, hole: holeNo, stop: copyRoundStop(roundStop), cursor: scoreCursor });
+}
+function pushScoreHistory() {
+  scorePast.push(scoreSnap());
+  if (scorePast.length > 50) scorePast.shift();
+  scoreFuture = [];
+}
+function applyScoreSnap(raw) {
+  const data = JSON.parse(raw);
+  holeScores = data.scores;
+  holeMarks = data.marks;
+  if (data.hole != null) holeNo = data.hole;
+  if (typeof data.cursor === 'number') scoreCursor = data.cursor;
+  roundStop = copyRoundStop(data.stop);
+  quitChoice = '';
+  drawHole();
+}
+function undoScore() {
+  if (!scorePast.length) return;
+  scoreFuture.push(scoreSnap());
+  applyScoreSnap(scorePast.pop());
+}
+function redoScore() {
+  if (!scoreFuture.length) return;
+  scorePast.push(scoreSnap());
+  applyScoreSnap(scoreFuture.pop());
+}
+function resetScoreHistory() {
+  scorePast = [];
+  scoreFuture = [];
+  scoreCursor = 0;
+  paintUndo();
+}
+function paintUndo() {
+  const undo = document.getElementById('undoScore');
+  const redo = document.getElementById('redoScore');
+  if (undo) undo.disabled = !scorePast.length;
+  if (redo) redo.disabled = !scoreFuture.length;
+}
+function copyRoundStop(stop) {
+  if (!stop || (stop.mode !== 'asis' && stop.mode !== 'cancel')) return null;
+  const hole = Number(stop.hole);
+  return { mode: stop.mode, hole: hole > 0 ? hole : 0 };
+}
+function stopPhrase(stop) {
+  const saved = copyRoundStop(stop);
+  if (!saved) return '';
+  const where = saved.hole ? 'Stopped after hole ' + saved.hole : 'Stopped before play';
+  const how = saved.mode === 'cancel' ? 'Bets cancelled' : 'Bets paid as they stand';
+  return where + '. ' + how + '.';
+}
+function scoredThruLabel() {
+  const order = playOrder();
+  let last = null;
+  for (let i = 0; i < order.length; i++) {
+    const h = order[i];
+    const done = holePlayers.length && holePlayers.every((p, pi) => holeScores[pi] && holeScores[pi][h] != null);
+    if (!done) break;
+    last = h;
+  }
+  return last == null ? 0 : cardHoleLabel(last);
+}
+function paintQuit() {
+  const panel = document.getElementById('quitPanel');
+  const quitBtn = document.getElementById('quitRound');
+  const resumeBtn = document.getElementById('resumeRound');
+  const scoreNote = document.getElementById('scoreStop');
+  const cardNote = document.getElementById('cardStop');
+  const phrase = roundStop ? stopPhrase(roundStop) : '';
+  if (scoreNote) { scoreNote.textContent = phrase; scoreNote.hidden = !phrase; }
+  if (cardNote) { cardNote.textContent = phrase; cardNote.hidden = !phrase; }
+  if (quitBtn) quitBtn.hidden = !!roundStop;
+  if (resumeBtn) resumeBtn.hidden = !roundStop;
+  if (!panel) return;
+  if (!quitChoice || roundStop) { panel.hidden = true; panel.innerHTML = ''; return; }
+  panel.hidden = false;
+  const hole = scoredThruLabel();
+  const where = hole ? 'after hole ' + hole : 'before any hole is complete';
+  if (quitChoice === 'pick') {
+    panel.innerHTML = '<h2>Quit round</h2><p>Choose how the bets settle.</p><p class="quit-choices"><button type="button" class="choice" data-quit="asis">Pay out as is</button><button type="button" class="choice" data-quit="cancel">Cancel bets</button></p><p><button type="button" class="quiet" data-quit="close">Back</button></p>';
+    return;
+  }
+  const pay = quitChoice === 'cancel'
+    ? 'Cancel every bet. Settle shows $0 for everyone.'
+    : 'Pay every bet as it stands. Whoever is up wins the full amount. All square is a push. A match already closed, such as 4&3, settles as usual.';
+  panel.innerHTML = '<h2>Stop ' + where + '?</h2><p>' + pay + '</p><p class="actions"><button type="button" class="primary" data-quit="apply">Stop the round</button><button type="button" data-quit="back">Back</button></p>';
+}
+function applyQuit() {
+  if (quitChoice !== 'asis' && quitChoice !== 'cancel') return;
+  const mode = quitChoice;
+  pushScoreHistory();
+  roundStop = { mode: mode, hole: scoredThruLabel() };
+  quitChoice = '';
+  drawHole();
+}
+function resumeStoppedRound() {
+  if (!roundStop) return;
+  pushScoreHistory();
+  roundStop = null;
+  quitChoice = '';
+  drawHole();
+}
+function advanceScore() {
+  const n = holePlayers.length;
+  if (!n) return;
+  if (scoreCursor < 0 || scoreCursor >= n) scoreCursor = 0;
+  if (scoreCursor < n - 1) { scoreCursor += 1; return; }
+  const order = playOrder();
+  const at = order.indexOf(holeNo);
+  if (at >= 0 && at + 1 < order.length) {
+    holeNo = order[at + 1];
+    scoreCursor = 0;
+  }
+}
+function paintHoleJump() {
+  const el = document.getElementById('holeJump');
+  if (!el) return;
+  const order = playOrder();
+  el.innerHTML = order.map(h => {
+    const on = h === holeNo ? ' on' : '';
+    const done = holePlayers.length && holePlayers.every((p, i) => holeScores[i] && holeScores[i][h] != null);
+    return '<button type="button" class="hjump' + on + (done ? ' done' : '') + '" data-jump="' + h + '">' + cardHoleLabel(h) + '</button>';
+  }).join('');
+}
+function parseCash(text) {
+  const s = String(text || '').replace(/\u2212/g, '-').replace(/[$,\s]/g, '');
+  const n = Number(s);
+  return isFinite(n) ? Math.round(n * 100) / 100 : 0;
+}
+function playerMoneyKey(p) {
+  if (!p) return '';
+  const name = String(p.name || '').trim();
+  if (name) return name;
+  return String(p.id || p.initials || '').trim();
+}
+function readRoundNets() {
+  const nets = {};
+  const el = document.getElementById('settle');
+  if (!el || !holePlayers.length) return nets;
+  const ps = el.querySelectorAll('p');
+  let summary = false;
+  for (let i = 0; i < ps.length; i++) {
+    const b = ps[i].querySelector('b');
+    const label = b ? b.textContent.trim() : '';
+    if (label === 'Details') break;
+    if (label === 'Summary') { summary = true; continue; }
+    if (!summary) continue;
+    if (label === 'Settle up' || label === 'No money owed.') { summary = false; continue; }
+    if (ps[i].classList.contains('settlewho') || ps[i].classList.contains('settleup')) continue;
+    if (!b) continue;
+    const player = holePlayers.find(x => x.id === label);
+    const key = playerMoneyKey(player || { id: label });
+    if (!key) continue;
+    const rest = (ps[i].textContent || '').replace(b.textContent, '').trim();
+    nets[key] = parseCash(rest);
+  }
+  return nets;
+}
+function ownerMoneyKey(r) {
+  const list = (r && r.players) || [];
+  let book = [];
+  try { book = playerBook(); } catch (e) {}
+  for (let i = 0; i < list.length; i++) {
+    const p = list[i] || {};
+    const pid = String(p.id || p.initials || '').toUpperCase();
+    const rec = book.find(b => String(b.initials || '').toUpperCase() === pid);
+    const name = String(p.name || (rec && rec.name) || '').trim();
+    if (/topper larsen/i.test(name) || name.startsWith('_')) return name;
+  }
+  const tl = list.find(p => String((p && (p.id || p.initials)) || '').toUpperCase() === 'TL');
+  if (tl && String(tl.name || '').trim()) return String(tl.name).trim();
+  const bookTl = book.find(b => String(b.initials || '').toUpperCase() === 'TL' || /topper larsen/i.test(b.name || ''));
+  if (bookTl && bookTl.name) return bookTl.name;
+  return 'Topper Larsen';
+}
+function runningBalances() {
+  const totals = {};
+  const seen = {};
+  roundArchive().forEach(r => {
+    if (!r) return;
+    const key = r.id ? ('id:' + r.id) : ('day:' + roundDayOf(r) + ':' + playerKeyOf(r.players) + ':' + (r.auto ? 'a' : String(r.when || '')));
+    if (seen[key]) return;
+    seen[key] = true;
+    const nets = r.nets;
+    if (nets && typeof nets === 'object' && Object.keys(nets).length) {
+      Object.keys(nets).forEach(name => {
+        const n = Number(nets[name]);
+        if (!isFinite(n)) return;
+        totals[name] = Math.round(((totals[name] || 0) + n) * 100) / 100;
+      });
+      return;
+    }
+    if (r.ownerNet) {
+      const who = ownerMoneyKey(r);
+      totals[who] = Math.round(((totals[who] || 0) + parseCash(r.ownerNet)) * 100) / 100;
+    }
+  });
+  return totals;
+}
+function paintRunning() {
+  const el = document.getElementById('runningMoney');
+  if (!el) return;
+  const totals = runningBalances();
+  const names = Object.keys(totals).sort((a, b) => a.localeCompare(b));
+  if (!names.length) { el.innerHTML = ''; return; }
+  el.innerHTML = '<p class="psec">Running</p>' + names.map(name => {
+    const v = totals[name];
+    const cls = v > 0 ? 'up' : v < 0 ? 'dn' : '';
+    return '<p class="runline"><span>' + esc(name) + '</span><span class="' + cls + '">' + cashText(v) + '</span></p>';
+  }).join('');
+}
+let wakeWanted = false;
+let wakePending = false;
+function holdWake() {
+  wakeWanted = true;
+  try {
+    if (!navigator.wakeLock || document.visibilityState !== 'visible') return;
+    if (!holePlayers.length || document.body.classList.contains('gate')) return;
+    if (wakeLockSentinel || wakePending) return;
+    wakePending = true;
+    navigator.wakeLock.request('screen').then(lock => {
+      wakePending = false;
+      const keep = wakeWanted && document.visibilityState === 'visible' && holePlayers.length && !document.body.classList.contains('gate');
+      if (!keep) {
+        try { const done = lock.release(); if (done && done.catch) done.catch(() => {}); } catch (e) {}
+        return;
+      }
+      wakeLockSentinel = lock;
+      lock.addEventListener('release', () => { if (wakeLockSentinel === lock) wakeLockSentinel = null; });
+    }).catch(() => { wakePending = false; wakeLockSentinel = null; });
+  } catch (e) { wakePending = false; }
+}
+function releaseWake() {
+  wakeWanted = false;
+  const lock = wakeLockSentinel;
+  wakeLockSentinel = null;
+  if (!lock) return;
+  try { const done = lock.release(); if (done && done.catch) done.catch(() => {}); } catch (e) {}
+}
+function syncWake() {
+  if (!holePlayers.length || document.body.classList.contains('gate') || document.visibilityState !== 'visible') releaseWake();
+  else holdWake();
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') holdWake();
+  else releaseWake();
+});
+function openScoreLink() {
+  let go = '';
+  try { go = new URLSearchParams(location.search).get('go') || ''; } catch (e) {}
+  const hash = String(location.hash || '').replace(/^#/, '');
+  if (go !== 'score' && hash !== 'score') return;
+  if (holePlayers.length) {
+    showScreen('score');
+    try { drawHole(); } catch (e) {}
+    const btn = document.querySelector('#scores .grid.on button.score');
+    if (btn) { try { btn.focus(); } catch (e) {} }
+  } else showScreen('setup');
+}
+function registerGolfWorker() {
+  try {
+    if (!('serviceWorker' in navigator)) return;
+    if (!location.protocol || location.protocol === 'file:') return;
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  } catch (e) {}
 }
 function showScreen(name) {
   if (name === 'gate') refreshGate();
+  if (name === 'setup') { paintNinePick(); drawSavedPlayers(); }
   const map = { gate: 'screen-gate', setup: 'screen-setup', score: 'holeView', standing: 'screen-standing', junk: 'screen-junk', card: 'screen-card', settle: 'screen-settle' };
   const id = map[name] || 'screen-gate';
   document.querySelectorAll('.screen').forEach(el => el.classList.toggle('on', el.id === id));
@@ -3320,6 +4609,8 @@ function showScreen(name) {
   const title = document.getElementById('screenTitle');
   if (title) title.textContent = titles[name] || 'Golf';
   document.title = titles[name] || 'Golf';
+  syncWake();
+  try { paintQuit(); } catch (e) {}
   const ready = holePlayers.length > 0;
   document.querySelectorAll('.empty-round').forEach(el => { el.hidden = ready; });
   document.querySelectorAll('.round-body').forEach(el => { el.hidden = !ready; });
@@ -3345,6 +4636,7 @@ function refreshGate() {
     const date = holePlayers.length ? roundDate : ((card && card.roundDate) || roundDate);
     const who = cardPlayers.map(p => p.id).join(', ');
     roundText.textContent = [courseName, formatDay(date), who, 'Hole ' + hole].filter(Boolean).join(' · ');
+    if (roundStop) roundText.textContent += ' · ' + stopPhrase(roundStop);
     btn.disabled = false;
   } else if (namedSetup()) {
     const setup = JSON.parse(localStorage.getItem('round-setup'));
@@ -3428,6 +4720,9 @@ syncStartButton();
 drawSaved();
 setFont(currentFont());
 showScreen('gate');
+openScoreLink();
+window.addEventListener('hashchange', openScoreLink);
+registerGolfWorker();
 </script>
 </body>
 </html>
