@@ -65,9 +65,9 @@ try {
   #card th.mlab .opp { display:block; font-weight:650; color:#5e6f64; }
   #card td.mcell .mbit { display:flex; flex-direction:column; align-items:center; margin-top:2px; }
   #card td.mcell .mbit i { font-style:normal; font-size:10px; font-weight:650; color:#5e6f64; line-height:1.1; }
-  #card table.playoffcard, #paperCard table.playoffcard { width:100%; table-layout:fixed; margin-top:8px; }
-  #card table.playoffcard col.plab, #paperCard table.playoffcard col.plab { width:108px; }
-  #card table.playoffcard th.plab, #paperCard table.playoffcard th.plab { font-size:13px !important; text-align:left; white-space:nowrap; font-weight:750; }
+  #card .playoffhead, #paperCard .playoffhead { margin:10px 0 4px; font-weight:750; color:#1c2b22; }
+  #card table.playoffcard, #paperCard table.playoffcard { width:100%; table-layout:fixed; margin-top:0; }
+  #standing .playoffhead, #cardStanding .playoffhead { margin:10px 0 4px; font-weight:750; color:#1c2b22; }
   #card table.scorecard td, #card table.scorecard th { text-align:center; }
   #card tr.totrow td:first-child { white-space:nowrap; font-size:12px !important; }
   #card .num { font-weight:700; letter-spacing:-0.02em; font-variant-numeric:tabular-nums; }
@@ -147,6 +147,10 @@ try {
   #presses p { margin:0 0 12px; }
   #presses button { margin:4px 6px 0 0; min-height:44px; }
   #settle, #settle p, #settle td, #settle th, #settle .section-head, #settle .section-head span { font-size:var(--lead) !important; line-height:1.45; }
+  #settle .settlewho { margin:10px 0 0; font-weight:750; color:#1c2b22; }
+  #settle .comp { margin:0; color:#5e6f64; }
+  #settle .settletot { margin:2px 0 8px; }
+  #settle .teamline { margin:4px 0 8px; font-weight:750; color:#1c2b22; }
   #review, #review p, #review td, #review th { font-size:var(--lead) !important; line-height:1.45; }
   #screen-setup, #screen-gate { font-size:var(--text); }
   #screen-setup p, #screen-gate p, #screen-setup td, #screen-setup th, #screen-setup button, #screen-gate button, #savedPlayers label { font-size:var(--text); }
@@ -1233,8 +1237,8 @@ function resolvePlayoff(name, a, b) {
     if (!ids.every(id => gross[id] != null && gross[id] !== '')) return { pending: h, index: i };
     const an = bestGross(a, h, gross, ids), bn = bestGross(b, h, gross, ids);
     if (an === 99 || bn === 99) return { pending: h, index: i };
-    if (an < bn) return { winner: 'a', hole: h };
-    if (an > bn) return { winner: 'b', hole: h };
+    if (an < bn) return { winner: 'a', hole: h, index: i };
+    if (an > bn) return { winner: 'b', hole: h, index: i };
   }
   const next = order[rounds.length];
   return { pending: next == null ? null : next, index: rounds.length };
@@ -1274,12 +1278,24 @@ function mpWinner(mp, a, b) {
 function mpPlain(mp, a, b) {
   if (!mp || !mp.played) return '';
   const who = mpWinner(mp, a, b);
-  if (mp.playoff && mp.playoff.winner) return who + ' won in playoff on hole ' + (mp.playoff.hole + 1);
+  if (mp.playoff && mp.playoff.winner) return who + ' won on the ' + ordinal(playoffHoleNo(mp.playoff.index || 0)) + ' hole';
   if (mp.closed) return who + ' won ' + Math.abs(mp.closed.score) + '&' + mp.closed.remain;
   if (mp.played >= playOrder().length && mp.score) return who + ' won ' + Math.abs(mp.score) + ' up';
   if (mp.played >= playOrder().length && !mp.score) return 'AS · Playoff';
   const mark = !mp.score ? 'AS' : mp.score > 0 ? '↑' + mp.score : '↓' + Math.abs(mp.score);
   return mark + (mp.dormie ? ' Dormie' : '');
+}
+function ordinal(n) {
+  n = Number(n) || 0;
+  const v = n % 100;
+  const digit = n % 10;
+  const suf = v >= 11 && v <= 13 ? 'th' : digit === 1 ? 'st' : digit === 2 ? 'nd' : digit === 3 ? 'rd' : 'th';
+  return n + suf;
+}
+function playoffHoleNo(i) { return 19 + (Number(i) || 0); }
+function playoffStatusText(score, a, b) {
+  if (!score) return 'AS';
+  return teamTag(score > 0 ? a : b) + ' ' + (score > 0 ? '↑' + score : '↓' + Math.abs(score));
 }
 function playoffProgress(name, a, b) {
   const order = playOrder();
@@ -1307,9 +1323,9 @@ function playoffStatus(score, a, b) {
 function playoffStandingHtml(name, a, b) {
   const rows = playoffProgress(name, a, b);
   if (!rows.length) return '';
-  return '<table class="playoffgrid">' + rows.map(row => {
+  return '<p class="playoffhead">Playoff</p><table class="playoffgrid">' + rows.map(row => {
     const scores = a.concat(b).map(id => '<td>' + esc(id) + ' ' + (row.gross[id] != null ? row.gross[id] : '') + '</td>').join('');
-    return '<tr><th>P' + (row.i + 1) + ' (hole ' + (row.h + 1) + ')</th>' + scores + '<td>' + playoffStatus(row.score, a, b) + '</td></tr>';
+    return '<tr><th>' + playoffHoleNo(row.i) + '</th>' + scores + '<td>' + playoffStatus(row.score, a, b) + '</td></tr>';
   }).join('') + '</table>';
 }
 function scoreShape(n, par) {
@@ -1319,28 +1335,46 @@ function scoreShape(n, par) {
   const inner = (diff <= -2 || diff >= 2) ? '<span>' + n + '</span>' : String(n);
   return '<span class="shape ' + kind + '">' + inner + '</span>';
 }
+function playoffShown(id, h, gross) {
+  const g = gross[id];
+  if (g == null || g === '' || g === 'X') return null;
+  const n = Number(g);
+  if (cardView !== 'net') return n;
+  const i = holePlayers.findIndex(p => p.id === id);
+  if (i < 0) return n;
+  return n - ownStrokes(i, h);
+}
 function playoffCardHtml(boards) {
-  const parts = (boards || []).map(board => {
+  const list = boards || [];
+  const parts = list.map(board => {
     if (!board.mp) return '';
     const rows = playoffProgress(board.name, board.sides.a, board.sides.b);
     if (!rows.length) return '';
-    const cols = '<colgroup><col class="plab"><col class="cpar">' + holePlayers.map(() => '<col>').join('') + '<col class="mmatch"></colgroup>';
+    const cols = '<colgroup><col class="chol"><col class="cpar">' + holePlayers.map(() => '<col>').join('') + '<col class="mmatch"></colgroup>';
+    const partsHead = String(board.label || '').split(' v ');
+    const matchHead = list.length > 1
+      ? '<th class="mlab">Match</th>'
+      : '<th class="mlab">' + esc(partsHead[0] || 'Match') + '<span class="opp">' + esc(partsHead[1] || '') + '</span></th>';
+    const head = '<tr><th class="hno">Hole</th><th>Par</th>' + holePlayers.map(p => '<th>' + esc(p.id) + '</th>').join('') + matchHead + '</tr>';
     const body = rows.map(row => {
       const par = courseData().par[row.h];
       const scores = holePlayers.map(p => {
-        const g = row.gross[p.id];
-        if (g == null || g === '') return '<td></td>';
-        return '<td>' + scoreShape(g, par) + '</td>';
+        const n = playoffShown(p.id, row.h, row.gross);
+        if (n == null) return '<td></td>';
+        return '<td>' + scoreShape(n, par) + '</td>';
       }).join('');
-      return '<tr><th class="plab">P' + (row.i + 1) + ' (hole ' + (row.h + 1) + ')</th><td class="par">' + par + '</td>' + scores + '<td class="mcell">' + playoffStatus(row.score, board.sides.a, board.sides.b) + '</td></tr>';
+      return '<tr><td class="hno">' + playoffHoleNo(row.i) + '</td><td class="par">' + par + '</td>' + scores + '<td class="mcell">' + playoffStatus(row.score, board.sides.a, board.sides.b) + '</td></tr>';
     }).join('');
-    return '<table class="scorecard playoffcard">' + cols + body + '</table>';
+    const title = list.filter(b => b.mp && playoffProgress(b.name, b.sides.a, b.sides.b).length).length > 1
+      ? 'Playoff ' + esc(board.label)
+      : 'Playoff';
+    return '<p class="playoffhead">' + title + '</p><table class="scorecard playoffcard">' + cols + head + body + '</table>';
   }).join('');
   return parts;
 }
-function playoffForm(name, ids, hole) {
+function playoffForm(name, ids, hole, index) {
   const inputs = ids.map(id => id + ' <input data-pid="' + esc(id) + '" type="number" inputmode="numeric" aria-label="' + esc(id) + ' playoff">').join(' ');
-  return '<div class="playoff" data-match="' + esc(name) + '" data-hole="' + hole + '"><p><b>Playoff hole ' + (hole + 1) + '</b></p><p>' + inputs + ' <button type="button" data-playoff-post>Enter hole</button></p></div>';
+  return '<div class="playoff" data-match="' + esc(name) + '" data-hole="' + hole + '"><p><b>Playoff hole ' + playoffHoleNo(index) + '</b></p><p>' + inputs + ' <button type="button" data-playoff-post>Enter hole</button></p></div>';
 }
 function dollarText(n) {
   const cents = Math.round(Math.abs(Number(n) || 0) * 100);
@@ -1674,6 +1708,8 @@ function shareText() {
       if (board.mp) {
         const said = mpPlain(board.mp, board.sides.a, board.sides.b);
         lines.push(said ? board.label + ' ' + said : board.label);
+        const rows = playoffProgress(board.name, board.sides.a, board.sides.b);
+        if (rows.length) lines.push('Playoff ' + rows.map(row => playoffHoleNo(row.i) + ' ' + playoffStatusText(row.score, board.sides.a, board.sides.b)).join(', '));
         return;
       }
       const run = runningScore(board);
@@ -1828,7 +1864,7 @@ function holeStanding() {
       };
       const nineTableMp = holes => '<table class="matchgrid"><tr>' + holes.map(h => '<th>' + (h + 1) + '</th>').join('') + '</tr><tr>' + holes.map(h => '<td>' + holeCell(h) + '</td>').join('') + '</tr></table>';
       const h0 = holesOfNine(0), h1 = holesOfNine(1);
-      const form = mp.playoff && mp.playoff.pending != null ? playoffForm(name, matchIds, mp.playoff.pending) : '';
+      const form = mp.playoff && mp.playoff.pending != null ? playoffForm(name, matchIds, mp.playoff.pending, mp.playoff.index) : '';
       const po = playoffStandingHtml(name, a, b);
       return '<div class="mp-block"><p><b>' + name + '</b> 18-hole<br>' + matchIds.map(id => { const p = holePlayers.find(x => x.id === id); return id + ' ' + hcpLabel(p); }).join(' · ') + '<br>' + status + '</p>' + nineTableMp(h0) + nineTableMp(h1) + po + form + junkStandingHtml(a, b, matchIds, betEarly) + '</div>';
     }
@@ -1903,16 +1939,58 @@ function holeStanding() {
     return '<div class="mstand"><p><b>' + name + '</b> ' + running + '<br>' + hcps + '<br>' + label + ' thru ' + (lastThru + 1) + '<br>1st 9 ' + stack(0, h0) + '</p>' + nineTable(h0) + tail + '</div>';
   }).join('');
 }
+function splitComp(amount, a, b) {
+  const nets = {};
+  a.concat(b).forEach(id => { nets[id] = 0; });
+  const v = Math.round((Number(amount) || 0) * 100) / 100;
+  if (!v) return nets;
+  const winners = v < 0 ? a : b;
+  const losers = v < 0 ? b : a;
+  const share = Math.abs(v) / winners.length;
+  losers.forEach(from => winners.forEach(to => {
+    nets[from] -= share;
+    nets[to] += share;
+  }));
+  return nets;
+}
+function compText(label, n) {
+  const v = Math.round((Number(n) || 0) * 100) / 100;
+  if (!v) return label + ' AS';
+  return label + ' ' + cashText(v);
+}
+function teamResultLine(name, a, b, owed, bet) {
+  if (a.length < 2 && b.length < 2) return '';
+  const mp = bet && bet.mp18 ? matchPlay(name, a, b) : null;
+  const said = mp ? mpPlain(mp, a, b) : '';
+  if (!owed) return said && said.indexOf('won') >= 0 ? said : '';
+  const winners = owed < 0 ? a : b;
+  const per = Math.abs(splitComp(owed, a, b)[winners[0]] || 0);
+  const lead = said && said.indexOf('won') >= 0 ? said : teamTag(winners) + ' won';
+  return lead + ', ' + dollarText(per) + ' a player';
+}
 function settle() {
   const el = document.getElementById('settle');
   if (!el) return;
   const m = matchNames();
   const names = m.team.concat(m.side).filter(name => { const s = amountFor(name); return !s || s.on !== false; });
+  const teamSlot = {};
+  m.team.forEach((nm, i) => { teamSlot[nm] = i; });
   const net = {};
   const add = (from, to, amt) => {
     if (!amt) return;
     const key = [from, to].sort().join('|');
     net[key] = (net[key] || 0) + (from < to ? amt : -amt);
+  };
+  const paySides = (losers, winners, amt, offset) => {
+    if (!amt || !losers.length || !winners.length) return;
+    if (losers.length === winners.length) {
+      const n = winners.length;
+      const off = (offset || 0) % n;
+      for (let i = 0; i < n; i++) add(losers[i], winners[(i + off) % n], amt);
+      return;
+    }
+    const share = winners.length > 1 ? amt / winners.length : amt;
+    losers.forEach(from => winners.forEach(to => add(from, to, share)));
   };
   const lines = names.map(name => {
     const box = holePlayers.filter(p => p.box).map(p => p.id);
@@ -1946,33 +2024,34 @@ function settle() {
     };
     const junk = b.reduce((n, id) => n + junkOf(id), 0) - a.reduce((n, id) => n + junkOf(id), 0);
     const dollars = front + frontPress.reduce((n, v) => n + v, 0) + back + backPress.reduce((n, v) => n + v, 0) + overall + junk;
-    const who = n => !n ? 'AS' : (n > 0 ? b.join('+') : a.join('+')) + ' +' + dollarText(n);
     const tag = leg => leg.manual ? '(M)' : '(A)';
-    const bits = ['1st 9 ' + who(front)].concat(frontPressLegs.map((leg, i) => 'Press from ' + leg.from + ' ' + tag(leg) + ' ' + who(frontPress[i])));
-    if (backPlayed) bits.push('2nd 9 ' + who(back), ...backPressLegs.map((leg, i) => 'Press from ' + leg.from + ' ' + tag(leg) + ' ' + who(backPress[i])), 'Overall ' + who(overall));
-    if (junk) {
-      const junkDetail = matchIds.map(id => {
-        const i = holePlayers.findIndex(p => p.id === id);
-        if (i < 0) return '';
-        const rate = (bet.player && bet.player[id] != null) ? Number(bet.player[id]) : 3;
-        const mk = holeMarks[i] || [];
-        const items = [];
-        for (const h of playedHoles()) {
-          if (!holeReady(matchIds, h)) continue;
-          const m = mk[h] || {};
-          const units = grossBirdieUnits(i, h);
-          const bits = [];
-          if (units) bits.push(birdieName(units));
-          if (m.KP) bits.push('KP');
-          if (m.Junk) bits.push(m.Junk > 1 ? 'Junk-' + m.Junk : 'Junk');
-          if (bits.length) items.push((h + 1) + ' ' + bits.join(' '));
-        }
-        return items.length ? id + ' ' + dollarText(rate) + ': ' + items.join(', ') : '';
-      }).filter(Boolean);
-      bits.push('Junk ' + who(junk));
-      junkDetail.forEach(line => bits.push(line));
+    const junkItems = {};
+    matchIds.forEach(id => {
+      const i = holePlayers.findIndex(p => p.id === id);
+      if (i < 0) return;
+      const mk = holeMarks[i] || [];
+      const items = [];
+      for (const h of playedHoles()) {
+        if (!holeReady(matchIds, h)) continue;
+        const m = mk[h] || {};
+        const units = grossBirdieUnits(i, h);
+        const bits = [];
+        if (units) bits.push(birdieName(units));
+        if (m.KP) bits.push('KP');
+        if (m.Junk) bits.push(m.Junk > 1 ? 'Junk-' + m.Junk : 'Junk');
+        if (bits.length) items.push((h + 1) + ' ' + bits.join(' '));
+      }
+      if (items.length) junkItems[id] = items.join(', ');
+    });
+    const comps = [{ label: '1st 9', amount: front }].concat(frontPressLegs.map((leg, i) => ({ label: 'Press from ' + leg.from + ' ' + tag(leg), amount: frontPress[i] })));
+    if (backPlayed) {
+      comps.push({ label: '2nd 9', amount: back });
+      backPressLegs.forEach((leg, i) => comps.push({ label: 'Press from ' + leg.from + ' ' + tag(leg), amount: backPress[i] }));
+      comps.push({ label: 'Overall', amount: overall });
     }
+    if (junk) comps.push({ label: 'Junk', amount: junk });
     let mpPay = 0;
+    let mpSaid = '';
     if (bet.mp18) {
       const mp = matchPlay(name, a, b);
       const stake = Number(bet.mp) || 0;
@@ -1981,19 +2060,28 @@ function settle() {
       else if (mp.playoff && mp.playoff.winner) unit = mp.playoff.winner === 'a' ? 1 : -1;
       else if (mp.played >= playOrder().length && mp.score) unit = mp.score > 0 ? 1 : -1;
       mpPay = money(unit, stake);
-      const said = mpPlain(mp, a, b);
-      if (said) bits.push('18-hole ' + said + (stake ? ' ' + dollarText(stake) : ''));
+      mpSaid = mpPlain(mp, a, b);
+      if (mpPay) comps.push({ label: (a.length > 1 || b.length > 1) ? '18-hole' : '18-hole ' + mpSaid, amount: mpPay });
     }
     const owed = dollars + mpPay;
-    if (!owed && !front && !junk && !mpPay) return '<p><b>' + name + '</b> even. 1st 9 ' + dollarText(bet.first || 0) + ', 2nd 9 ' + dollarText(bet.second || 0) + ', Overall ' + dollarText(bet.overall || 0) + '.' + (bet.mp18 ? ' 18-hole ' + dollarText(Number(bet.mp) || 0) + '.' : '') + '</p>';
+    if (!owed && !front && !junk && !mpPay) {
+      let html = '<p><b>' + name + '</b> even. 1st 9 ' + dollarText(bet.first || 0) + ', 2nd 9 ' + dollarText(bet.second || 0) + ', Overall ' + dollarText(bet.overall || 0) + '.' + (bet.mp18 ? ' 18-hole ' + dollarText(Number(bet.mp) || 0) + '.' : '') + '</p>';
+      const team = teamResultLine(name, a, b, 0, bet);
+      if (team) html += '<p class="teamline">' + esc(team) + '</p>';
+      return { name: name, html: html };
+    }
     const winners = owed < 0 ? a : b;
     const losers = owed < 0 ? b : a;
     const amt = Math.abs(owed);
-    const share = winners.length > 1 ? amt / winners.length : amt;
-    if (owed) losers.forEach(from => winners.forEach(to => add(from, to, share)));
-    const rows2 = bits.map(b => '<tr><td>' + b + '</td></tr>');
-    rows2.push('<tr><td><b>Total ' + who(owed) + '</b></td></tr>');
-    return '<table><tr><th>' + name + '</th></tr>' + rows2.join('') + '</table>';
+    if (owed) paySides(losers, winners, amt, teamSlot[name] || 0);
+    const blocks = matchIds.map(id => {
+      const lines = comps.map(c => '<p class="comp">' + esc(compText(c.label, splitComp(c.amount, a, b)[id] || 0)) + '</p>');
+      if (junk && junkItems[id]) lines.push('<p class="comp">' + esc(junkItems[id]) + '</p>');
+      const total = comps.reduce((n, c) => n + (splitComp(c.amount, a, b)[id] || 0), 0);
+      return '<div class="settle-player"><p class="settlewho">' + esc(id) + '</p>' + lines.join('') + '<p class="settletot"><b>Total ' + cashText(total) + '</b></p></div>';
+    }).join('');
+    const team = teamResultLine(name, a, b, owed, bet);
+    return { name: name, html: blocks + (team ? '<p class="teamline">' + esc(team) + '</p>' : '') };
   });
   const nets = Object.keys(net).map(key => {
     const [x, y] = key.split('|');
@@ -2011,8 +2099,25 @@ function settle() {
     if (bet.player && Object.keys(bet.player).some(id => Number(bet.player[id]))) return true;
     try { return pressFields().some(k => Number(bet[k])); } catch (e) { return false; }
   });
-  const summary = nets.length ? '<p><b>Summary</b></p>' + nets.join('') : (anyStake ? '' : '<p><b>No money owed.</b></p>');
-  const details = lines.map((line, i) => '<div class="settle-match"><div class="section-head" data-settle="' + i + '"><span>' + (line.match(/<b>([^<]+)<\/b>/) || ['', 'Match'])[1] + '</span><span class="chev">▶</span></div><div class="section-body collapsed" id="settle-' + i + '">' + line + '</div></div>').join('');
+  const roll = {};
+  holePlayers.forEach(p => { roll[p.id] = 0; });
+  Object.keys(net).forEach(key => {
+    const parts = key.split('|');
+    const v = net[key];
+    if (!v) return;
+    const payer = v > 0 ? parts[0] : parts[1];
+    const payee = v > 0 ? parts[1] : parts[0];
+    const amt = Math.abs(v);
+    roll[payer] = (roll[payer] || 0) - amt;
+    roll[payee] = (roll[payee] || 0) + amt;
+  });
+  const playerLines = holePlayers.map(p => {
+    const v = roll[p.id] || 0;
+    const cls = v > 0 ? ' class="up"' : v < 0 ? ' class="dn"' : '';
+    return '<p' + cls + '><b>' + esc(p.id) + '</b> ' + cashText(v) + '</p>';
+  }).join('');
+  const summary = nets.length ? '<p><b>Summary</b></p>' + playerLines + nets.join('') : (anyStake ? '' : '<p><b>No money owed.</b></p>');
+  const details = lines.map((line, i) => '<div class="settle-match"><div class="section-head" data-settle="' + i + '"><span>' + esc(line.name || 'Match') + '</span><span class="chev">▶</span></div><div class="section-body collapsed" id="settle-' + i + '">' + line.html + '</div></div>').join('');
   el.innerHTML = summary + (details ? '<p><b>Details</b></p>' + details : '');
   el.querySelectorAll('.section-head[data-settle]').forEach(head => {
     head.onclick = () => {
