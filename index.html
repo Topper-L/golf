@@ -334,7 +334,7 @@ try {
 <nav id="tabbar" class="tabbar hidden">
   <button type="button" data-screen="setup">Setup</button>
   <button type="button" data-screen="score">Score</button>
-  <button type="button" data-screen="standing">Standing</button>
+  <button type="button" data-screen="standing">Match</button>
   <button type="button" data-screen="junk">Junk</button>
   <button type="button" data-screen="card">Card</button>
   <button type="button" data-screen="settle">Settle</button>
@@ -3316,7 +3316,7 @@ function showScreen(name) {
   const home = document.getElementById('home');
   if (home) home.hidden = name === 'gate';
   document.querySelectorAll('#tabbar button').forEach(btn => btn.classList.toggle('on', btn.dataset.screen === name));
-  const titles = { gate: 'Home', setup: 'Setup', score: 'Score', standing: 'Standing', junk: 'Junk', card: 'Card', settle: 'Settle' };
+  const titles = { gate: 'Home', setup: 'Setup', score: 'Score', standing: 'Match', junk: 'Junk', card: 'Card', settle: 'Settle' };
   const title = document.getElementById('screenTitle');
   if (title) title.textContent = titles[name] || 'Golf';
   document.title = titles[name] || 'Golf';
