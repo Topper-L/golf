@@ -189,14 +189,26 @@ try {
   button.press-off { background:#b42318; color:white; border-color:#b42318; }
   sup { font-size:9px; }
   #savedPlayers { max-width:100%; }
-  #playerSearch, #roundSearch, #courseName, #nineFront, #nineBack { width:100%; box-sizing:border-box; min-height:36px; margin:0 0 8px; }
+  #playerSearch, #roundSearch, #courseName, #nineFront, #nineBack, #nineThird { width:100%; box-sizing:border-box; min-height:36px; margin:0 0 8px; }
   #playerList { max-height:240px; overflow-y:auto; }
+  #playerList .psec { margin:4px 0 2px; }
   .psec { margin:8px 0 4px; font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:#5e6f64; font-weight:750; }
-  .prow { display:flex; gap:6px; align-items:stretch; margin:0 0 4px; }
-  .prow button[data-add] { flex:1; min-width:0; text-align:left; white-space:normal; line-height:1.25; }
-  .prow button[data-detail] { flex:none; min-width:52px; padding:4px 8px; }
+  .prow { display:flex; gap:4px; align-items:center; margin:0 0 2px; }
+  #screen-setup .prow button { box-sizing:border-box; min-height:36px; height:36px; padding:0 8px; line-height:1; white-space:nowrap; }
+  .prow button[data-add] { flex:1; min-width:0; display:flex; align-items:center; gap:8px; text-align:left; overflow:hidden; }
+  .prow button[data-add] b { flex:none; }
+  .prow button[data-add] .pname { overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  .prow button[data-add] .phcp { margin-left:auto; flex:none; color:#5e6f64; }
+  .prow button[data-detail] { flex:none; min-width:52px; }
   #playerDetail { margin-top:8px; padding-top:8px; border-top:1px solid #d5e0d4; }
   #playerDetail input, #playerDetail select { max-width:100%; }
+  .flab { display:block; font-size:11px; color:#5e6f64; font-weight:650; margin:0 0 2px; }
+  .pdgrid { display:flex; flex-wrap:wrap; gap:8px; }
+  .pdgrid .field { flex:1 1 5.5em; min-width:0; }
+  #pdName { width:100%; box-sizing:border-box; }
+  .nine-picks { display:flex; flex-wrap:wrap; gap:8px; }
+  .nine-picks label { flex:1 1 8em; min-width:0; }
+  .nine-picks select { width:100%; min-height:36px; }
   input[type="number"] { width:40px; font-size:13px; padding:2px; text-align:center; }
   input.name { width:90px; }
   input.initials { text-transform:uppercase; width:36px; text-align:center; }
@@ -221,9 +233,14 @@ try {
   button.star { flex:none; min-width:44px; font-size:18px; }
   .tee-row { display:flex; flex-wrap:wrap; gap:4px; margin:0 0 6px; }
   .tee-row input { flex:1 1 5.5em; min-width:0; box-sizing:border-box; }
-  .holegrid { display:grid; grid-template-columns:1fr 1fr; gap:4px 10px; }
-  .hrow { display:grid; grid-template-columns:1.5em 1fr 1fr; gap:3px; align-items:center; }
-  .hrow input { width:100%; min-width:0; box-sizing:border-box; }
+  .holegrid { display:grid; grid-template-columns:1fr; gap:2px; }
+  .holehead, .hrow { display:grid; grid-template-columns:1.5em minmax(0,1fr) minmax(0,1fr); gap:4px; align-items:center; }
+  .holehead { font-size:11px; color:#5e6f64; font-weight:650; margin:0 0 2px; }
+  .holehead span:nth-child(n+2) { text-align:center; }
+  .hrow .hn { font-weight:650; }
+  .hrow .amt { width:100%; min-width:0; }
+  #screen-setup .hrow button { box-sizing:border-box; min-height:36px; min-width:36px; padding:0; }
+  #screen-setup .hrow .amt input { width:auto; flex:1 1 1.5em; min-width:0; padding:2px 0; text-align:center; }
   #addCourse input { max-width:100%; }
   h3.month { margin:12px 0 4px; font-size:12px; letter-spacing:.06em; color:#5e6f64; font-weight:750; }
   button.round-open .r1 { display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
@@ -288,17 +305,38 @@ try {
     <h2>Course</h2>
     <p class="course-line"><select id="courseSelect" aria-label="Course"></select><button type="button" id="homeCourse" class="star" aria-label="Set as home course">☆</button></p>
     <p id="homeNote" class="note"></p>
+    <div id="ninePick" hidden>
+      <p class="note">Which two nines are played</p>
+      <div class="nine-picks">
+        <label><span class="flab">1st 9</span><select id="nineFirst" aria-label="1st 9"></select></label>
+        <label><span class="flab">2nd 9</span><select id="nineSecond" aria-label="2nd 9"></select></label>
+      </div>
+    </div>
     <p><button type="button" id="showAddCourse">Add course</button></p>
     <div id="addCourse" hidden>
       <p><input id="courseName" type="text" placeholder="Course name" autocapitalize="words"></p>
-      <p><input id="nineFront" type="text" placeholder="Front nine name (optional)" autocapitalize="words"></p>
-      <p><input id="nineBack" type="text" placeholder="Back nine name (optional)" autocapitalize="words"></p>
+      <p><span class="flab">1st 9</span><input id="nineFront" type="text" placeholder="Name (optional)" autocapitalize="words" aria-label="1st 9 name"></p>
+      <p><span class="flab">2nd 9</span><input id="nineBack" type="text" placeholder="Name (optional)" autocapitalize="words" aria-label="2nd 9 name"></p>
+      <p><button type="button" id="addThirdNine">Add 3rd 9</button></p>
+      <div id="thirdNine" hidden>
+        <p><span class="flab">3rd 9</span><input id="nineThird" type="text" placeholder="Name (optional)" autocapitalize="words" aria-label="3rd 9 name"></p>
+      </div>
       <p class="psec">Tees</p>
       <div id="teeRows"></div>
       <p><button type="button" id="addTee">Add tee</button></p>
       <p class="psec">Holes</p>
-      <p class="note">Par and handicap index for all 18 holes. Rating and slope on a tee are optional.</p>
+      <p class="note">Par starts at 4. Handicap index is 1 to 18, once each on the 18 holes you play. Rating and slope on a tee are optional.</p>
+      <p class="psec">1st 9</p>
+      <div class="holehead"><span></span><span>Par</span><span>Index</span></div>
       <div id="holeGrid" class="holegrid"></div>
+      <p class="psec">2nd 9</p>
+      <div class="holehead"><span></span><span>Par</span><span>Index</span></div>
+      <div id="holeGrid2" class="holegrid"></div>
+      <div id="thirdHoles" hidden>
+        <p class="psec">3rd 9</p>
+        <div class="holehead"><span></span><span>Par</span><span>Index</span></div>
+        <div id="holeGrid3" class="holegrid"></div>
+      </div>
       <p><button type="button" id="saveCourse" class="primary">Save course</button></p>
       <p id="courseMsg"></p>
     </div>
@@ -778,8 +816,12 @@ function applyStep(btn) {
   if (!btn) return;
   const input = btn.dataset.id ? document.getElementById(btn.dataset.id) : (btn.parentElement && btn.parentElement.querySelector('input'));
   if (!input) return;
-  const min = input.id === 'dDown' ? 1 : 0;
-  input.value = String(Math.max(min, (Number(input.value) || 0) + Number(btn.dataset.step || btn.dataset.nudge || 0)));
+  let min = input.id === 'dDown' ? 1 : 0;
+  let max = Infinity;
+  if (input.dataset.min != null && input.dataset.min !== '') min = Number(input.dataset.min);
+  if (input.dataset.max != null && input.dataset.max !== '') max = Number(input.dataset.max);
+  const next = (Number(input.value) || 0) + Number(btn.dataset.step || btn.dataset.nudge || 0);
+  input.value = String(Math.min(max, Math.max(min, next)));
   writeAmount(input);
 }
 let stepperTimer = 0, stepperRepeat = 0, stepperFromPointer = false;
@@ -1072,6 +1114,7 @@ function setStartHole(n) {
   syncStartButton();
   drawBets();
   persistSetup();
+  paintNinePick();
 }
 function playerBook() { try { return JSON.parse(localStorage.getItem('golf-players') || '[]'); } catch (e) { return []; } }
 function savePlayerBook(list) { try { localStorage.setItem('golf-players', JSON.stringify(list.slice(0, 80))); } catch (e) {} }
@@ -1109,7 +1152,8 @@ function drawSavedPlayers() {
   const row = b => {
     const tee = teeFullName(b.tee) || b.tee || '';
     const here = inRound.indexOf(b.name.toLowerCase()) >= 0;
-    return '<div class="prow"><button type="button" data-add="' + esc(b.name) + '"><b>' + esc(b.initials) + '</b> ' + esc(b.name) + ' <span class="meta">' + esc([tee, b.hcp, here ? 'In' : ''].filter(Boolean).join(' · ')) + '</span></button><button type="button" data-detail="' + esc(b.name) + '" aria-label="Edit ' + esc(b.name) + '">Edit</button></div>';
+    const bits = [b.hcp, here ? 'In' : ''].filter(Boolean).join(' · ');
+    return '<div class="prow"><button type="button" data-add="' + esc(b.name) + '"><b>' + esc(b.initials) + '</b><span class="pname">' + esc(b.name) + '</span>' + (bits ? '<span class="phcp">' + esc(bits) + '</span>' : '') + '</button><button type="button" data-detail="' + esc(b.name) + '" aria-label="Edit ' + esc(b.name) + '">Edit</button></div>';
   };
   if (!book.length) { list.innerHTML = '<p>No saved players yet.</p>'; paintPlayerDetail(); return; }
   if (!recent.length && !rest.length) { list.innerHTML = '<p>No players match.</p>'; paintPlayerDetail(); return; }
@@ -1127,7 +1171,7 @@ function paintPlayerDetail() {
   const tees = (courseData() && courseData().tees) || [];
   const tee = validTee(rec.tee);
   box.hidden = false;
-  box.innerHTML = '<p><b>' + esc(rec.name) + '</b></p><p><input id="pdName" value="' + esc(rec.name) + '" autocapitalize="words" aria-label="Name"></p><p><input id="pdInit" class="initials" maxlength="3" value="' + esc(rec.initials) + '" aria-label="Initials"> <input id="pdHcp" class="hcp" inputmode="decimal" value="' + esc(rec.hcp || '') + '" aria-label="Course handicap"> <select id="pdTee" aria-label="Tee">' + tees.map(t => '<option' + (t === tee ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '</select></p><p><button type="button" id="pdSave">Save</button> <button type="button" id="pdDelete">Delete</button></p>';
+  box.innerHTML = '<div class="field"><span class="flab">Name</span><input id="pdName" value="' + esc(rec.name) + '" autocapitalize="words" aria-label="Name"></div><div class="pdgrid"><div class="field"><span class="flab">Initials</span><input id="pdInit" class="initials" maxlength="3" value="' + esc(rec.initials) + '" aria-label="Initials"></div><div class="field"><span class="flab">Course hcp</span><input id="pdHcp" class="hcp" inputmode="decimal" value="' + esc(rec.hcp || '') + '" aria-label="Course handicap"></div><div class="field"><span class="flab">Tee</span><select id="pdTee" aria-label="Tee">' + tees.map(t => '<option' + (t === tee ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '</select></div></div><p><button type="button" id="pdSave">Save</button> <button type="button" id="pdDelete">Delete</button></p>';
 }
 function persistSetup() {
   const defaults = readDefaults();
@@ -3694,8 +3738,10 @@ function initCourseSelect() {
     draw();
     persistSetup();
     paintHomeStar();
+    paintNinePick();
   };
   paintHomeStar();
+  paintNinePick();
 }
 function blankTeeRow() {
   const row = document.createElement('div');
@@ -3707,15 +3753,103 @@ function courseMsg(text) {
   const el = document.getElementById('courseMsg');
   if (el) el.textContent = text || '';
 }
+function holeFieldRow(h) {
+  const row = document.createElement('div');
+  row.className = 'hrow';
+  row.innerHTML = '<span class="hn">' + h + '</span>'
+    + '<span class="amt"><button type="button" data-step="-1" aria-label="Lower par on hole ' + h + '">−</button>'
+    + '<input id="par' + h + '" class="par" type="text" inputmode="decimal" value="4" data-min="3" data-max="6" aria-label="Hole ' + h + ' par">'
+    + '<button type="button" data-step="1" aria-label="Raise par on hole ' + h + '">+</button></span>'
+    + '<span class="amt"><button type="button" data-step="-1" aria-label="Lower index on hole ' + h + '">−</button>'
+    + '<input id="si' + h + '" class="si" type="text" inputmode="decimal" data-min="1" data-max="18" aria-label="Hole ' + h + ' handicap index">'
+    + '<button type="button" data-step="1" aria-label="Raise index on hole ' + h + '">+</button></span>';
+  return row;
+}
 function buildHoleGrid() {
-  const grid = document.getElementById('holeGrid');
-  if (!grid || grid.childElementCount) return;
-  for (let h = 1; h <= 18; h++) {
-    const row = document.createElement('label');
-    row.className = 'hrow';
-    row.innerHTML = '<span>' + h + '</span><input id="par' + h + '" type="number" inputmode="decimal" aria-label="Hole ' + h + ' par"><input id="si' + h + '" type="number" inputmode="decimal" aria-label="Hole ' + h + ' handicap index">';
-    grid.appendChild(row);
+  [[document.getElementById('holeGrid'), 1, 9], [document.getElementById('holeGrid2'), 10, 18], [document.getElementById('holeGrid3'), 19, 27]].forEach(slot => {
+    const grid = slot[0];
+    if (!grid || grid.childElementCount) return;
+    for (let h = slot[1]; h <= slot[2]; h++) grid.appendChild(holeFieldRow(h));
+  });
+  armAmountFields(document.getElementById('addCourse'));
+}
+function readHoleValue(id, lo, hi) {
+  const el = document.getElementById(id);
+  const raw = el ? String(el.value).trim() : '';
+  if (!raw) return null;
+  const n = Number(raw);
+  if (!isFinite(n) || !Number.isInteger(n) || n < lo || n > hi) return null;
+  return n;
+}
+function indexesOnce(list) {
+  if (!list || list.length !== 18) return false;
+  const seen = {};
+  for (let i = 0; i < list.length; i++) {
+    const n = list[i];
+    if (!(n >= 1 && n <= 18) || seen[n]) return false;
+    seen[n] = true;
   }
+  return true;
+}
+function duplicateIndexNote(list) {
+  const at = {};
+  for (let i = 0; i < list.length; i++) {
+    const n = list[i];
+    if (at[n] != null) return 'Hole ' + (at[n] + 1) + ' and hole ' + (i + 1) + ' both use ' + n + '.';
+    at[n] = i;
+  }
+  return 'These 18 holes do not use each index once.';
+}
+let ninePickBound = false;
+function nineChoiceLabel(nine, i) {
+  if (nine && nine.name) return nine.name;
+  return ['1st 9', '2nd 9', '3rd 9'][i] || ('Nine ' + (i + 1));
+}
+function paintNinePick() {
+  const box = document.getElementById('ninePick');
+  const first = document.getElementById('nineFirst');
+  const second = document.getElementById('nineSecond');
+  if (!box || !first || !second) return;
+  const nines = courseNines();
+  if (nines.length < 3) {
+    box.hidden = true;
+    first.innerHTML = '';
+    second.innerHTML = '';
+    return;
+  }
+  const pair = playedPair();
+  const opts = nines.map((n, i) => '<option value="' + esc(n.id) + '">' + esc(nineChoiceLabel(n, i)) + '</option>').join('');
+  first.innerHTML = opts;
+  second.innerHTML = opts;
+  first.value = pair[0].id;
+  second.value = pair[1].id;
+  box.hidden = false;
+  if (!ninePickBound) {
+    ninePickBound = true;
+    const onPick = () => applyNinePick();
+    first.onchange = onPick;
+    second.onchange = onPick;
+  }
+}
+function applyNinePick() {
+  const firstEl = document.getElementById('nineFirst');
+  const secondEl = document.getElementById('nineSecond');
+  if (!firstEl || !secondEl) return;
+  let firstId = firstEl.value;
+  let secondId = secondEl.value;
+  const nines = courseNines();
+  if (firstId === secondId) {
+    const other = nines.find(n => n.id !== firstId);
+    if (other) secondId = other.id;
+    secondEl.value = secondId;
+  }
+  const first = nineById(firstId);
+  if (first && first.holes.indexOf(clampStart(startAt)) < 0 && first.holes.length) startAt = first.holes[0];
+  ninesPlayed = [firstId, secondId];
+  syncPlayedNines();
+  syncStartButton();
+  drawBets();
+  persistSetup();
 }
 document.getElementById('showAddCourse').onclick = () => {
   const box = document.getElementById('addCourse');
@@ -3725,6 +3859,22 @@ document.getElementById('showAddCourse').onclick = () => {
     const rows = document.getElementById('teeRows');
     if (rows && !rows.childElementCount) rows.appendChild(blankTeeRow());
   }
+};
+document.getElementById('addCourse').onclick = e => {
+  const btn = e.target.closest('button[data-step]');
+  if (!btn) return;
+  if (stepperFromPointer) { stepperFromPointer = false; return; }
+  applyStep(btn);
+};
+document.getElementById('addThirdNine').onclick = () => {
+  const names = document.getElementById('thirdNine');
+  const holes = document.getElementById('thirdHoles');
+  const open = !!(names && names.hidden);
+  if (names) names.hidden = !open;
+  if (holes) holes.hidden = !open;
+  const btn = document.getElementById('addThirdNine');
+  if (btn) btn.textContent = open ? 'Remove 3rd 9' : 'Add 3rd 9';
+  if (open) buildHoleGrid();
 };
 document.getElementById('addTee').onclick = () => {
   buildHoleGrid();
@@ -3744,18 +3894,37 @@ document.getElementById('saveCourse').onclick = () => {
     slope: row.querySelector('.tee-slope').value.trim()
   })).filter(t => t.name);
   if (!tees.length) { courseMsg('Add at least one tee.'); return; }
+  const third = document.getElementById('thirdHoles');
+  const holeCountWanted = third && !third.hidden ? 27 : 18;
   const par = [];
   const index = [];
-  for (let h = 1; h <= 18; h++) {
-    const p = Number(document.getElementById('par' + h).value);
-    const si = Number(document.getElementById('si' + h).value);
-    if (!(p >= 3 && p <= 6)) { courseMsg('Enter par for all 18 holes.'); return; }
-    if (!(si >= 1 && si <= 18)) { courseMsg('Enter a handicap index from 1 to 18 for every hole.'); return; }
+  for (let h = 1; h <= holeCountWanted; h++) {
+    const p = readHoleValue('par' + h, 3, 6);
+    const si = readHoleValue('si' + h, 1, 18);
+    if (p == null) { courseMsg('Par on every hole is 3, 4, 5, or 6.'); return; }
+    if (si == null) { courseMsg('Enter a handicap index from 1 to 18 for every hole.'); return; }
     par.push(p);
     index.push(si);
   }
   const front = document.getElementById('nineFront').value.trim();
   const back = document.getElementById('nineBack').value.trim();
+  const thirdName = holeCountWanted === 27 ? document.getElementById('nineThird').value.trim() : '';
+  const nines = [
+    { id: 'n1', name: front, press: 'pressFront', holes: [0,1,2,3,4,5,6,7,8] },
+    { id: 'n2', name: back, press: 'pressBack', holes: [9,10,11,12,13,14,15,16,17] }
+  ];
+  let warn = '';
+  if (holeCountWanted === 18) {
+    if (!indexesOnce(index)) {
+      courseMsg('Each handicap index from 1 to 18 is used once. ' + duplicateIndexNote(index));
+      return;
+    }
+  } else {
+    nines.push({ id: 'n3', name: thirdName, press: 'press_n3', holes: [18,19,20,21,22,23,24,25,26] });
+    const pairNames = [['1st 9', '2nd 9', index.slice(0, 9).concat(index.slice(9, 18))], ['1st 9', '3rd 9', index.slice(0, 9).concat(index.slice(18))], ['2nd 9', '3rd 9', index.slice(9, 18).concat(index.slice(18))]];
+    const bad = pairNames.filter(pair => !indexesOnce(pair[2])).map(pair => pair[0] + ' and ' + pair[1]);
+    if (bad.length) warn = ' ' + bad.join(', ') + ' reuse a handicap index. Check the 18 you play.';
+  }
   const rating = {};
   tees.forEach(t => {
     if (t.rating || t.slope) rating[t.name] = { slope: Number(t.slope) || 0, rating: Number(t.rating) || 0, par: par.reduce((a, b) => a + b, 0) };
@@ -3766,10 +3935,7 @@ document.getElementById('saveCourse').onclick = () => {
     par: par,
     tees: tees.map(t => t.name),
     index: { default: index },
-    nines: [
-      { id: 'n1', name: front, press: 'pressFront', holes: [0,1,2,3,4,5,6,7,8] },
-      { id: 'n2', name: back, press: 'pressBack', holes: [9,10,11,12,13,14,15,16,17] }
-    ],
+    nines: nines,
     custom: true
   };
   if (Object.keys(rating).length) data.rating = rating;
@@ -3779,15 +3945,18 @@ document.getElementById('saveCourse').onclick = () => {
   stored.push({ name: name, data: data });
   try { localStorage.setItem('golf-courses', JSON.stringify(stored)); } catch (e) {}
   currentCourse = name;
+  if (startAt >= par.length) startAt = 0;
+  ninesPlayed = null;
   players.forEach(p => { if (!teeFullName(p.tee)) p.tee = data.tees[0]; });
   initCourseSelect();
   draw();
   persistSetup();
-  courseMsg(name + ' saved.');
+  courseMsg(name + ' saved.' + warn);
   document.getElementById('addCourse').hidden = true;
 };
 function showScreen(name) {
   if (name === 'gate') refreshGate();
+  if (name === 'setup') paintNinePick();
   const map = { gate: 'screen-gate', setup: 'screen-setup', score: 'holeView', standing: 'screen-standing', junk: 'screen-junk', card: 'screen-card', settle: 'screen-settle' };
   const id = map[name] || 'screen-gate';
   document.querySelectorAll('.screen').forEach(el => el.classList.toggle('on', el.id === id));
