@@ -288,6 +288,12 @@ try {
   #holeNote { color:#8a5a00; font-weight:600; }
   #holeNote:empty, #postNote:empty { display:none; }
   #postNote { color:#8a5a00; font-weight:700; margin:0 0 8px; }
+  .stop-note { margin:0 0 8px; font-weight:750; color:#8a5a00; }
+  .quit-panel { margin:8px 0 12px; padding:12px; background:#fff; border:1px solid #c5d1c8; border-radius:12px; }
+  .quit-panel h2 { margin:0 0 6px; }
+  .quit-panel p { margin:0 0 8px; }
+  .quit-choices { display:flex; flex-direction:column; gap:8px; }
+  button.round-open .r3 { display:block; margin-top:2px; color:#8a5a00; font-weight:750; }
   .empty-round[hidden], .round-body[hidden] { display:none; }
 </style>
 </head>
@@ -407,6 +413,9 @@ try {
       <div id="holeJunk"></div>
     </div>
     <p class="actions"><button type="button" id="back">Back a hole</button> <button type="button" id="post" class="primary">Next hole</button> <button type="button" id="clearHole">Clear hole</button> <button type="button" id="toSetup">Back to setup</button></p>
+    <p id="scoreStop" class="stop-note" hidden></p>
+    <div id="quitPanel" class="quit-panel" hidden></div>
+    <p class="actions"><button type="button" id="quitRound">Quit round</button> <button type="button" id="resumeRound" hidden>Resume round</button></p>
     <p class="autosave-note">Rounds save automatically.</p>
     <div class="card"><h2>Standing</h2><div id="standing"></div></div>
     <div class="card"><h2>Presses</h2><div id="presses"></div></div>
@@ -415,7 +424,7 @@ try {
   <section id="screen-card" class="screen">
     <p class="empty-round">Start scoring from Setup.</p>
     <div class="round-body">
-      <div class="card"><div class="card-tools"><h2>Card</h2><button type="button" id="cardView" aria-pressed="false">Gross | Net</button><button type="button" id="shareCard">Share</button></div><p id="cardViewNote" class="view-note">Gross scores</p><div id="matchPick" hidden></div><div id="card" class="hscroll"></div><div id="paperCard" class="hscroll"></div></div>
+      <div class="card"><div class="card-tools"><h2>Card</h2><button type="button" id="cardView" aria-pressed="false">Gross | Net</button><button type="button" id="shareCard">Share</button></div><p id="cardViewNote" class="view-note">Gross scores</p><p id="cardStop" class="stop-note" hidden></p><div id="matchPick" hidden></div><div id="card" class="hscroll"></div><div id="paperCard" class="hscroll"></div></div>
       <p><button type="button" id="reviewToggle">Group review</button></p>
       <div class="card" id="reviewCard" hidden><h2>Group review</h2><div id="review" class="hscroll"></div></div>
     </div>
@@ -994,6 +1003,8 @@ document.getElementById('newRound').onclick = () => {
   ninesPlayed = null;
   playoffs = {};
   resetScoreHistory();
+  roundStop = null;
+  quitChoice = '';
   roundId = '';
   roundName = '';
   cardMatchName = '';
@@ -1065,6 +1076,8 @@ document.getElementById('noMoney').onclick = noMoneyRound;
 let playoffs = {};
 let holePlayers = [], holeScores = [], holeMarks = [], holeNo = 0, detailName = '', startAt = 0, ninesPlayed = null, playedThru = -1;
 let scorePast = [], scoreFuture = [], scoreCursor = 0, wakeLockSentinel = null;
+let roundStop = null;
+let quitChoice = '';
 function courseNines() {
   const listed = courseData().nines;
   if (Array.isArray(listed) && listed.filter(n => n && Array.isArray(n.holes) && n.holes.length).length >= 2) {
@@ -1292,6 +1305,7 @@ function startHole() {
         holeNo = saved.hole != null ? saved.hole : startAt;
         playedThru = typeof saved.playedThru === 'number' ? saved.playedThru : -1;
         roundId = saved.roundId || '';
+        roundStop = copyRoundStop(saved.roundStop);
         if (saved.roundDate) roundDate = saved.roundDate;
       } else {
         holeScores = holePlayers.map(freshScores);
@@ -1299,6 +1313,7 @@ function startHole() {
         holeNo = startAt;
         playedThru = -1;
         roundId = newRoundId();
+        roundStop = null;
       }
     } catch (e) {
       holeScores = holePlayers.map(freshScores);
@@ -1306,7 +1321,9 @@ function startHole() {
       holeNo = startAt;
       playedThru = -1;
       roundId = newRoundId();
+      roundStop = null;
     }
+    quitChoice = '';
     resetScoreHistory();
   }
   syncPlayedNines();
@@ -2455,20 +2472,26 @@ function settle() {
     const parts = name.split(' vs ');
     const a = isBox ? box : [String(parts[0] || '').trim().toUpperCase()];
     const b = isBox ? String(name.split(' vs ')[1] || '').split('+').map(s => s.trim().toUpperCase()) : [String(parts[1] || '').trim().toUpperCase()];
+    const teamMatchEarly = a.length > 1 && b.length > 1;
+    if (roundStop && roundStop.mode === 'cancel') {
+      return { name: name, html: '<p>' + esc(name) + ' cancelled.</p>', owed: 0, a: a, b: b, teamMatch: teamMatchEarly };
+    }
     const sim = simulateMatch(name, a, b);
     const bet = sim.bet;
     const money = (score, amt) => score && amt ? (score < 0 ? amt : -amt) : 0;
     const nineLeg = seg => sim.legs.find(l => l.kind === 'nine' && l.seg === seg);
     const frontLeg = nineLeg(0), backLeg = nineLeg(1);
+    const asIs = !!(roundStop && roundStop.mode === 'asis');
     const backPlayed = !!(backLeg && backLeg.played);
+    const backOpen = backPlayed || asIs;
     const front = money(frontLeg ? frontLeg.score : 0, bet.first);
-    const back = backPlayed ? money(backLeg.score, bet.second) : 0;
+    const back = backOpen ? money(backLeg ? backLeg.score : 0, bet.second) : 0;
     const pressLegs = sim.legs.filter(l => l.kind === 'press').sort((x, y) => x.from - y.from || (x.manual - y.manual));
     const frontPressLegs = pressLegs.filter(p => p.seg === 0);
     const backPressLegs = pressLegs.filter(p => p.seg === 1);
     const frontPress = frontPressLegs.map(p => money(p.score, pressAmt(bet, p.from)));
     const backPress = backPressLegs.map(p => money(p.score, pressAmt(bet, p.from)));
-    const overall = backPlayed ? money((frontLeg ? frontLeg.score : 0) + backLeg.score, bet.overall) : 0;
+    const overall = backOpen ? money((frontLeg ? frontLeg.score : 0) + (backLeg ? backLeg.score : 0), bet.overall) : 0;
     const matchIds = a.concat(b);
     const kp = kpForMatch(matchIds);
     const junkOf = id => {
@@ -2505,7 +2528,7 @@ function settle() {
     frontPressLegs.forEach((leg, i) => {
       if (pressAmt(bet, leg.from)) comps.push({ label: 'Press from ' + leg.from + ' ' + tag(leg), amount: frontPress[i] });
     });
-    if (backPlayed) {
+    if (backOpen) {
       if (Number(bet.second)) comps.push({ label: '2nd 9', amount: back });
       backPressLegs.forEach((leg, i) => {
         if (pressAmt(bet, leg.from)) comps.push({ label: 'Press from ' + leg.from + ' ' + tag(leg), amount: backPress[i] });
@@ -2522,6 +2545,7 @@ function settle() {
       if (mp.closed) unit = mp.closed.score > 0 ? 1 : -1;
       else if (mp.playoff && mp.playoff.winner) unit = mp.playoff.winner === 'a' ? 1 : -1;
       else if (mp.played >= playOrder().length && mp.score) unit = mp.score > 0 ? 1 : -1;
+      else if (asIs && mp.score) unit = mp.score > 0 ? 1 : -1;
       mpPay = money(unit, stake);
       mpSaid = mpPlain(mp, a, b);
       comps.push({ label: (a.length > 1 || b.length > 1) ? '18-hole' : '18-hole ' + mpSaid, amount: mpPay });
@@ -2592,9 +2616,12 @@ function settle() {
   }).join('');
   const anyRoll = holePlayers.some(p => roll[p.id]);
   const settleUp = nets.length ? '<p><b>Settle up</b></p>' + nets.join('') : '';
-  const summary = anyRoll ? '<p><b>Summary</b></p>' + playerLines + settleUp : (anyStake ? '' : '<p><b>No money owed.</b></p>');
+  const cancelled = !!(roundStop && roundStop.mode === 'cancel');
+  const zeroLines = holePlayers.map(p => '<p><b>' + esc(p.id) + '</b> ' + cashText(0) + '</p>').join('');
+  const summary = cancelled ? '<p><b>Summary</b></p>' + zeroLines : (anyRoll ? '<p><b>Summary</b></p>' + playerLines + settleUp : (anyStake ? '' : '<p><b>No money owed.</b></p>'));
   const details = lines.map((line, i) => '<div class="settle-match"><div class="section-head" data-settle="' + i + '"><span>' + esc(line.name || 'Match') + '</span><span class="chev">▶</span></div><div class="section-body collapsed" id="settle-' + i + '">' + line.html + '</div></div>').join('');
-  el.innerHTML = summary + (details ? '<p><b>Details</b></p>' + details : '');
+  const stopped = roundStop ? '<p class="stop-note">' + esc(stopPhrase(roundStop)) + '</p>' : '';
+  el.innerHTML = stopped + summary + (details ? '<p><b>Details</b></p>' + details : '');
   el.querySelectorAll('.section-head[data-settle]').forEach(head => {
     head.onclick = () => {
       const body = document.getElementById('settle-' + head.dataset.settle);
@@ -3107,6 +3134,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     if (node) node.innerHTML = standingHtml;
   });
   try { settle(); } catch (err) { document.getElementById('settle').innerHTML = '<p>' + err.message + '</p>'; }
+  paintQuit();
   paintRoundDetail();
   drawPresses();
   detail();
@@ -3129,7 +3157,8 @@ function saveCard() {
       roundDate: roundDate,
       playoffs: playoffs,
       cardMatch: cardMatchName,
-      cardPick: cardPick
+      cardPick: cardPick,
+      roundStop: copyRoundStop(roundStop)
     }));
   } catch (e) {}
 }
@@ -3252,6 +3281,24 @@ if (clearHoleBtn) clearHoleBtn.onclick = () => {
 };
 const toSetupBtn = document.getElementById('toSetup');
 if (toSetupBtn) toSetupBtn.onclick = () => showScreen('setup');
+const quitRoundBtn = document.getElementById('quitRound');
+if (quitRoundBtn) quitRoundBtn.onclick = () => {
+  if (!holePlayers.length || roundStop) return;
+  quitChoice = 'pick';
+  paintQuit();
+};
+const resumeRoundBtn = document.getElementById('resumeRound');
+if (resumeRoundBtn) resumeRoundBtn.onclick = () => resumeStoppedRound();
+const quitPanelEl = document.getElementById('quitPanel');
+if (quitPanelEl) quitPanelEl.onclick = e => {
+  const btn = e.target.closest('button[data-quit]');
+  if (!btn) return;
+  const act = btn.dataset.quit;
+  if (act === 'asis' || act === 'cancel') { quitChoice = act; paintQuit(); return; }
+  if (act === 'back') { quitChoice = 'pick'; paintQuit(); return; }
+  if (act === 'close') { quitChoice = ''; paintQuit(); return; }
+  if (act === 'apply') applyQuit();
+};
 const clearAllBtn = document.getElementById('clearAll');
 if (clearAllBtn) clearAllBtn.onclick = () => {
   if (!holePlayers.length) return;
@@ -3268,6 +3315,8 @@ if (clearAllBtn) clearAllBtn.onclick = () => {
   playedThru = -1;
   playoffs = {};
   resetScoreHistory();
+  roundStop = null;
+  quitChoice = '';
   Object.keys(amounts).forEach(k => {
     if (!amounts[k]) return;
     amounts[k].manual = [];
@@ -3397,6 +3446,8 @@ function loadSavedSetup() {
   playoffs = card.playoffs && typeof card.playoffs === 'object' ? card.playoffs : {};
   if (card.cardMatch) cardMatchName = card.cardMatch;
   if (card.cardPick) cardPick = card.cardPick;
+  roundStop = copyRoundStop(card.roundStop);
+  quitChoice = '';
   syncPlayedNines();
   padCard();
 }
@@ -3438,7 +3489,8 @@ function snapshot(isAuto) {
     cardPick: cardPick,
     name: roundName || '',
     ownerNet: readOwnerNet(holePlayers),
-    nets: readRoundNets()
+    nets: readRoundNets(),
+    roundStop: copyRoundStop(roundStop)
   };
 }
 function findAutoSlot(list, snap) {
@@ -3556,7 +3608,7 @@ function drawSaved() {
   const items = [];
   list.forEach((r, i) => {
     if (!r) return;
-    if (r.auto && liveId && r.id === liveId) return;
+    if (r.auto && liveId && r.id === liveId && !copyRoundStop(r.roundStop)) return;
     items.push({ r: r, i: i });
   });
   items.sort((a, b) => String(b.r.when || '').localeCompare(String(a.r.when || '')) || (a.i - b.i));
@@ -3564,7 +3616,7 @@ function drawSaved() {
   const q = items.length > 8 ? roundQuery.trim().toLowerCase() : '';
   const shown = items.filter(({ r }) => {
     if (!q) return true;
-    const blob = [roundTitle(r), r.course, roundTeeNames(r), roundInitials(r), roundDayOf(r), r.ownerNet || ''].join(' ').toLowerCase();
+    const blob = [roundTitle(r), r.course, roundTeeNames(r), roundInitials(r), roundDayOf(r), r.ownerNet || '', stopPhrase(r.roundStop)].join(' ').toLowerCase();
     return blob.indexOf(q) >= 0;
   });
   let html = '';
@@ -3574,7 +3626,8 @@ function drawSaved() {
     if (m !== month) { month = m; html += '<h3 class="month">' + esc(m) + '</h3>'; }
     const net = r.ownerNet || '';
     const cls = net.charAt(0) === '−' || net.charAt(0) === '-' ? 'dn' : (net.charAt(0) === '+' ? 'up' : '');
-    html += '<button type="button" class="round-open" data-open="' + i + '"><span class="r1"><span class="title">' + esc(roundTitle(r) || 'Saved round') + '</span>' + (net ? '<span class="rnet ' + cls + '">' + esc(net) + '</span>' : '') + '</span><span class="r2">' + esc(roundInitials(r)) + '</span></button>';
+    const stopLine = stopPhrase(r.roundStop);
+    html += '<button type="button" class="round-open" data-open="' + i + '"><span class="r1"><span class="title">' + esc(roundTitle(r) || 'Saved round') + '</span>' + (net ? '<span class="rnet ' + cls + '">' + esc(net) + '</span>' : '') + '</span><span class="r2">' + esc(roundInitials(r)) + '</span>' + (stopLine ? '<span class="r3">' + esc(stopLine) + '</span>' : '') + '</button>';
   });
   el.innerHTML = shown.length ? html : '<p>' + (items.length ? 'No rounds match.' : 'No saved rounds.') + '</p>';
 }
@@ -3626,6 +3679,8 @@ document.getElementById('savedList').onclick = e => {
       else if (!courseData().tees.includes(p.tee)) p.tee = validTee(p.tee);
     });
     roundId = (r.id && r.auto !== false) ? r.id : (r.auto === false ? newRoundId() : '');
+    roundStop = copyRoundStop(r.roundStop);
+    quitChoice = '';
     resetScoreHistory();
     players = holePlayers.map(p => {
       const book = playerBook().find(b => String(b.initials).toUpperCase() === String(p.id).toUpperCase());
@@ -3702,6 +3757,8 @@ document.getElementById('deleteRound').onclick = () => {
   holeMarks = [];
   roundId = '';
   roundName = '';
+  roundStop = null;
+  quitChoice = '';
   resetScoreHistory();
   players = [{ name: defaultPlayer.name, initials: defaultPlayer.initials, tee: defaultTee(), hcp: '', box: false }];
   try { localStorage.removeItem('golf-card'); } catch (e) {}
@@ -4131,7 +4188,7 @@ document.getElementById('saveCourse').onclick = () => {
   document.getElementById('addCourse').hidden = true;
 };
 function scoreSnap() {
-  return JSON.stringify({ scores: holeScores, marks: holeMarks, hole: holeNo });
+  return JSON.stringify({ scores: holeScores, marks: holeMarks, hole: holeNo, stop: copyRoundStop(roundStop) });
 }
 function pushScoreHistory() {
   scorePast.push(scoreSnap());
@@ -4143,6 +4200,8 @@ function applyScoreSnap(raw) {
   holeScores = data.scores;
   holeMarks = data.marks;
   if (data.hole != null) holeNo = data.hole;
+  roundStop = copyRoundStop(data.stop);
+  quitChoice = '';
   drawHole();
 }
 function undoScore() {
@@ -4166,6 +4225,69 @@ function paintUndo() {
   const redo = document.getElementById('redoScore');
   if (undo) undo.disabled = !scorePast.length;
   if (redo) redo.disabled = !scoreFuture.length;
+}
+function copyRoundStop(stop) {
+  if (!stop || (stop.mode !== 'asis' && stop.mode !== 'cancel')) return null;
+  const hole = Number(stop.hole);
+  return { mode: stop.mode, hole: hole > 0 ? hole : 0 };
+}
+function stopPhrase(stop) {
+  const saved = copyRoundStop(stop);
+  if (!saved) return '';
+  const where = saved.hole ? 'Stopped after hole ' + saved.hole : 'Stopped before play';
+  const how = saved.mode === 'cancel' ? 'Bets cancelled' : 'Bets paid as they stand';
+  return where + '. ' + how + '.';
+}
+function scoredThruLabel() {
+  const order = playOrder();
+  let last = null;
+  for (let i = 0; i < order.length; i++) {
+    const h = order[i];
+    const done = holePlayers.length && holePlayers.every((p, pi) => holeScores[pi] && holeScores[pi][h] != null);
+    if (!done) break;
+    last = h;
+  }
+  return last == null ? 0 : cardHoleLabel(last);
+}
+function paintQuit() {
+  const panel = document.getElementById('quitPanel');
+  const quitBtn = document.getElementById('quitRound');
+  const resumeBtn = document.getElementById('resumeRound');
+  const scoreNote = document.getElementById('scoreStop');
+  const cardNote = document.getElementById('cardStop');
+  const phrase = roundStop ? stopPhrase(roundStop) : '';
+  if (scoreNote) { scoreNote.textContent = phrase; scoreNote.hidden = !phrase; }
+  if (cardNote) { cardNote.textContent = phrase; cardNote.hidden = !phrase; }
+  if (quitBtn) quitBtn.hidden = !!roundStop;
+  if (resumeBtn) resumeBtn.hidden = !roundStop;
+  if (!panel) return;
+  if (!quitChoice || roundStop) { panel.hidden = true; panel.innerHTML = ''; return; }
+  panel.hidden = false;
+  const hole = scoredThruLabel();
+  const where = hole ? 'after hole ' + hole : 'before any hole is complete';
+  if (quitChoice === 'pick') {
+    panel.innerHTML = '<h2>Quit round</h2><p>Choose how the bets settle.</p><p class="quit-choices"><button type="button" class="choice" data-quit="asis">Pay out as is</button><button type="button" class="choice" data-quit="cancel">Cancel bets</button></p><p><button type="button" class="quiet" data-quit="close">Back</button></p>';
+    return;
+  }
+  const pay = quitChoice === 'cancel'
+    ? 'Cancel every bet. Settle shows $0 for everyone.'
+    : 'Pay every bet as it stands. Whoever is up wins the full amount. All square is a push. A match already closed, such as 4&3, settles as usual.';
+  panel.innerHTML = '<h2>Stop ' + where + '?</h2><p>' + pay + '</p><p class="actions"><button type="button" class="primary" data-quit="apply">Stop the round</button><button type="button" data-quit="back">Back</button></p>';
+}
+function applyQuit() {
+  if (quitChoice !== 'asis' && quitChoice !== 'cancel') return;
+  const mode = quitChoice;
+  pushScoreHistory();
+  roundStop = { mode: mode, hole: scoredThruLabel() };
+  quitChoice = '';
+  drawHole();
+}
+function resumeStoppedRound() {
+  if (!roundStop) return;
+  pushScoreHistory();
+  roundStop = null;
+  quitChoice = '';
+  drawHole();
 }
 function advanceScore() {
   const n = holePlayers.length;
@@ -4348,6 +4470,7 @@ function showScreen(name) {
   if (title) title.textContent = titles[name] || 'Golf';
   document.title = titles[name] || 'Golf';
   syncWake();
+  try { paintQuit(); } catch (e) {}
   const ready = holePlayers.length > 0;
   document.querySelectorAll('.empty-round').forEach(el => { el.hidden = ready; });
   document.querySelectorAll('.round-body').forEach(el => { el.hidden = !ready; });
@@ -4373,6 +4496,7 @@ function refreshGate() {
     const date = holePlayers.length ? roundDate : ((card && card.roundDate) || roundDate);
     const who = cardPlayers.map(p => p.id).join(', ');
     roundText.textContent = [courseName, formatDay(date), who, 'Hole ' + hole].filter(Boolean).join(' · ');
+    if (roundStop) roundText.textContent += ' · ' + stopPhrase(roundStop);
     btn.disabled = false;
   } else if (namedSetup()) {
     const setup = JSON.parse(localStorage.getItem('round-setup'));
