@@ -57,7 +57,8 @@ try {
   #screen-card #card.hscroll { overflow:visible; }
   #card table.scorecard { table-layout:fixed; }
   #card col.chol, #paperCard table.scorecard col.chol { width:40px; }
-  #card col.cpar, #paperCard table.scorecard col.cpar { width:28px; }
+  #card col.hgap, #paperCard table.scorecard col.hgap { width:8px; }
+  #card col.cpar, #paperCard table.scorecard col.cpar { width:32px; }
   #card col.cplayer, #paperCard table.scorecard col.cplayer { width:36px; }
   #card col.cgap, #paperCard table.scorecard col.cgap { width:auto; }
   #card col.mmatch, #paperCard table.scorecard col.mmatch { width:58px; }
@@ -65,6 +66,8 @@ try {
   #card td.cgap:not(.tot), #card th.cgap, #paperCard table.scorecard td.cgap, #paperCard table.scorecard th.cgap { padding:0; border-bottom-color:transparent; background:transparent !important; }
   #card table.scorecard tr:first-of-type th { position:sticky; top:calc(80px + env(safe-area-inset-top)); z-index:5; background:#fff; box-shadow:0 1px 0 #e4ece6; }
   #card table.scorecard tr:first-of-type th.cgap { background:#fff !important; }
+  #card th.hno, #card th.parh { font-size:12px !important; font-weight:750; letter-spacing:0; overflow:hidden; }
+  #card th.hgap, #card td.hgap { padding:0; }
   #card th.who { color:#1c2b22; font-weight:800; font-size:12px !important; line-height:1.05; letter-spacing:0; }
   #paperCard table.scorecard td, #paperCard table.scorecard th { min-width:0; }
   #card td.hno, #card th.hno { white-space:nowrap; padding-left:2px; padding-right:2px; }
@@ -1380,12 +1383,12 @@ function playoffCardHtml(boards) {
     if (!board.mp) return '';
     const rows = playoffProgress(board.name, board.sides.a, board.sides.b);
     if (!rows.length) return '';
-    const cols = '<colgroup><col class="chol"><col class="cpar">' + holePlayers.map(() => '<col class="cplayer">').join('') + '<col class="cgap"><col class="mmatch"></colgroup>';
+    const cols = '<colgroup><col class="chol"><col class="hgap"><col class="cpar">' + holePlayers.map(() => '<col class="cplayer">').join('') + '<col class="cgap"><col class="mmatch"></colgroup>';
     const partsHead = String(board.label || '').split(' v ');
     const matchHead = list.length > 1
       ? '<th class="mlab">Match</th>'
       : '<th class="mlab">' + esc(partsHead[0] || 'Match') + '<span class="opp">' + esc(partsHead[1] || '') + '</span></th>';
-    const head = '<tr><th class="hno">Hole</th><th>Par</th>' + holePlayers.map(p => cardWhoHtml(p)).join('') + '<th class="cgap"></th>' + matchHead + '</tr>';
+    const head = '<tr><th class="hno" aria-label="Hole">#</th><th class="hgap"></th><th class="parh">Par</th>' + holePlayers.map(p => cardWhoHtml(p)).join('') + '<th class="cgap"></th>' + matchHead + '</tr>';
     const body = rows.map(row => {
       const par = courseData().par[row.h];
       const scores = holePlayers.map(p => {
@@ -1393,7 +1396,7 @@ function playoffCardHtml(boards) {
         if (n == null) return '<td></td>';
         return '<td>' + scoreShape(n, par) + '</td>';
       }).join('');
-      return '<tr><td class="hno">' + playoffHoleNo(row.i) + '</td><td class="par">' + par + '</td>' + scores + '<td class="cgap"></td><td class="mcell">' + playoffStatus(row.score, board.sides.a, board.sides.b) + '</td></tr>';
+      return '<tr><td class="hno">' + playoffHoleNo(row.i) + '</td><td class="hgap"></td><td class="par">' + par + '</td>' + scores + '<td class="cgap"></td><td class="mcell">' + playoffStatus(row.score, board.sides.a, board.sides.b) + '</td></tr>';
     }).join('');
     const title = list.filter(b => b.mp && playoffProgress(b.name, b.sides.a, b.sides.b).length).length > 1
       ? 'Playoff ' + esc(board.label)
@@ -2466,7 +2469,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
   };
   const boards = matchBoards();
   const matchCol = boards.length ? '<col class="mmatch">' : '';
-  const colgroup = '<colgroup><col class="chol"><col class="cpar">' + holePlayers.map(() => '<col class="cplayer">').join('') + '<col class="cgap">' + matchCol + '</colgroup>';
+  const colgroup = '<colgroup><col class="chol"><col class="hgap"><col class="cpar">' + holePlayers.map(() => '<col class="cplayer">').join('') + '<col class="cgap">' + matchCol + '</colgroup>';
   const matchHead = () => {
     if (!boards.length) return '';
     if (boards.length === 1) {
@@ -2476,7 +2479,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     return '<th class="mlab">Match</th>';
   };
   const sideTable = (holes, label) => {
-    const head = '<tr><th class="hno">Hole</th><th>Par</th>' + holePlayers.map(p => cardWhoHtml(p)).join('') + '<th class="cgap"></th>' + matchHead() + '</tr>';
+    const head = '<tr><th class="hno" aria-label="Hole">#</th><th class="hgap"></th><th class="parh">Par</th>' + holePlayers.map(p => cardWhoHtml(p)).join('') + '<th class="cgap"></th>' + matchHead() + '</tr>';
     const body = holes.map(h => {
       const par = courseData().par[h];
       const cells = holePlayers.map((p, i) => {
@@ -2486,19 +2489,19 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
       }).join('');
       const status = portraitMatchLines(h, boards);
       const matchTd = boards.length ? '<td class="mcell" data-hole="' + h + '">' + status + '</td>' : '';
-      return '<tr data-hole="' + h + '" class="' + (h === holeNo ? 'current' : '') + '"><td class="hno" data-hole="' + h + '">' + (h+1) + '</td><td class="par" data-hole="' + h + '">' + par + '</td>' + cells + '<td class="cgap"></td>' + matchTd + '</tr>';
+      return '<tr data-hole="' + h + '" class="' + (h === holeNo ? 'current' : '') + '"><td class="hno" data-hole="' + h + '">' + (h+1) + '</td><td class="hgap"></td><td class="par" data-hole="' + h + '">' + par + '</td>' + cells + '<td class="cgap"></td>' + matchTd + '</tr>';
     }).join('');
     const tot = holePlayers.map((p, i) => totalCell(i, holes)).join('');
     const parTot = holes.reduce((n, h) => n + courseData().par[h], 0);
     const matchTot = boards.length ? '<td class="tot mcell">' + portraitMatchFinal(holes, boards) + '</td>' : '';
-    return '<table class="scorecard">' + colgroup + head + body + '<tr class="totrow"><td class="tot">' + label + '</td><td class="tot">' + parTot + '</td>' + tot + '<td class="tot cgap"></td>' + matchTot + '</tr></table>';
+    return '<table class="scorecard">' + colgroup + head + body + '<tr class="totrow"><td class="tot">' + label + '</td><td class="tot hgap"></td><td class="tot">' + parTot + '</td>' + tot + '<td class="tot cgap"></td>' + matchTot + '</tr></table>';
   };
   const totalRow = () => {
     const holes = playedHoles();
     const tot = holePlayers.map((p, i) => totalCell(i, holes)).join('');
     const parTot = holes.reduce((n, h) => n + (courseData().par[h] || 0), 0);
     const matchTot = boards.length ? '<td class="tot mcell">' + portraitMatchFinal(holes, boards) + '</td>' : '';
-    return '<table class="scorecard">' + colgroup + '<tr class="totrow"><td class="tot">Total</td><td class="tot">' + parTot + '</td>' + tot + '<td class="tot cgap"></td>' + matchTot + '</tr></table>';
+    return '<table class="scorecard">' + colgroup + '<tr class="totrow"><td class="tot">Total</td><td class="tot hgap"></td><td class="tot">' + parTot + '</td>' + tot + '<td class="tot cgap"></td>' + matchTot + '</tr></table>';
   };
   const gap = '<div class="card-gap"></div>';
   document.getElementById('card').innerHTML = sideTable(holesOfNine(0), '1st 9') + gap + sideTable(holesOfNine(1), '2nd 9') + gap + totalRow() + playoffCardHtml(boards);
