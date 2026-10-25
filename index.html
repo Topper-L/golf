@@ -4327,7 +4327,7 @@ document.getElementById('saveCourse').onclick = () => {
   document.getElementById('addCourse').hidden = true;
 };
 function scoreSnap() {
-  return JSON.stringify({ scores: holeScores, marks: holeMarks, hole: holeNo, stop: copyRoundStop(roundStop) });
+  return JSON.stringify({ scores: holeScores, marks: holeMarks, hole: holeNo, stop: copyRoundStop(roundStop), cursor: scoreCursor });
 }
 function pushScoreHistory() {
   scorePast.push(scoreSnap());
@@ -4339,6 +4339,7 @@ function applyScoreSnap(raw) {
   holeScores = data.scores;
   holeMarks = data.marks;
   if (data.hole != null) holeNo = data.hole;
+  if (typeof data.cursor === 'number') scoreCursor = data.cursor;
   roundStop = copyRoundStop(data.stop);
   quitChoice = '';
   drawHole();
