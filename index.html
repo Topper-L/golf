@@ -150,7 +150,7 @@ try {
   #settle .settlewho { margin:10px 0 0; font-weight:750; color:#1c2b22; }
   #settle .comp { margin:0; color:#5e6f64; }
   #settle .settletot { margin:2px 0 8px; }
-  #settle .teamline { margin:4px 0 8px; font-weight:750; color:#1c2b22; }
+  #settle .teamline, #settle .teampay { margin:4px 0 8px; font-weight:750; color:#1c2b22; }
   #review, #review p, #review td, #review th { font-size:var(--lead) !important; line-height:1.45; }
   #screen-setup, #screen-gate { font-size:var(--text); }
   #screen-setup p, #screen-gate p, #screen-setup td, #screen-setup th, #screen-setup button, #screen-gate button, #savedPlayers label { font-size:var(--text); }
@@ -1413,11 +1413,16 @@ function junkHoleItems(i, matchIds) {
   }
   return items;
 }
+function junkRate(bet, id) {
+  if (bet && bet.player && bet.player[id] != null) return Number(bet.player[id]) || 0;
+  return 3;
+}
 function junkStandingHtml(a, b, matchIds, bet) {
+  if (!a.concat(b).some(id => junkRate(bet, id))) return '';
   const junkOf = id => {
     const i = holePlayers.findIndex(p => p.id === id);
     if (i < 0) return 0;
-    const rate = (bet.player && bet.player[id] != null) ? Number(bet.player[id]) : 3;
+    const rate = junkRate(bet, id);
     let units = 0;
     for (const h of playedHoles()) if (holeReady(matchIds, h)) units += junkUnits(i, h);
     const kp = kpForMatch(matchIds)[id] || 0;
@@ -1462,6 +1467,39 @@ function teamTag(ids) {
   if (!list.length) return '';
   if (list.every(id => id.length === 1)) return list.join('');
   return list.join('+');
+}
+function payJoin(ids) {
+  return (ids || []).map(id => String(id || '').trim().toUpperCase()).filter(Boolean).join('+');
+}
+function teamMoneyLine(losers, winners, eachAmt, summary) {
+  const per = Math.round((Number(eachAmt) || 0) * 100) / 100;
+  if (!per || !(losers && losers.length) || !(winners && winners.length)) return '';
+  const total = Math.round(per * losers.length * 100) / 100;
+  const each = summary ? ', ' + dollarText(per) + ' each' : ' (' + dollarText(per) + ' each)';
+  return payJoin(losers) + ' pay ' + payJoin(winners) + ' ' + dollarText(total) + each;
+}
+function fewestPayments(roll) {
+  const debtors = [];
+  const creditors = [];
+  Object.keys(roll || {}).forEach(id => {
+    const cents = Math.round((Number(roll[id]) || 0) * 100);
+    if (cents < 0) debtors.push({ id: id, cents: -cents });
+    else if (cents > 0) creditors.push({ id: id, cents: cents });
+  });
+  const byAmt = (x, y) => y.cents - x.cents || (x.id < y.id ? -1 : x.id > y.id ? 1 : 0);
+  debtors.sort(byAmt);
+  creditors.sort(byAmt);
+  const out = [];
+  let i = 0, j = 0;
+  while (i < debtors.length && j < creditors.length) {
+    const pay = Math.min(debtors[i].cents, creditors[j].cents);
+    if (pay) out.push({ payer: debtors[i].id, payee: creditors[j].id, amt: pay / 100 });
+    debtors[i].cents -= pay;
+    creditors[j].cents -= pay;
+    if (!debtors[i].cents) i += 1;
+    if (!creditors[j].cents) j += 1;
+  }
+  return out;
 }
 function shortMatch(name) {
   const sides = sidesOf(name);
@@ -1710,18 +1748,20 @@ function shareText() {
         lines.push(said ? board.label + ' ' + said : board.label);
         const rows = playoffProgress(board.name, board.sides.a, board.sides.b);
         if (rows.length) lines.push('Playoff ' + rows.map(row => playoffHoleNo(row.i) + ' ' + playoffStatusText(row.score, board.sides.a, board.sides.b)).join(', '));
+        nassauStatusLines(board.sim, board.sim.bet, false).forEach(t => lines.push(board.label + ' ' + t));
         return;
       }
       const run = runningScore(board);
       if (!run.played) { lines.push(board.label); return; }
-      const presses = board.sim.legs.filter(l => l.kind === 'press');
+      const presses = board.sim.legs.filter(l => l.kind === 'press' && pressAmt(board.sim.bet, l.from));
       const extra = presses.map(l => l.played ? 'P' + l.from + ' ' + holeMark(l.score) : 'P' + l.from).join(' · ');
       lines.push(board.label + ' ' + upMark(run.score) + ' thru ' + (run.last + 1) + (extra ? ' · ' + extra : ''));
+      nassauStatusLines(board.sim, board.sim.bet, false).forEach(t => lines.push(board.label + ' ' + t));
     });
   }
   lines.push('', 'Settle');
   try { settle(); } catch (e) {}
-  const pays = [...document.querySelectorAll('#settle p')].map(p => p.textContent.trim()).filter(t => /pays/.test(t));
+  const pays = [...document.querySelectorAll('#settle .settleup')].map(p => p.textContent.trim()).filter(Boolean);
   lines.push(pays.length ? pays.join('\n') : 'Even');
   return lines.join('\n');
 }
@@ -1839,6 +1879,29 @@ function configuredJunkRate(id) {
   if (!vals.length) return 3;
   return vals[0];
 }
+function nassauStatusLines(sim, bet, html) {
+  const say = n => {
+    if (!n) return html ? '<b>AS</b>' : 'AS';
+    if (!html) return n > 0 ? '↑' + n : '↓' + Math.abs(n);
+    return n > 0 ? '<span class="up">↑' + n + '</span>' : '<span class="dn">↓' + Math.abs(n) + '</span>';
+  };
+  const nineLeg = seg => sim.legs.find(l => l.kind === 'nine' && l.seg === seg);
+  const frontLeg = nineLeg(0), backLeg = nineLeg(1);
+  const backPlayed = !!(backLeg && backLeg.played);
+  const lines = [];
+  const pressLine = leg => {
+    if (!leg || !leg.played || !pressAmt(bet, leg.from)) return '';
+    let last = leg.score, any = false;
+    (leg.holes || []).forEach(h => { if (leg.cells[h] != null) { last = leg.cells[h]; any = true; } });
+    return 'Press from ' + leg.from + (leg.manual ? ' (M)' : ' (A)') + ' ' + say(any ? last : leg.score);
+  };
+  if (Number(bet.first) && frontLeg && frontLeg.played) lines.push('1st 9 ' + say(frontLeg.score));
+  sim.legs.filter(l => l.kind === 'press' && l.seg === 0).forEach(leg => { const t = pressLine(leg); if (t) lines.push(t); });
+  if (backPlayed && Number(bet.second)) lines.push('2nd 9 ' + say(backLeg.score));
+  sim.legs.filter(l => l.kind === 'press' && l.seg === 1).forEach(leg => { const t = pressLine(leg); if (t) lines.push(t); });
+  if (backPlayed && Number(bet.overall)) lines.push('Overall ' + say((frontLeg ? frontLeg.score : 0) + backLeg.score));
+  return lines;
+}
 function holeStanding() {
   let names = [];
   try { const m = matchNames(); names = m.team.concat(m.side); } catch (e) { return '<p>' + e.message + '</p>'; }
@@ -1866,7 +1929,10 @@ function holeStanding() {
       const h0 = holesOfNine(0), h1 = holesOfNine(1);
       const form = mp.playoff && mp.playoff.pending != null ? playoffForm(name, matchIds, mp.playoff.pending, mp.playoff.index) : '';
       const po = playoffStandingHtml(name, a, b);
-      return '<div class="mp-block"><p><b>' + name + '</b> 18-hole<br>' + matchIds.map(id => { const p = holePlayers.find(x => x.id === id); return id + ' ' + hcpLabel(p); }).join(' · ') + '<br>' + status + '</p>' + nineTableMp(h0) + nineTableMp(h1) + po + form + junkStandingHtml(a, b, matchIds, betEarly) + '</div>';
+      const simN = simulateMatch(name, a, b);
+      const nassau = nassauStatusLines(simN, simN.bet, true);
+      const nassauHtml = nassau.length ? '<p>' + nassau.join('<br>') + '</p>' : '';
+      return '<div class="mp-block"><p><b>' + name + '</b> 18-hole<br>' + matchIds.map(id => { const p = holePlayers.find(x => x.id === id); return id + ' ' + hcpLabel(p); }).join(' · ') + '<br>' + status + '</p>' + nineTableMp(h0) + nineTableMp(h1) + po + form + nassauHtml + junkStandingHtml(a, b, matchIds, betEarly) + '</div>';
     }
     let score = 0, played = 0;
     let lastThru = null;
@@ -1901,7 +1967,7 @@ function holeStanding() {
     const junkOf = id => {
       const i = holePlayers.findIndex(p => p.id === id);
       if (i < 0) return 0;
-      const rate = (bet.player && bet.player[id] != null) ? Number(bet.player[id]) : 3;
+      const rate = junkRate(bet, id);
       let units = 0;
       for (const h of playedHoles()) if (holeReady(matchIds, h)) units += junkUnits(i, h);
       const kp = kpForMatch(matchIds)[id] || 0;
@@ -1912,31 +1978,18 @@ function holeStanding() {
     dollars -= teamJunk;
     const nineTable = holes => {
       const base = sim.legs.find(l => l.kind === 'nine' && holes.length && l.holes[0] === holes[0]);
-      const extra = sim.legs.filter(l => l.kind === 'press' && holes.some(h => l.holes.indexOf(h) >= 0));
+      const extra = sim.legs.filter(l => l.kind === 'press' && pressAmt(bet, l.from) && holes.some(h => l.holes.indexOf(h) >= 0));
       const head = '<tr>' + holes.map(h => '<th>' + (h + 1) + '</th>').join('') + '</tr>';
       const nineRow = base ? '<tr>' + holes.map(h => '<td>' + (base.cells[h] == null ? '' : say(base.cells[h])) + '</td>').join('') + '</tr>' : '';
       const prows = extra.map(leg => '<tr class="pcap"><th colspan="' + holes.length + '">P' + leg.from + (leg.manual ? ' (M)' : '') + '</th></tr><tr>' + holes.map(h => '<td>' + (leg.cells[h] == null ? '' : say(leg.cells[h])) + '</td>').join('') + '</tr>').join('');
       return '<table class="matchgrid">' + head + nineRow + prows + '</table>';
     };
-    const lastIn = (leg, holes) => {
-      let last = 0, any = false;
-      holes.forEach(h => { if (leg.cells[h] != null) { last = leg.cells[h]; any = true; } });
-      return any ? last : leg.score;
-    };
-    const stack = (seg, holes) => {
-      const base = nineLeg(seg);
-      const extra = sim.legs.filter(l => l.kind === 'press' && l.seg === seg);
-      return [base].concat(extra).filter(Boolean).map(leg => say(leg.kind === 'press' ? lastIn(leg, holes) : leg.score) + (leg.kind === 'press' ? (leg.manual ? ' (M)' : ' (A)') : '')).join(' / ');
-    };
     const h0 = holesOfNine(0), h1 = holesOfNine(1);
-    const pressNotes = sim.legs.filter(l => l.kind === 'press').sort((x, y) => x.from - y.from).map(leg => 'Press from ' + leg.from + (leg.manual ? ' (M)' : ' (A)') + ' ' + say(leg.score)).join('<br>');
+    const statusLines = nassauStatusLines(sim, bet, true);
     const running = dollars ? (dollars > 0 ? b.join('+') : a.join('+')) + ' +' + dollarText(dollars) : 'even';
     const hcps = matchIds.map(id => { const p = holePlayers.find(x => x.id === id); return id + ' ' + hcpLabel(p); }).join(' · ');
-    let tail = '<p>2nd 9 ' + (backPlayed ? stack(1, h1) : '') + '</p>' + nineTable(h1);
-    if (backPlayed) tail += '<p>Overall ' + say(overallScore) + '. 1st 9 ended ' + say(frontScore) + ', 2nd 9 is ' + say(backScore) + '.</p>';
-    if (pressNotes) tail += '<p>' + pressNotes + '</p>';
-    tail += junkStandingHtml(a, b, matchIds, bet);
-    return '<div class="mstand"><p><b>' + name + '</b> ' + running + '<br>' + hcps + '<br>' + label + ' thru ' + (lastThru + 1) + '<br>1st 9 ' + stack(0, h0) + '</p>' + nineTable(h0) + tail + '</div>';
+    const statusHtml = statusLines.length ? '<p>' + statusLines.join('<br>') + '</p>' : '';
+    return '<div class="mstand"><p><b>' + name + '</b> ' + running + '<br>' + hcps + '<br>' + label + ' thru ' + (lastThru + 1) + '</p>' + nineTable(h0) + nineTable(h1) + statusHtml + junkStandingHtml(a, b, matchIds, bet) + '</div>';
   }).join('');
 }
 function splitComp(amount, a, b) {
@@ -1958,40 +2011,27 @@ function compText(label, n) {
   if (!v) return label + ' AS';
   return label + ' ' + cashText(v);
 }
-function teamResultLine(name, a, b, owed, bet) {
+function teamResultLine(name, a, b, bet) {
   if (a.length < 2 && b.length < 2) return '';
-  const mp = bet && bet.mp18 ? matchPlay(name, a, b) : null;
-  const said = mp ? mpPlain(mp, a, b) : '';
-  if (!owed) return said && said.indexOf('won') >= 0 ? said : '';
-  const winners = owed < 0 ? a : b;
-  const per = Math.abs(splitComp(owed, a, b)[winners[0]] || 0);
-  const lead = said && said.indexOf('won') >= 0 ? said : teamTag(winners) + ' won';
-  return lead + ', ' + dollarText(per) + ' a player';
+  if (!(bet && bet.mp18 && Number(bet.mp))) return '';
+  const said = mpPlain(matchPlay(name, a, b), a, b);
+  return said && said.indexOf('won') >= 0 ? said : '';
+}
+function teamPayLines(a, b, amount) {
+  if (!amount || a.length < 2 || b.length < 2) return [];
+  const winners = amount < 0 ? a : b;
+  const losers = amount < 0 ? b : a;
+  const per = Math.abs(splitComp(amount, a, b)[winners[0]] || 0);
+  const line = teamMoneyLine(losers, winners, per, false);
+  return line ? [line] : [];
 }
 function settle() {
   const el = document.getElementById('settle');
   if (!el) return;
   const m = matchNames();
   const names = m.team.concat(m.side).filter(name => { const s = amountFor(name); return !s || s.on !== false; });
-  const teamSlot = {};
-  m.team.forEach((nm, i) => { teamSlot[nm] = i; });
-  const net = {};
-  const add = (from, to, amt) => {
-    if (!amt) return;
-    const key = [from, to].sort().join('|');
-    net[key] = (net[key] || 0) + (from < to ? amt : -amt);
-  };
-  const paySides = (losers, winners, amt, offset) => {
-    if (!amt || !losers.length || !winners.length) return;
-    if (losers.length === winners.length) {
-      const n = winners.length;
-      const off = (offset || 0) % n;
-      for (let i = 0; i < n; i++) add(losers[i], winners[(i + off) % n], amt);
-      return;
-    }
-    const share = winners.length > 1 ? amt / winners.length : amt;
-    losers.forEach(from => winners.forEach(to => add(from, to, share)));
-  };
+  const roll = {};
+  holePlayers.forEach(p => { roll[p.id] = 0; });
   const lines = names.map(name => {
     const box = holePlayers.filter(p => p.box).map(p => p.id);
     const isBox = name.indexOf('Box') === 0;
@@ -2017,7 +2057,7 @@ function settle() {
     const junkOf = id => {
       const i = holePlayers.findIndex(p => p.id === id);
       if (i < 0) return 0;
-      const rate = (bet.player && bet.player[id] != null) ? Number(bet.player[id]) : 3;
+      const rate = junkRate(bet, id);
       let units = 0;
       for (const h of playedHoles()) if (holeReady(matchIds, h)) units += junkUnits(i, h);
       return (units + (kp[id] || 0)) * rate;
@@ -2070,59 +2110,72 @@ function settle() {
       comps.push({ label: (a.length > 1 || b.length > 1) ? '18-hole' : '18-hole ' + mpSaid, amount: mpPay });
     }
     const owed = dollars + mpPay;
+    const teamMatch = a.length > 1 && b.length > 1;
     if (!comps.length) {
       let html = '<p><b>' + name + '</b> even.</p>';
-      const team = teamResultLine(name, a, b, 0, bet);
+      const team = teamResultLine(name, a, b, bet);
       if (team) html += '<p class="teamline">' + esc(team) + '</p>';
-      return { name: name, html: html };
+      return { name: name, html: html, owed: 0, a: a, b: b, teamMatch: teamMatch };
     }
-    const winners = owed < 0 ? a : b;
-    const losers = owed < 0 ? b : a;
-    const amt = Math.abs(owed);
-    if (owed) paySides(losers, winners, amt, teamSlot[name] || 0);
     const blocks = matchIds.map(id => {
-      const lines = comps.map(c => '<p class="comp">' + esc(compText(c.label, splitComp(c.amount, a, b)[id] || 0)) + '</p>');
-      if (junk && junkItems[id]) lines.push('<p class="comp">' + esc(junkItems[id]) + '</p>');
+      const rows = comps.map(c => '<p class="comp">' + esc(compText(c.label, splitComp(c.amount, a, b)[id] || 0)) + '</p>');
+      if (junk && junkItems[id]) rows.push('<p class="comp">' + esc(junkItems[id]) + '</p>');
       const total = comps.reduce((n, c) => n + (splitComp(c.amount, a, b)[id] || 0), 0);
-      return '<div class="settle-player"><p class="settlewho">' + esc(id) + '</p>' + lines.join('') + '<p class="settletot"><b>Total ' + cashText(total) + '</b></p></div>';
+      roll[id] = Math.round(((roll[id] || 0) + total) * 100) / 100;
+      return '<div class="settle-player"><p class="settlewho">' + esc(id) + '</p>' + rows.join('') + '<p class="settletot"><b>Total ' + cashText(total) + '</b></p></div>';
     }).join('');
-    const team = teamResultLine(name, a, b, owed, bet);
-    return { name: name, html: blocks + (team ? '<p class="teamline">' + esc(team) + '</p>' : '') };
+    const team = teamResultLine(name, a, b, bet);
+    const pays = teamPayLines(a, b, owed - junk).concat(teamPayLines(a, b, junk));
+    const payHtml = pays.map(t => '<p class="teampay">' + esc(t) + '</p>').join('');
+    return { name: name, html: blocks + (team ? '<p class="teamline">' + esc(team) + '</p>' : '') + payHtml, owed: owed, a: a, b: b, teamMatch: teamMatch };
   });
-  const nets = Object.keys(net).map(key => {
-    const [x, y] = key.split('|');
-    const v = net[key];
-    if (!v) return '';
-    const payer = v > 0 ? x : y;
-    const payee = v > 0 ? y : x;
+  const settleClass = text => {
     const me = (holePlayers[0] && holePlayers[0].id) || '';
-    const cls = payer === me ? 'dn' : payee === me ? 'up' : '';
-    return '<p class="' + cls + '">' + payer + ' pays ' + payee + ' ' + dollarText(v) + '</p>';
-  }).filter(Boolean);
+    if (!me || !text) return '';
+    const sides = text.split(' pay ');
+    if (sides.length > 1) {
+      const payers = sides[0].split('+');
+      const payees = String(sides[1].split(' ')[0] || '').split('+');
+      if (payers.indexOf(me) >= 0) return 'dn';
+      if (payees.indexOf(me) >= 0) return 'up';
+      return '';
+    }
+    if (text.indexOf(me + ' pays ') === 0) return 'dn';
+    if (text.indexOf(' pays ' + me + ' ') >= 0) return 'up';
+    return '';
+  };
+  const moneyMatches = lines.filter(line => line.owed);
+  let settleTexts = [];
+  if (moneyMatches.length === 1 && moneyMatches[0].teamMatch) {
+    const one = moneyMatches[0];
+    const winners = one.owed < 0 ? one.a : one.b;
+    const losers = one.owed < 0 ? one.b : one.a;
+    const per = Math.abs(roll[winners[0]] || 0);
+    const balanced = per && winners.every(id => Math.abs(Math.abs(roll[id] || 0) - per) < 0.001) && losers.every(id => Math.abs(Math.abs(roll[id] || 0) - per) < 0.001);
+    const teamLine = balanced ? teamMoneyLine(losers, winners, per, true) : '';
+    if (teamLine) settleTexts = [teamLine];
+  }
+  if (!settleTexts.length) {
+    settleTexts = fewestPayments(roll).map(p => p.payer + ' pays ' + p.payee + ' ' + dollarText(p.amt));
+  }
+  const nets = settleTexts.map(text => {
+    const cls = settleClass(text);
+    return '<p class="settleup' + (cls ? ' ' + cls : '') + '">' + esc(text) + '</p>';
+  });
   const anyStake = names.some(name => {
     const bet = amountFor(name) || {};
     if (Number(bet.first) || Number(bet.second) || Number(bet.overall) || Number(bet.press) || Number(bet.mp)) return true;
     if (bet.player && Object.keys(bet.player).some(id => Number(bet.player[id]))) return true;
     try { return pressFields().some(k => Number(bet[k])); } catch (e) { return false; }
   });
-  const roll = {};
-  holePlayers.forEach(p => { roll[p.id] = 0; });
-  Object.keys(net).forEach(key => {
-    const parts = key.split('|');
-    const v = net[key];
-    if (!v) return;
-    const payer = v > 0 ? parts[0] : parts[1];
-    const payee = v > 0 ? parts[1] : parts[0];
-    const amt = Math.abs(v);
-    roll[payer] = (roll[payer] || 0) - amt;
-    roll[payee] = (roll[payee] || 0) + amt;
-  });
   const playerLines = holePlayers.map(p => {
     const v = roll[p.id] || 0;
     const cls = v > 0 ? ' class="up"' : v < 0 ? ' class="dn"' : '';
     return '<p' + cls + '><b>' + esc(p.id) + '</b> ' + cashText(v) + '</p>';
   }).join('');
-  const summary = nets.length ? '<p><b>Summary</b></p>' + playerLines + nets.join('') : (anyStake ? '' : '<p><b>No money owed.</b></p>');
+  const anyRoll = holePlayers.some(p => roll[p.id]);
+  const settleUp = nets.length ? '<p><b>Settle up</b></p>' + nets.join('') : '';
+  const summary = anyRoll ? '<p><b>Summary</b></p>' + playerLines + settleUp : (anyStake ? '' : '<p><b>No money owed.</b></p>');
   const details = lines.map((line, i) => '<div class="settle-match"><div class="section-head" data-settle="' + i + '"><span>' + esc(line.name || 'Match') + '</span><span class="chev">▶</span></div><div class="section-body collapsed" id="settle-' + i + '">' + line.html + '</div></div>').join('');
   el.innerHTML = summary + (details ? '<p><b>Details</b></p>' + details : '');
   el.querySelectorAll('.section-head[data-settle]').forEach(head => {
