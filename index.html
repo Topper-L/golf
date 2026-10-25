@@ -65,6 +65,9 @@ try {
   #card th.mlab .opp { display:block; font-weight:650; color:#5e6f64; }
   #card td.mcell .mbit { display:flex; flex-direction:column; align-items:center; margin-top:2px; }
   #card td.mcell .mbit i { font-style:normal; font-size:10px; font-weight:650; color:#5e6f64; line-height:1.1; }
+  #card table.playoffcard, #paperCard table.playoffcard { width:100%; table-layout:fixed; margin-top:8px; }
+  #card table.playoffcard col.plab, #paperCard table.playoffcard col.plab { width:108px; }
+  #card table.playoffcard th.plab, #paperCard table.playoffcard th.plab { font-size:13px !important; text-align:left; white-space:nowrap; font-weight:750; }
   #card table.scorecard td, #card table.scorecard th { text-align:center; }
   #card tr.totrow td:first-child { white-space:nowrap; font-size:12px !important; }
   #card .num { font-weight:700; letter-spacing:-0.02em; font-variant-numeric:tabular-nums; }
@@ -127,6 +130,17 @@ try {
   #standing table, #cardStanding table { width:100%; table-layout:fixed; }
   #standing th, #standing td, #cardStanding th, #cardStanding td { text-align:center; padding:3px 0; font-variant-numeric:tabular-nums; }
   #standing td:first-child, #standing th:first-child, #cardStanding td:first-child, #cardStanding th:first-child { text-align:left; width:2.4em; }
+  #standing table.matchgrid, #cardStanding table.matchgrid { width:100%; table-layout:fixed; margin:4px 0 8px; }
+  #standing table.matchgrid th, #standing table.matchgrid td, #cardStanding table.matchgrid th, #cardStanding table.matchgrid td { text-align:center; width:auto; font-size:min(var(--lead), 16px) !important; padding:4px 0; }
+  #standing table.matchgrid tr.pcap th, #cardStanding table.matchgrid tr.pcap th { text-align:left; font-weight:650; color:#5e6f64; padding-top:8px; }
+  #standing table.playoffgrid, #cardStanding table.playoffgrid { width:100%; table-layout:auto; margin:4px 0 8px; }
+  #standing table.playoffgrid th, #standing table.playoffgrid td, #cardStanding table.playoffgrid th, #cardStanding table.playoffgrid td { text-align:center; width:auto; white-space:nowrap; }
+  #standing table.playoffgrid th:first-child, #cardStanding table.playoffgrid th:first-child { text-align:left; font-weight:700; width:auto; }
+  #standing .junkrows, #cardStanding .junkrows { margin-top:8px; }
+  #standing .junkhead, #cardStanding .junkhead { margin:8px 0 2px; font-weight:700; color:#1c2b22; }
+  #standing .junkwho, #cardStanding .junkwho { margin:8px 0 0; font-weight:700; color:#1c2b22; }
+  #standing .junkdetail, #cardStanding .junkdetail { margin:0 0 4px; color:#5e6f64; }
+  #screen-settle .card-tools { justify-content:flex-end; }
   .actions { display:flex; flex-wrap:wrap; gap:8px; }
   .actions button { flex:1 1 9.5em; font-size:var(--lead); font-weight:700; min-height:48px; }
   #presses, #presses p, #presses button, #presses label { font-size:var(--lead) !important; }
@@ -277,7 +291,7 @@ try {
   <section id="screen-standing" class="screen">
     <p class="empty-round">Start scoring from Setup.</p>
     <div class="round-body">
-      <div class="card"><h2>Standing</h2><div id="cardStanding"></div></div>
+      <div class="card"><div id="cardStanding"></div></div>
     </div>
   </section>
   <section id="screen-junk" class="screen">
@@ -289,7 +303,7 @@ try {
   <section id="screen-settle" class="screen">
     <p class="empty-round">Start scoring from Setup.</p>
     <div class="round-body">
-      <div class="card"><div class="card-tools"><h2>Settle</h2><button type="button" id="shareSettle">Share</button></div><div id="settle"></div></div>
+      <div class="card"><div class="card-tools"><button type="button" id="shareSettle">Share</button></div><div id="settle"></div></div>
     </div>
   </section>
 </div>
@@ -1267,6 +1281,63 @@ function mpPlain(mp, a, b) {
   const mark = !mp.score ? 'AS' : mp.score > 0 ? '↑' + mp.score : '↓' + Math.abs(mp.score);
   return mark + (mp.dormie ? ' Dormie' : '');
 }
+function playoffProgress(name, a, b) {
+  const order = playOrder();
+  const ids = a.concat(b);
+  const rounds = playoffs[name] || [];
+  let score = 0;
+  const rows = [];
+  for (let i = 0; i < rounds.length; i++) {
+    const h = order[i];
+    if (h == null) break;
+    const gross = rounds[i].scores || {};
+    if (!ids.every(id => gross[id] != null && gross[id] !== '')) break;
+    const an = bestGross(a, h, gross, ids), bn = bestGross(b, h, gross, ids);
+    if (an === 99 || bn === 99) break;
+    score += an < bn ? 1 : an > bn ? -1 : 0;
+    rows.push({ i: i, h: h, gross: gross, score: score });
+    if (score !== 0) break;
+  }
+  return rows;
+}
+function playoffStatus(score, a, b) {
+  if (!score) return arrowMark(0);
+  return teamTag(score > 0 ? a : b) + ' ' + arrowMark(score);
+}
+function playoffStandingHtml(name, a, b) {
+  const rows = playoffProgress(name, a, b);
+  if (!rows.length) return '';
+  return '<table class="playoffgrid">' + rows.map(row => {
+    const scores = a.concat(b).map(id => '<td>' + esc(id) + ' ' + (row.gross[id] != null ? row.gross[id] : '') + '</td>').join('');
+    return '<tr><th>P' + (row.i + 1) + ' (hole ' + (row.h + 1) + ')</th>' + scores + '<td>' + playoffStatus(row.score, a, b) + '</td></tr>';
+  }).join('') + '</table>';
+}
+function scoreShape(n, par) {
+  const diff = Number(n) - Number(par);
+  if (!diff) return '<span class="num">' + n + '</span>';
+  const kind = diff <= -2 ? 'eagle' : diff === -1 ? 'birdie' : diff === 1 ? 'bogey' : 'dblbogey';
+  const inner = (diff <= -2 || diff >= 2) ? '<span>' + n + '</span>' : String(n);
+  return '<span class="shape ' + kind + '">' + inner + '</span>';
+}
+function playoffCardHtml(boards) {
+  const parts = (boards || []).map(board => {
+    if (!board.mp) return '';
+    const rows = playoffProgress(board.name, board.sides.a, board.sides.b);
+    if (!rows.length) return '';
+    const cols = '<colgroup><col class="plab"><col class="cpar">' + holePlayers.map(() => '<col>').join('') + '<col class="mmatch"></colgroup>';
+    const body = rows.map(row => {
+      const par = courseData().par[row.h];
+      const scores = holePlayers.map(p => {
+        const g = row.gross[p.id];
+        if (g == null || g === '') return '<td></td>';
+        return '<td>' + scoreShape(g, par) + '</td>';
+      }).join('');
+      return '<tr><th class="plab">P' + (row.i + 1) + ' (hole ' + (row.h + 1) + ')</th><td class="par">' + par + '</td>' + scores + '<td class="mcell">' + playoffStatus(row.score, board.sides.a, board.sides.b) + '</td></tr>';
+    }).join('');
+    return '<table class="scorecard playoffcard">' + cols + body + '</table>';
+  }).join('');
+  return parts;
+}
 function playoffForm(name, ids, hole) {
   const inputs = ids.map(id => id + ' <input data-pid="' + esc(id) + '" type="number" inputmode="numeric" aria-label="' + esc(id) + ' playoff">').join(' ');
   return '<div class="playoff" data-match="' + esc(name) + '" data-hole="' + hole + '"><p><b>Playoff hole ' + (hole + 1) + '</b></p><p>' + inputs + ' <button type="button" data-playoff-post>Enter hole</button></p></div>';
@@ -1292,6 +1363,45 @@ function junkPersonNets(a, b, junkOf) {
   const share = winners.length > 1 ? Math.abs(unit) / winners.length : Math.abs(unit);
   losers.forEach(from => winners.forEach(to => { nets[from] -= share; nets[to] += share; }));
   return nets;
+}
+function junkHoleItems(i, matchIds) {
+  const mk = holeMarks[i] || [];
+  const items = [];
+  for (const h of playedHoles()) {
+    if (!holeReady(matchIds, h)) continue;
+    const m = mk[h] || {};
+    const units = grossBirdieUnits(i, h);
+    const bits = [];
+    if (units) bits.push(birdieName(units));
+    if (m.KP) bits.push('KP');
+    if (m.Junk) bits.push(m.Junk > 1 ? 'Junk-' + m.Junk : 'Junk');
+    if (bits.length) items.push((h + 1) + ' ' + bits.join(' '));
+  }
+  return items;
+}
+function junkStandingHtml(a, b, matchIds, bet) {
+  const junkOf = id => {
+    const i = holePlayers.findIndex(p => p.id === id);
+    if (i < 0) return 0;
+    const rate = (bet.player && bet.player[id] != null) ? Number(bet.player[id]) : 3;
+    let units = 0;
+    for (const h of playedHoles()) if (holeReady(matchIds, h)) units += junkUnits(i, h);
+    const kp = kpForMatch(matchIds)[id] || 0;
+    return (units + kp) * rate;
+  };
+  const nets = junkPersonNets(a, b, junkOf);
+  const rows = [];
+  a.concat(b).forEach(id => {
+    const i = holePlayers.findIndex(p => p.id === id);
+    if (i < 0) return;
+    const items = junkHoleItems(i, matchIds);
+    const net = nets[id] || 0;
+    if (!net && !items.length) return;
+    rows.push('<p class="junkwho">' + esc(id) + ' ' + cashText(net) + '</p>');
+    if (items.length) rows.push('<p class="junkdetail">' + esc(items.join(', ')) + '</p>');
+  });
+  if (!rows.length) return '';
+  return '<div class="junkrows"><p class="junkhead">Junk</p>' + rows.join('') + '</div>';
 }
 function junkShareLine(nets) {
   const ids = Object.keys(nets).filter(id => nets[id]);
@@ -1714,12 +1824,13 @@ function holeStanding() {
         if (!holeReady(matchIds, h) || (mp.closed && mp.cells[h] == null)) return '';
         const info = mp.cells[h];
         if (!info) return '';
-        return info.delta > 0 ? '<span class="up">↑</span>' : info.delta < 0 ? '<span class="dn">↓</span>' : 'AS';
+        return arrowMark(info.score);
       };
-      const nineTableMp = holes => '<table><tr><th></th>' + holes.map(h => '<th>' + (h + 1) + '</th>').join('') + '</tr><tr><td></td>' + holes.map(h => '<td>' + holeCell(h) + '</td>').join('') + '</tr></table>';
+      const nineTableMp = holes => '<table class="matchgrid"><tr>' + holes.map(h => '<th>' + (h + 1) + '</th>').join('') + '</tr><tr>' + holes.map(h => '<td>' + holeCell(h) + '</td>').join('') + '</tr></table>';
       const h0 = holesOfNine(0), h1 = holesOfNine(1);
       const form = mp.playoff && mp.playoff.pending != null ? playoffForm(name, matchIds, mp.playoff.pending) : '';
-      return '<div class="mp-block"><p><b>' + name + '</b> 18-hole<br>' + matchIds.map(id => { const p = holePlayers.find(x => x.id === id); return id + ' ' + hcpLabel(p); }).join(' · ') + '<br>' + status + '</p>' + nineTableMp(h0) + nineTableMp(h1) + form + '</div>';
+      const po = playoffStandingHtml(name, a, b);
+      return '<div class="mp-block"><p><b>' + name + '</b> 18-hole<br>' + matchIds.map(id => { const p = holePlayers.find(x => x.id === id); return id + ' ' + hcpLabel(p); }).join(' · ') + '<br>' + status + '</p>' + nineTableMp(h0) + nineTableMp(h1) + po + form + junkStandingHtml(a, b, matchIds, betEarly) + '</div>';
     }
     let score = 0, played = 0;
     let lastThru = null;
@@ -1733,13 +1844,6 @@ function holeStanding() {
     }
     if (!played) return '<p><b>' + name + '</b> ' + matchIds.map(id => { const p = holePlayers.find(x => x.id === id); return id + ' ' + hcpLabel(p); }).join(' · ') + '<br>No holes yet.</p>';
     const label = score === 0 ? 'AS' : score > 0 ? '<span class="up">↑' + score + '</span>' : '<span class="dn">↓' + Math.abs(score) + '</span>';
-    const open = name === detailName;
-    const row = open ? '<br>' + holesOfNine(0).map(h => {
-      const ready = a.concat(b).every(id => { const i = holePlayers.findIndex(p => p.id === id); return i >= 0 && holeScores[i] && holeScores[i][h] != null; });
-      if (!ready) return (h + 1) + ' —';
-      const an = sideNet(a, h, matchIds), bn = sideNet(b, h, matchIds);
-      return (h + 1) + ' ' + (an < bn ? '↑' : an > bn ? '↓' : 'AS');
-    }).join(' · ') : '';
     const say = n => n === 0 ? 'AS' : n > 0 ? '<span class="up">↑' + n + '</span>' : '<span class="dn">↓' + Math.abs(n) + '</span>';
     const sim = simulateMatch(name, a, b);
     const bet = sim.bet;
@@ -1768,16 +1872,15 @@ function holeStanding() {
       return (units + kp) * rate;
     };
     const junkNets = junkPersonNets(a, b, junkOf);
-    const junkLine = junkShareLine(junkNets);
     const teamJunk = a.reduce((n, id) => n + (junkNets[id] || 0), 0);
     dollars -= teamJunk;
     const nineTable = holes => {
       const base = sim.legs.find(l => l.kind === 'nine' && holes.length && l.holes[0] === holes[0]);
       const extra = sim.legs.filter(l => l.kind === 'press' && holes.some(h => l.holes.indexOf(h) >= 0));
-      const rows = [base].concat(extra).filter(Boolean);
-      const head = '<tr><th></th>' + holes.map(h => '<th>' + (h + 1) + '</th>').join('') + '</tr>';
-      const body = rows.map(leg => '<tr><td>' + (leg.kind === 'press' ? (leg.manual ? 'M' : 'A') : '') + '</td>' + holes.map(h => '<td>' + (leg.cells[h] == null ? '' : say(leg.cells[h])) + '</td>').join('') + '</tr>').join('');
-      return '<table>' + head + body + '</table>';
+      const head = '<tr>' + holes.map(h => '<th>' + (h + 1) + '</th>').join('') + '</tr>';
+      const nineRow = base ? '<tr>' + holes.map(h => '<td>' + (base.cells[h] == null ? '' : say(base.cells[h])) + '</td>').join('') + '</tr>' : '';
+      const prows = extra.map(leg => '<tr class="pcap"><th colspan="' + holes.length + '">P' + leg.from + (leg.manual ? ' (M)' : '') + '</th></tr><tr>' + holes.map(h => '<td>' + (leg.cells[h] == null ? '' : say(leg.cells[h])) + '</td>').join('') + '</tr>').join('');
+      return '<table class="matchgrid">' + head + nineRow + prows + '</table>';
     };
     const lastIn = (leg, holes) => {
       let last = 0, any = false;
@@ -1791,9 +1894,13 @@ function holeStanding() {
     };
     const h0 = holesOfNine(0), h1 = holesOfNine(1);
     const pressNotes = sim.legs.filter(l => l.kind === 'press').sort((x, y) => x.from - y.from).map(leg => 'Press from ' + leg.from + (leg.manual ? ' (M)' : ' (A)') + ' ' + say(leg.score)).join('<br>');
-    const pressLine = '<br>1st 9 ' + stack(0, h0) + nineTable(h0) + '<br>2nd 9 ' + (backPlayed ? stack(1, h1) : '') + nineTable(h1) + (backPlayed ? '<br>Overall ' + say(overallScore) + '. 1st 9 ended ' + say(frontScore) + ', 2nd 9 is ' + say(backScore) + '.' : '') + (pressNotes ? '<br>' + pressNotes : '') + (junkLine ? '<br>' + junkLine : '');
     const running = dollars ? (dollars > 0 ? b.join('+') : a.join('+')) + ' +' + dollarText(dollars) : 'even';
-    return '<p><b>' + name + '</b> ' + running + '<br>' + matchIds.map(id => { const p = holePlayers.find(x => x.id === id); return id + ' ' + hcpLabel(p); }).join(' · ') + '<br>' + label + ' thru ' + (lastThru + 1) + pressLine + '</p>';
+    const hcps = matchIds.map(id => { const p = holePlayers.find(x => x.id === id); return id + ' ' + hcpLabel(p); }).join(' · ');
+    let tail = '<p>2nd 9 ' + (backPlayed ? stack(1, h1) : '') + '</p>' + nineTable(h1);
+    if (backPlayed) tail += '<p>Overall ' + say(overallScore) + '. 1st 9 ended ' + say(frontScore) + ', 2nd 9 is ' + say(backScore) + '.</p>';
+    if (pressNotes) tail += '<p>' + pressNotes + '</p>';
+    tail += junkStandingHtml(a, b, matchIds, bet);
+    return '<div class="mstand"><p><b>' + name + '</b> ' + running + '<br>' + hcps + '<br>' + label + ' thru ' + (lastThru + 1) + '<br>1st 9 ' + stack(0, h0) + '</p>' + nineTable(h0) + tail + '</div>';
   }).join('');
 }
 function settle() {
@@ -2203,7 +2310,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     return '<table class="scorecard">' + colgroup + '<tr class="totrow"><td class="tot">Total</td><td class="tot">' + parTot + '</td>' + tot + matchTot + '</tr></table>';
   };
   const gap = '<div class="card-gap"></div>';
-  document.getElementById('card').innerHTML = sideTable(holesOfNine(0), '1st 9') + gap + sideTable(holesOfNine(1), '2nd 9') + gap + totalRow();
+  document.getElementById('card').innerHTML = sideTable(holesOfNine(0), '1st 9') + gap + sideTable(holesOfNine(1), '2nd 9') + gap + totalRow() + playoffCardHtml(boards);
   paintMatchStrip(boards);
   paintCardView();
   const paper = document.getElementById('paperCard');
@@ -2239,7 +2346,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     const who = holePlayers.map((p, i) => '<tr class="player"><th class="lab">' + esc(p.id) + '</th>' + front.map(h => paperCell(i, h)).join('') + '<td class="sum">' + nineSum(i, front) + '</td>' + back.map(h => paperCell(i, h)).join('') + '<td class="sum">' + nineSum(i, back) + '</td><td class="sum">' + nineSum(i, front.concat(back)) + '</td></tr>').join('');
     const span = 1 + front.length + 1 + back.length + 2;
     const gapRow = '<tr class="gap"><td colspan="' + span + '"></td></tr>';
-    paper.innerHTML = '<table>' + head + parRow + siRow + who + gapRow + paperMatchRows(boards, front, back) + '</table>';
+    paper.innerHTML = '<table>' + head + parRow + siRow + who + gapRow + paperMatchRows(boards, front, back) + '</table>' + playoffCardHtml(boards);
   }
   const review = document.getElementById('review');
   if (review) {
