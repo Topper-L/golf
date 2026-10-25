@@ -1,5 +1,5 @@
-/* Network-first. Bump CACHE when a release must drop offline copies. */
-const CACHE = 'golf-v12';
+/* Network-first while online. Offline reads the versioned cache and never calls fetch. Bump CACHE to drop old copies. */
+const CACHE = 'golf-v13';
 const FILES = ['index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', event => {
@@ -16,11 +16,26 @@ self.addEventListener('fetch', event => {
   let url;
   try { url = new URL(req.url); } catch (e) { return; }
   if (url.origin !== self.location.origin) return;
-  event.respondWith(fetch(req).then(res => {
-    if (res && res.ok) {
-      const copy = res.clone();
-      caches.open(CACHE).then(cache => cache.put(req, copy)).catch(() => {});
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE);
+    const cached = async () => {
+      const hit = await cache.match(req);
+      if (hit) return hit;
+      if (req.mode === 'navigate' || /\/$/.test(url.pathname) || url.pathname.endsWith('index.html')) return cache.match('index.html');
+    };
+    // This WebKit build throws an internal error on any fetch while offline, so skip the network when the worker is offline.
+    if (self.navigator && self.navigator.onLine === false) {
+      const hit = await cached();
+      if (hit) return hit;
     }
-    return res;
-  }).catch(() => caches.match(req).then(hit => hit || caches.match('index.html'))));
+    try {
+      const res = await fetch(req);
+      if (res && res.ok) await cache.put(req, res.clone());
+      return res;
+    } catch (e) {
+      const hit = await cached();
+      if (hit) return hit;
+      return new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
+    }
+  })());
 });

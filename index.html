@@ -4333,7 +4333,7 @@ function registerGolfWorker() {
 }
 function showScreen(name) {
   if (name === 'gate') refreshGate();
-  if (name === 'setup') paintNinePick();
+  if (name === 'setup') { paintNinePick(); drawSavedPlayers(); }
   const map = { gate: 'screen-gate', setup: 'screen-setup', score: 'holeView', standing: 'screen-standing', junk: 'screen-junk', card: 'screen-card', settle: 'screen-settle' };
   const id = map[name] || 'screen-gate';
   document.querySelectorAll('.screen').forEach(el => el.classList.toggle('on', el.id === id));
