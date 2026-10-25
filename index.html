@@ -476,9 +476,14 @@ const courses = {
   // Lakes ranks: https://www.offcourse.co/courses/scorecard/north-ranch-country-club/
   // Valley/Oaks men's ratings: https://www.scga.org/images/uploads/pdfs/jobs/18753/north_ranch_-_valley-oaks.pdf
   // Each nine stores ranks 1–9. The nine played first takes odd strokes and the second takes even strokes.
+  // Men's par from the same tour, rechecked Oct 2026. A 4 is the tour par, not a blank default.
+  // Valley 4,4,3,4,4,4,3,5,4 (ranks 2,3,8,1,7,4,5,9,6). Oaks 4,4,5,3,4,5,4,3,4 (ranks 5,3,6,8,1,7,2,9,4).
+  // Lakes 4,4,3,5,4,5,4,3,4. Valley 1 and Lakes 1 are par 5 for ladies; the card stores the men's par.
+  // The tour prints handicap 11 on every Lakes hole, so Lakes ranks are the Offcourse men's 1–9: 1,6,9,3,2,7,8,4,5.
+  // A four-nine course is test data only and is not listed here.
   'North Ranch': {
     abbr: 'NRCC',
-    title: 'North Ranch Country Club, Westlake Village. Valley, Oaks, and Lakes. Ratings are the Valley/Oaks 18.',
+    title: 'North Ranch Country Club, Westlake Village. Valley, Oaks, and Lakes. Men\'s pars. Ratings are the Valley/Oaks 18.',
     par: [4,4,3,4,4,4,3,5,4, 4,4,5,3,4,5,4,3,4, 4,4,3,5,4,5,4,3,4],
     tees: ['Black','Blue','White','Red'],
     indexMode: 'nineRank',
