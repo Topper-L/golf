@@ -23,7 +23,7 @@ self.addEventListener('fetch', event => {
       if (hit) return hit;
       if (req.mode === 'navigate' || /\/$/.test(url.pathname) || url.pathname.endsWith('index.html')) return cache.match('index.html');
     };
-    // This WebKit build throws an internal error on any fetch while offline, so skip the network when the worker is offline.
+    // Some WebKit builds throw inside the worker if fetch runs with no network, and that error replaces the cached page. Read the cache instead.
     if (self.navigator && self.navigator.onLine === false) {
       const hit = await cached();
       if (hit) return hit;
