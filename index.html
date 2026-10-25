@@ -28,7 +28,7 @@ try {
   button.round-open { display:block; width:100%; text-align:left; white-space:normal; line-height:1.35; font-weight:600; }
   .saved-row { margin:0 0 10px; }
   .fontctl { display:flex; align-items:center; gap:4px; flex:none; }
-  .fontctl button { min-width:44px; font-weight:700; background:#fff; }
+  .fontctl button { box-sizing:border-box; flex:none; width:44px; min-width:44px; padding:4px 0; text-align:center; font-weight:700; background:#fff; }
   .wrap { max-width:920px; margin:0 auto; padding:12px 16px 8px; }
   .screen { display:none; }
   .screen.on { display:block; }
@@ -2043,16 +2043,22 @@ function settle() {
       }
       if (items.length) junkItems[id] = items.join(', ');
     });
-    const comps = [{ label: '1st 9', amount: front }].concat(frontPressLegs.map((leg, i) => ({ label: 'Press from ' + leg.from + ' ' + tag(leg), amount: frontPress[i] })));
+    const comps = [];
+    if (Number(bet.first)) comps.push({ label: '1st 9', amount: front });
+    frontPressLegs.forEach((leg, i) => {
+      if (pressAmt(bet, leg.from)) comps.push({ label: 'Press from ' + leg.from + ' ' + tag(leg), amount: frontPress[i] });
+    });
     if (backPlayed) {
-      comps.push({ label: '2nd 9', amount: back });
-      backPressLegs.forEach((leg, i) => comps.push({ label: 'Press from ' + leg.from + ' ' + tag(leg), amount: backPress[i] }));
-      comps.push({ label: 'Overall', amount: overall });
+      if (Number(bet.second)) comps.push({ label: '2nd 9', amount: back });
+      backPressLegs.forEach((leg, i) => {
+        if (pressAmt(bet, leg.from)) comps.push({ label: 'Press from ' + leg.from + ' ' + tag(leg), amount: backPress[i] });
+      });
+      if (Number(bet.overall)) comps.push({ label: 'Overall', amount: overall });
     }
     if (junk) comps.push({ label: 'Junk', amount: junk });
     let mpPay = 0;
     let mpSaid = '';
-    if (bet.mp18) {
+    if (bet.mp18 && Number(bet.mp)) {
       const mp = matchPlay(name, a, b);
       const stake = Number(bet.mp) || 0;
       let unit = 0;
@@ -2061,11 +2067,11 @@ function settle() {
       else if (mp.played >= playOrder().length && mp.score) unit = mp.score > 0 ? 1 : -1;
       mpPay = money(unit, stake);
       mpSaid = mpPlain(mp, a, b);
-      if (mpPay) comps.push({ label: (a.length > 1 || b.length > 1) ? '18-hole' : '18-hole ' + mpSaid, amount: mpPay });
+      comps.push({ label: (a.length > 1 || b.length > 1) ? '18-hole' : '18-hole ' + mpSaid, amount: mpPay });
     }
     const owed = dollars + mpPay;
-    if (!owed && !front && !junk && !mpPay) {
-      let html = '<p><b>' + name + '</b> even. 1st 9 ' + dollarText(bet.first || 0) + ', 2nd 9 ' + dollarText(bet.second || 0) + ', Overall ' + dollarText(bet.overall || 0) + '.' + (bet.mp18 ? ' 18-hole ' + dollarText(Number(bet.mp) || 0) + '.' : '') + '</p>';
+    if (!comps.length) {
+      let html = '<p><b>' + name + '</b> even.</p>';
       const team = teamResultLine(name, a, b, 0, bet);
       if (team) html += '<p class="teamline">' + esc(team) + '</p>';
       return { name: name, html: html };
