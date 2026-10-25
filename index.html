@@ -189,7 +189,10 @@ try {
   button.press-off { background:#b42318; color:white; border-color:#b42318; }
   sup { font-size:9px; }
   #savedPlayers { max-width:100%; }
-  #playerSearch, #roundSearch, #courseName, #nineFront, #nineBack, #nineThird { width:100%; box-sizing:border-box; min-height:36px; margin:0 0 8px; }
+  #playerSearch, #roundSearch, #courseName, #nineEditor .nine-name { width:100%; box-sizing:border-box; min-height:36px; margin:0 0 8px; }
+  .nine-top { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:8px 0 2px; }
+  .nine-top .flab { margin:0; }
+  .nine-remove { flex:none; }
   #playerList { max-height:240px; overflow-y:auto; }
   #playerList .psec { margin:4px 0 2px; }
   .psec { margin:8px 0 4px; font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:#5e6f64; font-weight:750; }
@@ -315,28 +318,14 @@ try {
     <p><button type="button" id="showAddCourse">Add course</button></p>
     <div id="addCourse" hidden>
       <p><input id="courseName" type="text" placeholder="Course name" autocapitalize="words"></p>
-      <p><span class="flab">1st 9</span><input id="nineFront" type="text" placeholder="Name (optional)" autocapitalize="words" aria-label="1st 9 name"></p>
-      <p><span class="flab">2nd 9</span><input id="nineBack" type="text" placeholder="Name (optional)" autocapitalize="words" aria-label="2nd 9 name"></p>
-      <p><button type="button" id="addThirdNine">Add 3rd 9</button></p>
-      <div id="thirdNine" hidden>
-        <p><span class="flab">3rd 9</span><input id="nineThird" type="text" placeholder="Name (optional)" autocapitalize="words" aria-label="3rd 9 name"></p>
-      </div>
+      <div id="nineEditor"></div>
+      <p><button type="button" id="addNine">Add another 9</button></p>
       <p class="psec">Tees</p>
       <div id="teeRows"></div>
       <p><button type="button" id="addTee">Add tee</button></p>
       <p class="psec">Holes</p>
-      <p class="note">Par starts at 4. Handicap index is 1 to 18, once each on the 18 holes you play. Rating and slope on a tee are optional.</p>
-      <p class="psec">1st 9</p>
-      <div class="holehead"><span></span><span>Par</span><span>Index</span></div>
-      <div id="holeGrid" class="holegrid"></div>
-      <p class="psec">2nd 9</p>
-      <div class="holehead"><span></span><span>Par</span><span>Index</span></div>
-      <div id="holeGrid2" class="holegrid"></div>
-      <div id="thirdHoles" hidden>
-        <p class="psec">3rd 9</p>
-        <div class="holehead"><span></span><span>Par</span><span>Index</span></div>
-        <div id="holeGrid3" class="holegrid"></div>
-      </div>
+      <p id="holeNoteForm" class="note">Par starts at 4. Handicap index is 1 to 18, once each on the 18 holes you play. Rating and slope on a tee are optional.</p>
+      <div id="nineHoles"></div>
       <p><button type="button" id="saveCourse" class="primary">Save course</button></p>
       <p id="courseMsg"></p>
     </div>
@@ -446,7 +435,7 @@ const courses = {
     par: [4,5,3,4,4,5,3,4,4,4,4,4,3,4,5,4,3,5],
     tees: ['Gold','Blue','White','White tournament','Red','Silver','Blue/White','White/Red','Red/Silver'],
     index: { default: [3,13,15,7,1,9,17,11,5,2,8,4,10,14,16,6,12,18] },
-    // Card nines, in card order. A round plays two of these. "1st 9" and "2nd 9" are the order played, never a nine's name.
+    // Card nines, in card order. A round plays two of these. "1st 9" and "2nd 9" are the order played. A nine's name is shown beside that label when it has one.
     nines: [
       { id: 'n1', name: '', press: 'pressFront', holes: [0,1,2,3,4,5,6,7,8] },
       { id: 'n2', name: '', press: 'pressBack', holes: [9,10,11,12,13,14,15,16,17] }
@@ -481,6 +470,29 @@ const courses = {
       White: [9,1,3,11,15,5,7,17,13,16,18,12,8,2,4,6,10,14],
       'Red Short': [7,3,1,11,17,5,9,13,15,18,8,16,12,2,4,6,14,10],
       Forward: [7,3,1,11,17,5,9,13,15,18,8,16,12,2,4,6,14,10]
+    }
+  },
+  // Valley and Oaks ranks: https://www.northranchcc.org/golf-tour
+  // Lakes ranks: https://www.offcourse.co/courses/scorecard/north-ranch-country-club/
+  // Valley/Oaks men's ratings: https://www.scga.org/images/uploads/pdfs/jobs/18753/north_ranch_-_valley-oaks.pdf
+  // Each nine stores ranks 1–9. The nine played first takes odd strokes and the second takes even strokes.
+  'North Ranch': {
+    abbr: 'NRCC',
+    title: 'North Ranch Country Club, Westlake Village. Valley, Oaks, and Lakes. Ratings are the Valley/Oaks 18.',
+    par: [4,4,3,4,4,4,3,5,4, 4,4,5,3,4,5,4,3,4, 4,4,3,5,4,5,4,3,4],
+    tees: ['Black','Blue','White','Red'],
+    indexMode: 'nineRank',
+    index: { default: [2,3,8,1,7,4,5,9,6, 5,3,6,8,1,7,2,9,4, 1,6,9,3,2,7,8,4,5] },
+    nines: [
+      { id: 'n1', name: 'Valley', press: 'pressFront', holes: [0,1,2,3,4,5,6,7,8] },
+      { id: 'n2', name: 'Oaks', press: 'pressBack', holes: [9,10,11,12,13,14,15,16,17] },
+      { id: 'n3', name: 'Lakes', press: 'press_n3', holes: [18,19,20,21,22,23,24,25,26] }
+    ],
+    rating: {
+      Black: { slope: 138, rating: 73.9, par: 71 },
+      Blue: { slope: 135, rating: 73.1, par: 71 },
+      White: { slope: 129, rating: 71.3, par: 71 },
+      Red: { slope: 122, rating: 68.6, par: 71 }
     }
   }
 };
@@ -568,6 +580,15 @@ function indexFor(tee) {
   if (table.default) return table.default;
   const fallback = (c.tees || []).find(t => table[t]);
   return (fallback && table[fallback]) || table.default;
+}
+function siAt(tee, h) {
+  const table = indexFor(tee) || [];
+  const raw = Number(table[h]) || 0;
+  if (!raw || !courseData() || courseData().indexMode !== 'nineRank') return raw;
+  const pair = playedPair();
+  if (pair[0] && pair[0].holes.indexOf(h) >= 0) return raw * 2 - 1;
+  if (pair[1] && pair[1].holes.indexOf(h) >= 0) return raw * 2;
+  return raw;
 }
 const lastHcp = { TL:'4', KM:'12', DK:'+5', AC:'3', DH:'5' };
 let defaultPlayer = { name:'Topper Larsen', initials:'TL', tee:'Blue' };
@@ -1096,6 +1117,20 @@ function pressKey(nine) {
   return 'pressFront';
 }
 function isFirstNineHole(h) { return playedPair()[0].holes.indexOf(h) >= 0; }
+function cardHoleLabel(h) {
+  if (!courseData() || courseData().indexMode !== 'nineRank') return h + 1;
+  const pair = playedPair();
+  const a = pair[0] && pair[0].holes.indexOf(h);
+  if (a >= 0) return a + 1;
+  const b = pair[1] && pair[1].holes.indexOf(h);
+  if (b >= 0) return b + 10;
+  return h + 1;
+}
+function nineHead(seg) {
+  const nine = playedPair()[seg];
+  const base = seg === 0 ? '1st 9' : '2nd 9';
+  return nine && nine.name ? base + ' ' + nine.name : base;
+}
 function pressFields() {
   const pair = playedPair();
   return [pressKey(pair[0]), pressKey(pair[1])];
@@ -1134,7 +1169,7 @@ function rememberPlayers() {
 function syncStartButton() {
   const btn = document.getElementById('startHole');
   if (!btn) return;
-  btn.textContent = String(clampStart(startAt) + 1);
+  btn.textContent = String(cardHoleLabel(clampStart(startAt)));
   btn.className = 'on';
 }
 function drawSavedPlayers() {
@@ -1303,7 +1338,7 @@ function strokesOnHole(strokeIndex, strokes) {
 }
 function netDoubleBogey(i, h) {
   const p = holePlayers[i] || { hcp: 0, tee: defaultTee() };
-  const si = (indexFor(p.tee) || [])[h] || 0;
+  const si = siAt(p.tee, h);
   return (courseData().par[h] || 0) + 2 + strokesOnHole(si, courseHandicap(p));
 }
 function countedScore(i, h) {
@@ -1314,8 +1349,7 @@ function countedScore(i, h) {
 }
 function ownStrokes(i, h) {
   const p = holePlayers[i] || { hcp: 0, tee: defaultTee() };
-  const si = (indexFor(p.tee) || [])[h] || 0;
-  return strokesOnHole(si, courseHandicap(p));
+  return strokesOnHole(siAt(p.tee, h), courseHandicap(p));
 }
 function viewNum(i, h) {
   const base = countedScore(i, h);
@@ -1325,8 +1359,7 @@ function viewNum(i, h) {
 function holeNet(i, h, ids) {
   const g = holeScores[i][h];
   if (g === 'X' || g == null) return 99;
-  const idx = indexFor(holePlayers[i].tee);
-  const n = ids ? strokesOnHole(idx[h], strokesReceived(ids, holePlayers[i].id)) : 0;
+  const n = ids ? strokesOnHole(siAt(holePlayers[i].tee, h), strokesReceived(ids, holePlayers[i].id)) : 0;
   return g - n;
 }
 function grossBirdieUnits(i, h) {
@@ -1490,8 +1523,7 @@ function grossNet(id, h, gross, ids) {
   if (i < 0) return 99;
   const g = gross ? gross[id] : null;
   if (g == null || g === '' || g === 'X') return 99;
-  const idx = indexFor(holePlayers[i].tee);
-  const n = strokesOnHole(idx[h], strokesReceived(ids, id));
+  const n = strokesOnHole(siAt(holePlayers[i].tee, h), strokesReceived(ids, id));
   return Number(g) - n;
 }
 function bestGross(ids, h, gross, all) {
@@ -2658,26 +2690,24 @@ function holeLeftBehind(h) {
 }
 function strokeMark(p) {
   const ids = holePlayers.map(x => x.id);
-  const n = strokesOnHole(indexFor(p.tee)[holeNo], strokesReceived(ids, p.id));
+  const n = strokesOnHole(siAt(p.tee, holeNo), strokesReceived(ids, p.id));
   if (!n) return '';
   if (n === 1) return '•';
   return n > 0 ? String(n) : '−' + Math.abs(n);
 }
 function strokeDots(p, h) {
   const ids = holePlayers.map(x => x.id);
-  const n = strokesOnHole(indexFor(p.tee)[h], strokesReceived(ids, p.id));
+  const n = strokesOnHole(siAt(p.tee, h), strokesReceived(ids, p.id));
   if (!n) return '';
   if (n > 0) return n <= 3 ? '•'.repeat(n) : String(n);
   return n === -1 ? '−' : '−' + Math.abs(n);
 }
 function courseStrokeCount(p, h) {
-  const si = (indexFor(p.tee) || [])[h] || 0;
-  return strokesOnHole(si, courseHandicap(p));
+  return strokesOnHole(siAt(p.tee, h), courseHandicap(p));
 }
 function matchStrokeCount(p, h, ids) {
   if (!p || !ids || ids.indexOf(p.id) < 0) return 0;
-  const si = (indexFor(p.tee) || [])[h] || 0;
-  return strokesOnHole(si, strokesReceived(ids, p.id));
+  return strokesOnHole(siAt(p.tee, h), strokesReceived(ids, p.id));
 }
 function dotHtml(n) {
   if (!(n > 0)) return '';
@@ -2767,7 +2797,7 @@ function sideJunkRows(p, i, h, rows) {
 function drawHole() {
   padCard();
   rememberThru();
-  const idx = indexFor(holePlayers[0] && holePlayers[0].tee); document.getElementById('holeTitle').textContent = 'Hole ' + (holeNo + 1) + ' · Par ' + courseData().par[holeNo] + ' · Handicap ' + idx[holeNo];
+  document.getElementById('holeTitle').textContent = 'Hole ' + cardHoleLabel(holeNo) + ' · Par ' + courseData().par[holeNo] + ' · Handicap ' + siAt(holePlayers[0] && holePlayers[0].tee, holeNo);
   const kinds = courseData().par[holeNo] === 3 ? ['KP','Junk'] : ['Junk'];
   document.getElementById('kpTip').textContent = courseData().par[holeNo] === 3 ? 'Tap KP: KP-1 = closest, KP-2 = 2nd, KP-3 = 3rd, KP-4 = 4th.' : '';
 document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
@@ -2837,7 +2867,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
       }).join('');
       const status = portraitMatchLines(h, column);
       const matchTd = column.length ? '<td class="mcell" data-hole="' + h + '">' + status + '</td>' : '';
-      return '<tr data-hole="' + h + '" class="' + (h === holeNo ? 'current' : '') + '"><td class="hno" data-hole="' + h + '">' + (h+1) + '</td><td class="hgap"></td><td class="par" data-hole="' + h + '">' + par + '</td>' + cells + '<td class="cgap"></td>' + matchTd + '</tr>';
+      return '<tr data-hole="' + h + '" class="' + (h === holeNo ? 'current' : '') + '"><td class="hno" data-hole="' + h + '">' + cardHoleLabel(h) + '</td><td class="hgap"></td><td class="par" data-hole="' + h + '">' + par + '</td>' + cells + '<td class="cgap"></td>' + matchTd + '</tr>';
     }).join('');
     const tot = holePlayers.map((p, i) => totalCell(i, holes)).join('');
     const parTot = holes.reduce((n, h) => n + courseData().par[h], 0);
@@ -2852,15 +2882,16 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     return '<table class="scorecard">' + colgroup + '<tr class="totrow"><td class="tot">Total</td><td class="tot hgap"></td><td class="tot">' + parTot + '</td>' + tot + '<td class="tot cgap"></td>' + matchTot + '</tr></table>';
   };
   const gap = '<div class="card-gap"></div>';
-  document.getElementById('card').innerHTML = sideTable(holesOfNine(0), '1st 9') + gap + sideTable(holesOfNine(1), '2nd 9') + gap + totalRow() + playoffCardHtml(column);
+  document.getElementById('card').innerHTML = sideTable(holesOfNine(0), nineHead(0)) + gap + sideTable(holesOfNine(1), nineHead(1)) + gap + totalRow() + playoffCardHtml(column);
   paintMatchStrip(boards);
   paintCardView();
   const paper = document.getElementById('paperCard');
   if (paper) {
     const pars = courseData().par;
-    const si = indexFor(defaultTee()) || [];
-    const front = [0, 1, 2, 3, 4, 5, 6, 7, 8].filter(h => h < pars.length);
-    const back = [9, 10, 11, 12, 13, 14, 15, 16, 17].filter(h => h < pars.length);
+    const ranked = courseData().indexMode === 'nineRank';
+    const pair = playedPair();
+    const front = ranked ? pair[0].holes.slice() : [0, 1, 2, 3, 4, 5, 6, 7, 8].filter(h => h < pars.length);
+    const back = ranked ? pair[1].holes.slice() : [9, 10, 11, 12, 13, 14, 15, 16, 17].filter(h => h < pars.length);
     const nineSum = (i, holes) => {
       let n = 0, any = false, picked = false;
       holes.forEach(h => {
@@ -2881,10 +2912,10 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
       if (score == null) return '<td' + attr + (holeLeftBehind(h) ? ' class="missing"' : '') + '><span class="stack">' + mark + '</span></td>';
       return '<td' + attr + '><span class="stack">' + mark + shape(i, h) + '</span></td>';
     };
-    const head = '<tr><th class="lab"></th>' + front.map(h => '<th data-hole="' + h + '">' + (h + 1) + '</th>').join('') + '<th class="sum">Out</th>' + back.map(h => '<th data-hole="' + h + '">' + (h + 1) + '</th>').join('') + '<th class="sum">In</th><th class="sum">Tot</th></tr>';
+    const head = '<tr><th class="lab"></th>' + front.map(h => '<th data-hole="' + h + '">' + cardHoleLabel(h) + '</th>').join('') + '<th class="sum">Out</th>' + back.map(h => '<th data-hole="' + h + '">' + cardHoleLabel(h) + '</th>').join('') + '<th class="sum">In</th><th class="sum">Tot</th></tr>';
     const sumPar = holes => holes.reduce((n, h) => n + (pars[h] || 0), 0);
     const parRow = '<tr><th class="lab">Par</th>' + front.map(h => '<td data-hole="' + h + '">' + pars[h] + '</td>').join('') + '<td class="sum">' + sumPar(front) + '</td>' + back.map(h => '<td data-hole="' + h + '">' + pars[h] + '</td>').join('') + '<td class="sum">' + sumPar(back) + '</td><td class="sum">' + sumPar(front.concat(back)) + '</td></tr>';
-    const siRow = '<tr><th class="lab">SI</th>' + front.map(h => '<td data-hole="' + h + '">' + (si[h] || '') + '</td>').join('') + '<td class="sum"></td>' + back.map(h => '<td data-hole="' + h + '">' + (si[h] || '') + '</td>').join('') + '<td class="sum"></td><td class="sum"></td></tr>';
+    const siRow = '<tr><th class="lab">SI</th>' + front.map(h => '<td data-hole="' + h + '">' + (siAt(defaultTee(), h) || '') + '</td>').join('') + '<td class="sum"></td>' + back.map(h => '<td data-hole="' + h + '">' + (siAt(defaultTee(), h) || '') + '</td>').join('') + '<td class="sum"></td><td class="sum"></td></tr>';
     const who = holePlayers.map((p, i) => '<tr class="player">' + cardLabHtml(p) + front.map(h => paperCell(i, h)).join('') + '<td class="sum">' + nineSum(i, front) + '</td>' + back.map(h => paperCell(i, h)).join('') + '<td class="sum">' + nineSum(i, back) + '</td><td class="sum">' + nineSum(i, front.concat(back)) + '</td></tr>').join('');
     const span = 1 + front.length + 1 + back.length + 2;
     const gapRow = '<tr class="gap"><td colspan="' + span + '"></td></tr>';
@@ -2898,7 +2929,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
       if (g == null) return null;
       const hcp = courseHandicap(holePlayers[i]);
       const strokes = Math.max(0, Math.floor(Math.abs(hcp)));
-      const gets = indexFor(holePlayers[i].tee)[h] <= strokes;
+      const gets = siAt(holePlayers[i].tee, h) <= strokes;
       const adj = hcp >= 0 ? (gets ? 0.5 : 0) : (gets ? -0.5 : 0);
       return g - adj;
     };
@@ -2907,7 +2938,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
       if (g == null) return null;
       const hcp = courseHandicap(holePlayers[i]);
       const strokes = Math.max(0, Math.floor(Math.abs(hcp)));
-      const gets = indexFor(holePlayers[i].tee)[h] <= strokes;
+      const gets = siAt(holePlayers[i].tee, h) <= strokes;
       return g - (hcp >= 0 ? (gets ? 1 : 0) : (gets ? -1 : 0));
     };
     const lowOf = (h, fn) => {
@@ -3753,25 +3784,89 @@ function courseMsg(text) {
   const el = document.getElementById('courseMsg');
   if (el) el.textContent = text || '';
 }
+const NINE_LABELS = ['1st 9', '2nd 9', '3rd 9', '4th 9'];
+let formNineCount = 0;
+function indexMaxForForm() { return formNineCount > 2 ? 9 : 18; }
 function holeFieldRow(h) {
   const row = document.createElement('div');
   row.className = 'hrow';
+  const max = indexMaxForForm();
   row.innerHTML = '<span class="hn">' + h + '</span>'
     + '<span class="amt"><button type="button" data-step="-1" aria-label="Lower par on hole ' + h + '">−</button>'
     + '<input id="par' + h + '" class="par" type="text" inputmode="decimal" value="4" data-min="3" data-max="6" aria-label="Hole ' + h + ' par">'
     + '<button type="button" data-step="1" aria-label="Raise par on hole ' + h + '">+</button></span>'
     + '<span class="amt"><button type="button" data-step="-1" aria-label="Lower index on hole ' + h + '">−</button>'
-    + '<input id="si' + h + '" class="si" type="text" inputmode="decimal" data-min="1" data-max="18" aria-label="Hole ' + h + ' handicap index">'
+    + '<input id="si' + h + '" class="si" type="text" inputmode="decimal" data-min="1" data-max="' + max + '" aria-label="Hole ' + h + ' handicap index">'
     + '<button type="button" data-step="1" aria-label="Raise index on hole ' + h + '">+</button></span>';
   return row;
 }
-function buildHoleGrid() {
-  [[document.getElementById('holeGrid'), 1, 9], [document.getElementById('holeGrid2'), 10, 18], [document.getElementById('holeGrid3'), 19, 27]].forEach(slot => {
-    const grid = slot[0];
-    if (!grid || grid.childElementCount) return;
-    for (let h = slot[1]; h <= slot[2]; h++) grid.appendChild(holeFieldRow(h));
-  });
+function setFormNineCount(n) {
+  const editor = document.getElementById('nineEditor');
+  if (!editor) return;
+  n = Math.max(2, Math.min(4, n));
+  formNineCount = n;
+  editor.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    const block = document.createElement('div');
+    block.className = 'nine-block';
+    const remove = i >= 2 ? '<button type="button" class="nine-remove" data-remove-nine="' + i + '">Remove</button>' : '';
+    block.innerHTML = '<div class="nine-top"><span class="flab">' + NINE_LABELS[i] + '</span>' + remove + '</div>'
+      + '<input id="nineName' + i + '" class="nine-name" type="text" placeholder="Name (optional)" autocapitalize="words" aria-label="' + NINE_LABELS[i] + ' name">';
+    editor.appendChild(block);
+  }
+  const holes = document.getElementById('nineHoles');
+  if (!holes) return;
+  holes.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    const start = i * 9 + 1;
+    const wrap = document.createElement('div');
+    wrap.innerHTML = '<p class="psec">' + NINE_LABELS[i] + '</p><div class="holehead"><span></span><span>Par</span><span>Index</span></div>';
+    const grid = document.createElement('div');
+    grid.className = 'holegrid';
+    grid.id = 'holeGrid' + i;
+    for (let h = start; h < start + 9; h++) grid.appendChild(holeFieldRow(h));
+    wrap.appendChild(grid);
+    holes.appendChild(wrap);
+  }
+  const add = document.getElementById('addNine');
+  if (add) add.hidden = n >= 4;
+  const note = document.getElementById('holeNoteForm');
+  if (note) note.textContent = n > 2
+    ? 'Par starts at 4. Each nine is ranked 1 to 9 once. The nine you play first takes the odd strokes and the second nine takes the even strokes, so every pairing is 1 to 18.'
+    : 'Par starts at 4. Handicap index is 1 to 18, once each on the 18 holes you play. Rating and slope on a tee are optional.';
   armAmountFields(document.getElementById('addCourse'));
+}
+function readFormNines() {
+  const out = [];
+  for (let i = 0; i < formNineCount; i++) {
+    const nameEl = document.getElementById('nineName' + i);
+    const holes = [];
+    for (let k = 0; k < 9; k++) {
+      const h = i * 9 + k + 1;
+      const par = document.getElementById('par' + h);
+      const si = document.getElementById('si' + h);
+      holes.push({ par: par ? par.value : '4', si: si ? si.value : '' });
+    }
+    out.push({ name: nameEl ? nameEl.value : '', holes: holes });
+  }
+  return out;
+}
+function writeFormNines(list) {
+  setFormNineCount(list.length);
+  list.forEach((nine, i) => {
+    const name = document.getElementById('nineName' + i);
+    if (name) name.value = nine.name;
+    nine.holes.forEach((hole, k) => {
+      const h = i * 9 + k + 1;
+      const par = document.getElementById('par' + h);
+      const si = document.getElementById('si' + h);
+      if (par) par.value = hole.par;
+      if (si) si.value = hole.si;
+    });
+  });
+}
+function ensureNineEditor() {
+  if (!formNineCount) setFormNineCount(2);
 }
 function readHoleValue(id, lo, hi) {
   const el = document.getElementById(id);
@@ -3803,7 +3898,7 @@ function duplicateIndexNote(list) {
 let ninePickBound = false;
 function nineChoiceLabel(nine, i) {
   if (nine && nine.name) return nine.name;
-  return ['1st 9', '2nd 9', '3rd 9'][i] || ('Nine ' + (i + 1));
+  return ['1st 9', '2nd 9', '3rd 9', '4th 9'][i] || ('Nine ' + (i + 1));
 }
 function paintNinePick() {
   const box = document.getElementById('ninePick');
@@ -3855,29 +3950,38 @@ document.getElementById('showAddCourse').onclick = () => {
   const box = document.getElementById('addCourse');
   box.hidden = !box.hidden;
   if (!box.hidden) {
-    buildHoleGrid();
+    ensureNineEditor();
     const rows = document.getElementById('teeRows');
     if (rows && !rows.childElementCount) rows.appendChild(blankTeeRow());
   }
 };
 document.getElementById('addCourse').onclick = e => {
+  const rm = e.target.closest('button[data-remove-nine]');
+  if (rm) {
+    const list = readFormNines();
+    const i = Number(rm.dataset.removeNine);
+    if (i >= 2 && i < list.length) {
+      list.splice(i, 1);
+      writeFormNines(list);
+    }
+    return;
+  }
   const btn = e.target.closest('button[data-step]');
   if (!btn) return;
   if (stepperFromPointer) { stepperFromPointer = false; return; }
   applyStep(btn);
 };
-document.getElementById('addThirdNine').onclick = () => {
-  const names = document.getElementById('thirdNine');
-  const holes = document.getElementById('thirdHoles');
-  const open = !!(names && names.hidden);
-  if (names) names.hidden = !open;
-  if (holes) holes.hidden = !open;
-  const btn = document.getElementById('addThirdNine');
-  if (btn) btn.textContent = open ? 'Remove 3rd 9' : 'Add 3rd 9';
-  if (open) buildHoleGrid();
+document.getElementById('addNine').onclick = () => {
+  ensureNineEditor();
+  if (formNineCount >= 4) return;
+  const list = readFormNines();
+  const blank = [];
+  for (let k = 0; k < 9; k++) blank.push({ par: '4', si: '' });
+  list.push({ name: '', holes: blank });
+  writeFormNines(list);
 };
 document.getElementById('addTee').onclick = () => {
-  buildHoleGrid();
+  ensureNineEditor();
   document.getElementById('teeRows').appendChild(blankTeeRow());
 };
 document.getElementById('homeCourse').onclick = () => {
@@ -3894,36 +3998,48 @@ document.getElementById('saveCourse').onclick = () => {
     slope: row.querySelector('.tee-slope').value.trim()
   })).filter(t => t.name);
   if (!tees.length) { courseMsg('Add at least one tee.'); return; }
-  const third = document.getElementById('thirdHoles');
-  const holeCountWanted = third && !third.hidden ? 27 : 18;
+  ensureNineEditor();
+  const nineCount = formNineCount;
+  const rankMax = nineCount > 2 ? 9 : 18;
   const par = [];
   const index = [];
-  for (let h = 1; h <= holeCountWanted; h++) {
+  for (let h = 1; h <= nineCount * 9; h++) {
     const p = readHoleValue('par' + h, 3, 6);
-    const si = readHoleValue('si' + h, 1, 18);
+    const si = readHoleValue('si' + h, 1, rankMax);
     if (p == null) { courseMsg('Par on every hole is 3, 4, 5, or 6.'); return; }
-    if (si == null) { courseMsg('Enter a handicap index from 1 to 18 for every hole.'); return; }
+    if (si == null) { courseMsg(nineCount > 2 ? 'Enter a rank from 1 to 9 on every hole.' : 'Enter a handicap index from 1 to 18 for every hole.'); return; }
     par.push(p);
     index.push(si);
   }
-  const front = document.getElementById('nineFront').value.trim();
-  const back = document.getElementById('nineBack').value.trim();
-  const thirdName = holeCountWanted === 27 ? document.getElementById('nineThird').value.trim() : '';
-  const nines = [
-    { id: 'n1', name: front, press: 'pressFront', holes: [0,1,2,3,4,5,6,7,8] },
-    { id: 'n2', name: back, press: 'pressBack', holes: [9,10,11,12,13,14,15,16,17] }
-  ];
-  let warn = '';
-  if (holeCountWanted === 18) {
+  const nines = [];
+  for (let i = 0; i < nineCount; i++) {
+    const holes = [];
+    for (let k = 0; k < 9; k++) holes.push(i * 9 + k);
+    const nameEl = document.getElementById('nineName' + i);
+    nines.push({
+      id: 'n' + (i + 1),
+      name: nameEl ? nameEl.value.trim() : '',
+      press: i === 0 ? 'pressFront' : i === 1 ? 'pressBack' : 'press_n' + (i + 1),
+      holes: holes
+    });
+  }
+  if (nineCount === 2) {
     if (!indexesOnce(index)) {
       courseMsg('Each handicap index from 1 to 18 is used once. ' + duplicateIndexNote(index));
       return;
     }
   } else {
-    nines.push({ id: 'n3', name: thirdName, press: 'press_n3', holes: [18,19,20,21,22,23,24,25,26] });
-    const pairNames = [['1st 9', '2nd 9', index.slice(0, 9).concat(index.slice(9, 18))], ['1st 9', '3rd 9', index.slice(0, 9).concat(index.slice(18))], ['2nd 9', '3rd 9', index.slice(9, 18).concat(index.slice(18))]];
-    const bad = pairNames.filter(pair => !indexesOnce(pair[2])).map(pair => pair[0] + ' and ' + pair[1]);
-    if (bad.length) warn = ' ' + bad.join(', ') + ' reuse a handicap index. Check the 18 you play.';
+    for (let i = 0; i < nineCount; i++) {
+      const slice = index.slice(i * 9, i * 9 + 9);
+      const seen = {};
+      for (let k = 0; k < slice.length; k++) {
+        if (seen[slice[k]]) {
+          courseMsg('Each nine uses ranks 1 through 9 once. ' + NINE_LABELS[i] + ' repeats ' + slice[k] + '.');
+          return;
+        }
+        seen[slice[k]] = true;
+      }
+    }
   }
   const rating = {};
   tees.forEach(t => {
@@ -3938,6 +4054,7 @@ document.getElementById('saveCourse').onclick = () => {
     nines: nines,
     custom: true
   };
+  if (nineCount > 2) data.indexMode = 'nineRank';
   if (Object.keys(rating).length) data.rating = rating;
   courses[name] = data;
   let stored = [];
@@ -3951,7 +4068,7 @@ document.getElementById('saveCourse').onclick = () => {
   initCourseSelect();
   draw();
   persistSetup();
-  courseMsg(name + ' saved.' + warn);
+  courseMsg(name + ' saved.');
   document.getElementById('addCourse').hidden = true;
 };
 function showScreen(name) {
