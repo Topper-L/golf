@@ -6,6 +6,14 @@
 <meta http-equiv="Expires" content="0">
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="theme-color" content="#1f6b45" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Golf" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<link rel="icon" href="icon-192.png" />
 <title>Golf</title>
 <script>
 try {
@@ -127,7 +135,14 @@ try {
   #matchPick button { box-sizing:border-box; flex:0 1 auto; max-width:100%; min-height:36px; padding:4px 8px; font-size:var(--text); font-weight:700; line-height:1.15; white-space:normal; text-align:center; }
   #card .stack { display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1; max-width:100%; }
   #card .dots { display:block; height:9px; line-height:9px; font-size:9px !important; letter-spacing:-0.08em; color:#1f6b45; font-weight:700; white-space:nowrap; }
-  .match-strip { position:sticky; top:calc(46px + env(safe-area-inset-top)); z-index:15; margin:0 0 8px; padding:6px 0 5px; background:#e7efe6; font-size:var(--lead); line-height:1.25; max-width:100%; overflow-x:auto; overflow-y:hidden; white-space:nowrap; }
+  .match-strip { position:sticky; top:calc(96px + env(safe-area-inset-top)); z-index:15; margin:0 0 8px; padding:6px 0 5px; background:#e7efe6; font-size:var(--lead); line-height:1.25; max-width:100%; overflow-x:auto; overflow-y:hidden; white-space:nowrap; }
+  .score-history { position:sticky; top:calc(48px + env(safe-area-inset-top)); z-index:17; display:flex; gap:8px; margin:0 0 8px; padding:4px 0; background:#e7efe6; }
+  .score-history button { flex:1; min-height:36px; font-weight:750; }
+  #holeJump { display:flex; gap:4px; margin:0 0 8px; }
+  #holeJump button { flex:0 0 auto; box-sizing:border-box; min-width:36px; min-height:36px; padding:0 6px; font-weight:750; }
+  #runningMoney:empty { display:none; }
+  .runline { display:flex; justify-content:space-between; gap:8px; margin:0 0 4px; color:#1c2b22; font-weight:650; }
+  .runline span:first-child { min-width:0; overflow:hidden; text-overflow:ellipsis; }
   .match-strip[hidden] { display:none; }
   .match-strip .bit { display:inline-block; white-space:nowrap; margin:0 14px 0 0; }
   .match-strip .bit:last-child { margin-right:0; }
@@ -261,8 +276,20 @@ try {
   .file { padding:6px 10px; border:1px solid #c5d1c8; border-radius:8px; background:#fff; }
   .grid { display:grid; grid-template-columns:28px 18px 16px 52px 68px 52px 40px minmax(40px,1fr); align-items:center; gap:2px; margin:8px 0; min-width:0; }
   .grid > * { min-width:0; }
+  .grid > .who { grid-column:1; grid-row:1 / span 2; height:auto; align-self:stretch; }
+  .grid > .tee { grid-column:2; grid-row:1 / span 2; align-self:center; }
+  .grid > .dots { grid-column:3; grid-row:1 / span 2; align-self:center; text-align:center; }
+  .grid > .rels { grid-column:4 / 8; grid-row:1; display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:2px; }
+  .rels button { min-height:34px; min-width:0; padding:0 1px; font-size:11px; font-weight:750; line-height:1.05; white-space:nowrap; }
+  .grid > button.step.down { grid-column:4; grid-row:2; }
+  .grid > button.score { grid-column:5; grid-row:2; }
+  .grid > button.step.up { grid-column:6; grid-row:2; }
+  .grid > button.pick { grid-column:7; grid-row:2; }
+  .grid > .junkbtns { grid-column:8; grid-row:1 / span 2; align-self:center; }
   .junkbtns { display:flex; gap:4px; justify-content:flex-start; min-width:0; }
   .grid > button { box-sizing:border-box; width:100%; min-width:0; min-height:52px; padding:0; font-size:26px; font-weight:700; }
+  .grid > button.who { min-height:36px; height:auto; align-self:stretch; font-size:12px; font-weight:800; letter-spacing:-0.04em; line-height:1; }
+  .grid.on { background:#e7f3ec; border-radius:10px; box-shadow:inset 0 0 0 2px #1f6b45; }
   .grid > button.score { font-size:var(--score); line-height:1; min-height:60px; font-weight:750; }
   .junkbtns button { min-width:0; min-height:40px; padding:2px 4px; font-size:var(--text); font-weight:650; }
   .score.open { color:#9aa89e; }
@@ -271,6 +298,12 @@ try {
   #holeNote { color:#8a5a00; font-weight:600; }
   #holeNote:empty, #postNote:empty { display:none; }
   #postNote { color:#8a5a00; font-weight:700; margin:0 0 8px; }
+  .stop-note { margin:0 0 8px; font-weight:750; color:#8a5a00; }
+  .quit-panel { margin:8px 0 12px; padding:12px; background:#fff; border:1px solid #c5d1c8; border-radius:12px; }
+  .quit-panel h2 { margin:0 0 6px; }
+  .quit-panel p { margin:0 0 8px; }
+  .quit-choices { display:flex; flex-direction:column; gap:8px; }
+  button.round-open .r3 { display:block; margin-top:2px; color:#8a5a00; font-weight:750; }
   .empty-round[hidden], .round-body[hidden] { display:none; }
 </style>
 </head>
@@ -297,6 +330,7 @@ try {
     </div>
     <div class="card">
       <h2>Saved rounds</h2>
+      <div id="runningMoney"></div>
       <input id="roundSearch" type="search" placeholder="Search rounds" autocomplete="off" hidden>
       <div id="savedList"></div>
       <p id="savedNote"></p>
@@ -375,11 +409,13 @@ try {
       <p id="roundSub" class="round-sub"></p>
       <p><button type="button" id="deleteRound">Delete</button> <button type="button" id="exportThis">Export</button></p>
     </div>
+    <div class="score-history"><button type="button" id="undoScore" disabled>Undo</button><button type="button" id="redoScore" disabled>Redo</button></div>
     <div id="matchStrip" class="match-strip" hidden></div>
     <h1 id="holeTitle">Hole 1</h1>
+    <div id="holeJump" class="hscroll"></div>
     <p id="postNote"></p>
     <p id="holeNote"></p>
-    <p>Tap the gross score, or + or − to change it, or X if the player picked up.</p>
+    <p>Tap Birdie, Par, Bogey, or Double, or tap the gross score, or + or − for any other number, or X if the player picked up. The next player is ready after each score. Tap a name or a hole to jump.</p>
     <div class="card">
       <h2>Scores and junk</h2>
       <p>Birdies and eagles come from the gross score. A birdie pays one junk, an eagle two, and an albatross three. Tap Junk up to four times. On a par 3, tap KP for closest.</p>
@@ -387,6 +423,9 @@ try {
       <div id="holeJunk"></div>
     </div>
     <p class="actions"><button type="button" id="back">Back a hole</button> <button type="button" id="post" class="primary">Next hole</button> <button type="button" id="clearHole">Clear hole</button> <button type="button" id="toSetup">Back to setup</button></p>
+    <p id="scoreStop" class="stop-note" hidden></p>
+    <div id="quitPanel" class="quit-panel" hidden></div>
+    <p class="actions"><button type="button" id="quitRound">Quit round</button> <button type="button" id="resumeRound" hidden>Resume round</button></p>
     <p class="autosave-note">Rounds save automatically.</p>
     <div class="card"><h2>Standing</h2><div id="standing"></div></div>
     <div class="card"><h2>Presses</h2><div id="presses"></div></div>
@@ -395,7 +434,7 @@ try {
   <section id="screen-card" class="screen">
     <p class="empty-round">Start scoring from Setup.</p>
     <div class="round-body">
-      <div class="card"><div class="card-tools"><h2>Card</h2><button type="button" id="cardView" aria-pressed="false">Gross | Net</button><button type="button" id="shareCard">Share</button></div><p id="cardViewNote" class="view-note">Gross scores</p><div id="matchPick" hidden></div><div id="card" class="hscroll"></div><div id="paperCard" class="hscroll"></div></div>
+      <div class="card"><div class="card-tools"><h2>Card</h2><button type="button" id="cardView" aria-pressed="false">Gross | Net</button><button type="button" id="shareCard">Share</button></div><p id="cardViewNote" class="view-note">Gross scores</p><p id="cardStop" class="stop-note" hidden></p><div id="matchPick" hidden></div><div id="card" class="hscroll"></div><div id="paperCard" class="hscroll"></div></div>
       <p><button type="button" id="reviewToggle">Group review</button></p>
       <div class="card" id="reviewCard" hidden><h2>Group review</h2><div id="review" class="hscroll"></div></div>
     </div>
@@ -978,6 +1017,9 @@ document.getElementById('newRound').onclick = () => {
   playedThru = -1;
   ninesPlayed = null;
   playoffs = {};
+  resetScoreHistory();
+  roundStop = null;
+  quitChoice = '';
   roundId = '';
   roundName = '';
   cardMatchName = '';
@@ -1048,6 +1090,9 @@ function noMoneyRound() {
 document.getElementById('noMoney').onclick = noMoneyRound;
 let playoffs = {};
 let holePlayers = [], holeScores = [], holeMarks = [], holeNo = 0, detailName = '', startAt = 0, ninesPlayed = null, playedThru = -1;
+let scorePast = [], scoreFuture = [], scoreCursor = 0, wakeLockSentinel = null;
+let roundStop = null;
+let quitChoice = '';
 function courseNines() {
   const listed = courseData().nines;
   if (Array.isArray(listed) && listed.filter(n => n && Array.isArray(n.holes) && n.holes.length).length >= 2) {
@@ -1189,10 +1234,12 @@ function drawSavedPlayers() {
   const recentKey = recent.map(b => b.name.toLowerCase());
   const rest = book.filter(b => match(b) && recentKey.indexOf(b.name.toLowerCase()) < 0).sort((a, b) => a.name.localeCompare(b.name));
   const inRound = players.map(p => String(p.name || '').toLowerCase());
+  const totals = runningBalances();
   const row = b => {
     const tee = teeFullName(b.tee) || b.tee || '';
     const here = inRound.indexOf(b.name.toLowerCase()) >= 0;
-    const bits = [b.hcp, here ? 'In' : ''].filter(Boolean).join(' · ');
+    const bal = Object.prototype.hasOwnProperty.call(totals, b.name) ? cashText(totals[b.name]) : '';
+    const bits = [b.hcp, here ? 'In' : '', bal].filter(Boolean).join(' · ');
     return '<div class="prow"><button type="button" data-add="' + esc(b.name) + '"><b>' + esc(b.initials) + '</b><span class="pname">' + esc(b.name) + '</span>' + (bits ? '<span class="phcp">' + esc(bits) + '</span>' : '') + '</button><button type="button" data-detail="' + esc(b.name) + '" aria-label="Edit ' + esc(b.name) + '">Edit</button></div>';
   };
   if (!book.length) { list.innerHTML = '<p>No saved players yet.</p>'; paintPlayerDetail(); return; }
@@ -1273,6 +1320,7 @@ function startHole() {
         holeNo = saved.hole != null ? saved.hole : startAt;
         playedThru = typeof saved.playedThru === 'number' ? saved.playedThru : -1;
         roundId = saved.roundId || '';
+        roundStop = copyRoundStop(saved.roundStop);
         if (saved.roundDate) roundDate = saved.roundDate;
       } else {
         holeScores = holePlayers.map(freshScores);
@@ -1280,6 +1328,7 @@ function startHole() {
         holeNo = startAt;
         playedThru = -1;
         roundId = newRoundId();
+        roundStop = null;
       }
     } catch (e) {
       holeScores = holePlayers.map(freshScores);
@@ -1287,7 +1336,10 @@ function startHole() {
       holeNo = startAt;
       playedThru = -1;
       roundId = newRoundId();
+      roundStop = null;
     }
+    quitChoice = '';
+    resetScoreHistory();
   }
   syncPlayedNines();
   padCard();
@@ -2094,47 +2146,159 @@ function sharePlayerName(p) {
   const full = setup && String(setup.name || '').trim();
   return full || p.id;
 }
-function shareText() {
-  const thru = thruText();
-  const head = [currentCourse, roundDate, thru].filter(Boolean).join(' · ');
-  const lines = [head, ''];
-  const token = (i, h) => {
-    const g = holeScores[i] && holeScores[i][h];
-    if (g == null) return '';
-    if (g === 'X') return 'X(' + countedScore(i, h) + ')';
-    return String(g);
+function shareMeasurer() {
+  const probe = document.createElement('span');
+  probe.setAttribute('aria-hidden', 'true');
+  probe.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;white-space:pre;font:16px -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,sans-serif;';
+  (document.body || document.documentElement).appendChild(probe);
+  const measure = text => {
+    probe.textContent = text == null ? '' : String(text);
+    const rect = probe.getBoundingClientRect();
+    return rect && rect.width ? rect.width : 0;
   };
-  const sumOf = (i, holes) => {
-    let n = 0, any = false, picked = false;
+  measure.done = () => { if (probe.parentNode) probe.parentNode.removeChild(probe); };
+  return measure;
+}
+function shareText() {
+  const FIG = '\u2007';
+  const HAIR = '\u200a';
+  const measure = shareMeasurer();
+  try {
+  const thru = thruText();
+  const tees = [];
+  holePlayers.forEach(p => { if (p.tee && tees.indexOf(p.tee) < 0) tees.push(p.tee); });
+  const head = [currentCourse, tees.join(' / '), roundDate, thru].filter(Boolean).join(' · ');
+  const lines = [head, ''];
+  const cell = n => {
+    const s = String(n);
+    return s.length < 2 ? FIG + s : s;
+  };
+  const fit = (n, width) => {
+    let s = String(n);
+    while (s.length < width) s = FIG + s;
+    return s;
+  };
+  const digits = cells => cells.join(FIG);
+  const widthOf = text => {
+    const w = measure(text);
+    return w > 0 ? w : 0;
+  };
+  const padTo = (text, target) => {
+    if (!(target > 0)) return text;
+    let out = text;
+    let w = widthOf(out);
+    if (!(w > 0)) return text;
+    for (let n = 0; n < 40 && w + 0.35 < target; n++) {
+      const next = out + HAIR;
+      const nw = widthOf(next);
+      if (!(nw > w) || nw > target + 0.5) break;
+      out = next;
+      w = nw;
+    }
+    return out;
+  };
+  const indent = target => {
+    if (!(target > 0)) return '';
+    const figW = widthOf(FIG);
+    if (!(figW > 0)) return '';
+    let n = Math.max(0, Math.floor((target + 0.5) / figW));
+    let out = FIG.repeat(n);
+    let w = n ? widthOf(out) : 0;
+    while (n > 0 && w > target + 0.5) {
+      n -= 1;
+      out = FIG.repeat(n);
+      w = n ? widthOf(out) : 0;
+    }
+    for (let k = 0; k < 20 && w + 0.35 < target; k++) {
+      const next = out + HAIR;
+      const nw = widthOf(next);
+      if (!(nw > w) || nw > target + 0.5) break;
+      out = next;
+      w = nw;
+    }
+    return out;
+  };
+  const scoreCell = (i, h) => {
+    const g = holeScores[i] && holeScores[i][h];
+    if (g == null) return FIG + FIG;
+    const v = countedScore(i, h);
+    if (v == null) return FIG + FIG;
+    return cell(v);
+  };
+  const nineSum = (i, holes) => {
+    let n = 0, any = false;
     holes.forEach(h => {
       const v = countedScore(i, h);
       if (v == null) return;
       n += v;
       any = true;
-      if (holeScores[i][h] === 'X') picked = true;
     });
-    return { n: n, any: any, picked: picked };
+    return any ? n : null;
   };
-  const totalLine = (f, b) => {
-    const parts = [];
-    if (f.any) parts.push('Out ' + f.n);
-    if (b.any) parts.push('In ' + b.n);
-    const total = (f.any ? f.n : 0) + (b.any ? b.n : 0);
-    const mark = (f.picked || b.picked) ? 'x' : '';
-    if (parts.length === 1) return parts[0] + ' = ' + total + mark;
-    return parts.join('  ') + '  = ' + total + mark;
+  const addNine = seg => {
+    const holes = holesOfNine(seg);
+    if (!holes.length) return;
+    const sums = holePlayers.map((p, i) => nineSum(i, holes));
+    let width = 2;
+    sums.forEach(n => { if (n != null) width = Math.max(width, String(Math.round(n)).length); });
+    const prefixes = holePlayers.map((p, i) => p.id + ' = ' + (sums[i] == null ? FIG.repeat(width) : fit(sums[i], width)));
+    let target = 0;
+    prefixes.forEach(text => { target = Math.max(target, widthOf(text)); });
+    const lead = target > 0 ? indent(target) + FIG : '';
+    lines.push(nineHead(seg));
+    lines.push(lead + digits(holes.map(h => cell(cardHoleLabel(h)))));
+    lines.push(lead + digits(holes.map(h => cell(courseData().par[h] || 0))));
+    holePlayers.forEach((p, i) => {
+      lines.push(padTo(prefixes[i], target) + FIG + digits(holes.map(h => scoreCell(i, h))));
+    });
+    lines.push('');
+  };
+  addNine(0);
+  addNine(1);
+  const gross18 = holePlayers.map((p, i) => {
+    const a = nineSum(i, holesOfNine(0));
+    const b = nineSum(i, holesOfNine(1));
+    if (a == null && b == null) return null;
+    return (a || 0) + (b || 0);
+  });
+  const numText = n => {
+    const r = Math.round(Number(n) * 10) / 10;
+    if (Math.abs(r - Math.round(r)) < 0.05) return String(Math.round(r));
+    return r.toFixed(1);
   };
   holePlayers.forEach((p, i) => {
-    if (i) lines.push('');
-    lines.push(sharePlayerName(p) + ' (' + (hcpLabel(p) || '0') + '):');
-    const front = holesOfNine(0), back = holesOfNine(1);
-    const f = sumOf(i, front), b = sumOf(i, back);
-    const fScores = front.map(h => token(i, h)).filter(Boolean);
-    const bScores = back.map(h => token(i, h)).filter(Boolean);
-    if (fScores.length) lines.push(fScores.join(' '));
-    if (bScores.length) lines.push(bScores.join(' '));
-    if (f.any || b.any) lines.push(totalLine(f, b));
+    if (gross18[i] == null) return;
+    lines.push(p.id);
+    lines.push('18 = ' + numText(gross18[i]));
+    lines.push('Total = ' + numText(gross18[i] - courseHandicap(p)));
+    lines.push('');
   });
+  const birds = [];
+  const strokes = [];
+  const picked = [];
+  holePlayers.forEach((p, i) => {
+    const birdH = [];
+    const up = [];
+    const miss = [];
+    const xs = [];
+    playOrder().forEach(h => {
+      const g = holeScores[i] && holeScores[i][h];
+      if (g === 'X') xs.push(cardHoleLabel(h));
+      if (typeof g === 'number' && g === (courseData().par[h] || 0) - 1) birdH.push(cardHoleLabel(h));
+      if (ownStrokes(i, h) > 0) up.push(cardHoleLabel(h));
+      else miss.push(cardHoleLabel(h));
+    });
+    if (birdH.length) birds.push(p.id + ' ' + birdH.join(', '));
+    if (up.length) {
+      if (!miss.length) strokes.push(p.id + ' all');
+      else if (miss.length < up.length && miss.length <= 6) strokes.push(p.id + ' all but ' + miss.join(', '));
+      else strokes.push(p.id + ' ' + up.join(', '));
+    }
+    if (xs.length) picked.push(p.id + ' ' + xs.join(', '));
+  });
+  if (birds.length) lines.push('Birdies', ...birds, '');
+  if (strokes.length) lines.push('Strokes', ...strokes, '');
+  if (picked.length) lines.push('Picked up', ...picked, '');
   const boards = matchBoards();
   if (boards.length) {
     lines.push('');
@@ -2160,6 +2324,9 @@ function shareText() {
   const pays = [...document.querySelectorAll('#settle .settleup')].map(p => p.textContent.trim()).filter(Boolean);
   lines.push(pays.length ? pays.join('\n') : 'Even');
   return lines.join('\n');
+  } finally {
+    measure.done();
+  }
 }
 function showToast(msg) {
   let el = document.getElementById('toast');
@@ -2218,6 +2385,7 @@ function openHole(h) {
   if (!(h >= 0) || h >= par.length) return;
   holdThru = true;
   holeNo = h;
+  scoreCursor = 0;
   showScreen('score');
   try { drawHole(); } catch (e) {}
   holdThru = false;
@@ -2434,20 +2602,26 @@ function settle() {
     const parts = name.split(' vs ');
     const a = isBox ? box : [String(parts[0] || '').trim().toUpperCase()];
     const b = isBox ? String(name.split(' vs ')[1] || '').split('+').map(s => s.trim().toUpperCase()) : [String(parts[1] || '').trim().toUpperCase()];
+    const teamMatchEarly = a.length > 1 && b.length > 1;
+    if (roundStop && roundStop.mode === 'cancel') {
+      return { name: name, html: '<p>' + esc(name) + ' cancelled.</p>', owed: 0, a: a, b: b, teamMatch: teamMatchEarly };
+    }
     const sim = simulateMatch(name, a, b);
     const bet = sim.bet;
     const money = (score, amt) => score && amt ? (score < 0 ? amt : -amt) : 0;
     const nineLeg = seg => sim.legs.find(l => l.kind === 'nine' && l.seg === seg);
     const frontLeg = nineLeg(0), backLeg = nineLeg(1);
+    const asIs = !!(roundStop && roundStop.mode === 'asis');
     const backPlayed = !!(backLeg && backLeg.played);
+    const backOpen = backPlayed || asIs;
     const front = money(frontLeg ? frontLeg.score : 0, bet.first);
-    const back = backPlayed ? money(backLeg.score, bet.second) : 0;
+    const back = backOpen ? money(backLeg ? backLeg.score : 0, bet.second) : 0;
     const pressLegs = sim.legs.filter(l => l.kind === 'press').sort((x, y) => x.from - y.from || (x.manual - y.manual));
     const frontPressLegs = pressLegs.filter(p => p.seg === 0);
     const backPressLegs = pressLegs.filter(p => p.seg === 1);
     const frontPress = frontPressLegs.map(p => money(p.score, pressAmt(bet, p.from)));
     const backPress = backPressLegs.map(p => money(p.score, pressAmt(bet, p.from)));
-    const overall = backPlayed ? money((frontLeg ? frontLeg.score : 0) + backLeg.score, bet.overall) : 0;
+    const overall = backOpen ? money((frontLeg ? frontLeg.score : 0) + (backLeg ? backLeg.score : 0), bet.overall) : 0;
     const matchIds = a.concat(b);
     const kp = kpForMatch(matchIds);
     const junkOf = id => {
@@ -2484,7 +2658,7 @@ function settle() {
     frontPressLegs.forEach((leg, i) => {
       if (pressAmt(bet, leg.from)) comps.push({ label: 'Press from ' + leg.from + ' ' + tag(leg), amount: frontPress[i] });
     });
-    if (backPlayed) {
+    if (backOpen) {
       if (Number(bet.second)) comps.push({ label: '2nd 9', amount: back });
       backPressLegs.forEach((leg, i) => {
         if (pressAmt(bet, leg.from)) comps.push({ label: 'Press from ' + leg.from + ' ' + tag(leg), amount: backPress[i] });
@@ -2501,6 +2675,7 @@ function settle() {
       if (mp.closed) unit = mp.closed.score > 0 ? 1 : -1;
       else if (mp.playoff && mp.playoff.winner) unit = mp.playoff.winner === 'a' ? 1 : -1;
       else if (mp.played >= playOrder().length && mp.score) unit = mp.score > 0 ? 1 : -1;
+      else if (asIs && mp.score) unit = mp.score > 0 ? 1 : -1;
       mpPay = money(unit, stake);
       mpSaid = mpPlain(mp, a, b);
       comps.push({ label: (a.length > 1 || b.length > 1) ? '18-hole' : '18-hole ' + mpSaid, amount: mpPay });
@@ -2571,9 +2746,12 @@ function settle() {
   }).join('');
   const anyRoll = holePlayers.some(p => roll[p.id]);
   const settleUp = nets.length ? '<p><b>Settle up</b></p>' + nets.join('') : '';
-  const summary = anyRoll ? '<p><b>Summary</b></p>' + playerLines + settleUp : (anyStake ? '' : '<p><b>No money owed.</b></p>');
+  const cancelled = !!(roundStop && roundStop.mode === 'cancel');
+  const zeroLines = holePlayers.map(p => '<p><b>' + esc(p.id) + '</b> ' + cashText(0) + '</p>').join('');
+  const summary = cancelled ? '<p><b>Summary</b></p>' + zeroLines : (anyRoll ? '<p><b>Summary</b></p>' + playerLines + settleUp : (anyStake ? '' : '<p><b>No money owed.</b></p>'));
   const details = lines.map((line, i) => '<div class="settle-match"><div class="section-head" data-settle="' + i + '"><span>' + esc(line.name || 'Match') + '</span><span class="chev">▶</span></div><div class="section-body collapsed" id="settle-' + i + '">' + line.html + '</div></div>').join('');
-  el.innerHTML = summary + (details ? '<p><b>Details</b></p>' + details : '');
+  const stopped = roundStop ? '<p class="stop-note">' + esc(stopPhrase(roundStop)) + '</p>' : '';
+  el.innerHTML = stopped + summary + (details ? '<p><b>Details</b></p>' + details : '');
   el.querySelectorAll('.section-head[data-settle]').forEach(head => {
     head.onclick = () => {
       const body = document.getElementById('settle-' + head.dataset.settle);
@@ -2802,6 +2980,7 @@ function sideJunkRows(p, i, h, rows) {
 function drawHole() {
   padCard();
   rememberThru();
+  if (scoreCursor < 0 || scoreCursor >= holePlayers.length) scoreCursor = 0;
   document.getElementById('holeTitle').textContent = 'Hole ' + cardHoleLabel(holeNo) + ' · Par ' + courseData().par[holeNo] + ' · Handicap ' + siAt(holePlayers[0] && holePlayers[0].tee, holeNo);
   const kinds = courseData().par[holeNo] === 3 ? ['KP','Junk'] : ['Junk'];
   document.getElementById('kpTip').textContent = courseData().par[holeNo] === 3 ? 'Tap KP: KP-1 = closest, KP-2 = 2nd, KP-3 = 3rd, KP-4 = 4th.' : '';
@@ -2816,8 +2995,18 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     const shown = unset ? '' : (v === 'X' ? 'X' : v);
     const aria = unset ? ' aria-label="Par ' + courseData().par[holeNo] + '"' : '';
     const scoreCls = unset ? (holeLeftBehind(holeNo) ? 'missing' : 'open') : 'set';
-    return '<div class="grid"><b>' + p.id + '</b><span class="tee" title="' + esc(p.tee) + '">' + esc(teeCode(p.tee)) + '</span><span>' + strokeMark(p) + '</span><button class="step" data-i="' + i + '" data-d="-1" aria-label="Lower score">−</button><button data-i="' + i + '" data-set="1" class="score ' + scoreCls + '"' + aria + '>' + shown + '</button><button class="step" data-i="' + i + '" data-d="1" aria-label="Raise score">+</button><button data-i="' + i + '" data-x="1">X</button><span class="junkbtns">' + junkBtns + '</span></div>';
+    const parNow = courseData().par[holeNo];
+    const relOn = d => (!unset && v !== 'X' && Number(v) === parNow + d) ? ' on' : '';
+    const rels = '<div class="rels">'
+      + '<button type="button" data-i="' + i + '" data-rel="-1" class="' + relOn(-1) + '">Birdie</button>'
+      + '<button type="button" data-i="' + i + '" data-rel="0" class="' + relOn(0) + '">Par</button>'
+      + '<button type="button" data-i="' + i + '" data-rel="1" class="' + relOn(1) + '">Bogey</button>'
+      + '<button type="button" data-i="' + i + '" data-rel="2" class="' + relOn(2) + '">Double</button>'
+      + '</div>';
+    return '<div class="grid' + (i === scoreCursor ? ' on' : '') + '"><button type="button" class="who" data-who="' + i + '" aria-label="Select ' + esc(p.id) + '">' + esc(p.id) + '</button><span class="tee" title="' + esc(p.tee) + '">' + esc(teeCode(p.tee)) + '</span><span class="dots">' + strokeMark(p) + '</span>' + rels + '<button type="button" class="step down" data-i="' + i + '" data-d="-1" aria-label="Lower score">−</button><button type="button" data-i="' + i + '" data-set="1" class="score ' + scoreCls + '"' + aria + '>' + shown + '</button><button type="button" class="step up" data-i="' + i + '" data-d="1" aria-label="Raise score">+</button><button type="button" class="pick" data-i="' + i + '" data-x="1">X</button><span class="junkbtns">' + junkBtns + '</span></div>';
   }).join('');
+  paintHoleJump();
+  paintUndo();
   document.getElementById('holeJunk').innerHTML = holeBirdieLabel();
   const shape = (i, h) => {
     const score = holeScores[i][h];
@@ -3083,6 +3272,7 @@ document.getElementById('scores').innerHTML = holePlayers.map((p, i) => {
     if (node) node.innerHTML = standingHtml;
   });
   try { settle(); } catch (err) { document.getElementById('settle').innerHTML = '<p>' + err.message + '</p>'; }
+  paintQuit();
   paintRoundDetail();
   drawPresses();
   detail();
@@ -3105,7 +3295,8 @@ function saveCard() {
       roundDate: roundDate,
       playoffs: playoffs,
       cardMatch: cardMatchName,
-      cardPick: cardPick
+      cardPick: cardPick,
+      roundStop: copyRoundStop(roundStop)
     }));
   } catch (e) {}
 }
@@ -3144,25 +3335,49 @@ function saveCard() {
 document.getElementById('scores').onclick = e => {
   const btn = e.target.closest('button');
   if (!btn) return;
+  if (btn.dataset.who != null) {
+    scoreCursor = Number(btn.dataset.who);
+    drawHole();
+    return;
+  }
   const i = Number(btn.dataset.i);
   if (btn.dataset.k) {
+    pushScoreHistory();
     const k = btn.dataset.k;
     if (k === 'KP' || k === 'Junk') holeMarks[i][holeNo][k] = (Number(holeMarks[i][holeNo][k]) + 1) % 5;
     drawHole();
     return;
   }
+  pushScoreHistory();
   if (btn.dataset.x) holeScores[i][holeNo] = 'X';
+  else if (btn.dataset.rel != null) holeScores[i][holeNo] = Math.max(1, (Number(courseData().par[holeNo]) || 4) + Number(btn.dataset.rel));
   else if (btn.dataset.set) holeScores[i][holeNo] = holeVal(i);
   else if (btn.dataset.d) holeScores[i][holeNo] = Math.max(1, (holeVal(i) === 'X' ? courseData().par[holeNo] : Number(holeVal(i))) + Number(btn.dataset.d));
+  scoreCursor = i;
+  advanceScore();
   drawHole();
 };
 document.getElementById('holeJunk').onclick = e => {
   const btn = e.target.closest('button');
   if (!btn) return;
+  pushScoreHistory();
   const i = Number(btn.dataset.i), k = btn.dataset.k;
   if (k === 'KP' || k === 'Junk') holeMarks[i][holeNo][k] = (Number(holeMarks[i][holeNo][k]) + 1) % 5;
   drawHole();
 };
+const holeJumpEl = document.getElementById('holeJump');
+if (holeJumpEl) holeJumpEl.onclick = e => {
+  const btn = e.target.closest('button[data-jump]');
+  if (!btn) return;
+  const h = Number(btn.dataset.jump);
+  if (!(h >= 0)) return;
+  holeNo = h;
+  drawHole();
+};
+const undoScoreBtn = document.getElementById('undoScore');
+if (undoScoreBtn) undoScoreBtn.onclick = () => undoScore();
+const redoScoreBtn = document.getElementById('redoScore');
+if (redoScoreBtn) redoScoreBtn.onclick = () => redoScore();
 document.getElementById('toGate').onclick = () => goHome();
 const homeBtn = document.getElementById('home');
 if (homeBtn) homeBtn.onclick = () => goHome();
@@ -3172,6 +3387,7 @@ function stepHole(dir) {
   const n = i + dir;
   if (i < 0 || n < 0 || n >= order.length) return;
   holeNo = order[n];
+  scoreCursor = 0;
   drawHole();
 }
 function missingNames(h) {
@@ -3196,6 +3412,7 @@ if (clearHoleBtn) clearHoleBtn.onclick = () => {
   if (!holePlayers.length) return;
   const scored = holeScores.some(row => row && row[holeNo] != null);
   if (scored && !window.confirm('Clear this hole?')) return;
+  pushScoreHistory();
   holeScores.forEach(row => { if (row) row[holeNo] = null; });
   holeMarks.forEach(row => { if (row) row[holeNo] = { KP: 0, Birdie: 0, Junk: 0 }; });
   clearPressesFrom(holeNo + 1);
@@ -3203,6 +3420,24 @@ if (clearHoleBtn) clearHoleBtn.onclick = () => {
 };
 const toSetupBtn = document.getElementById('toSetup');
 if (toSetupBtn) toSetupBtn.onclick = () => showScreen('setup');
+const quitRoundBtn = document.getElementById('quitRound');
+if (quitRoundBtn) quitRoundBtn.onclick = () => {
+  if (!holePlayers.length || roundStop) return;
+  quitChoice = 'pick';
+  paintQuit();
+};
+const resumeRoundBtn = document.getElementById('resumeRound');
+if (resumeRoundBtn) resumeRoundBtn.onclick = () => resumeStoppedRound();
+const quitPanelEl = document.getElementById('quitPanel');
+if (quitPanelEl) quitPanelEl.onclick = e => {
+  const btn = e.target.closest('button[data-quit]');
+  if (!btn) return;
+  const act = btn.dataset.quit;
+  if (act === 'asis' || act === 'cancel') { quitChoice = act; paintQuit(); return; }
+  if (act === 'back') { quitChoice = 'pick'; paintQuit(); return; }
+  if (act === 'close') { quitChoice = ''; paintQuit(); return; }
+  if (act === 'apply') applyQuit();
+};
 const clearAllBtn = document.getElementById('clearAll');
 if (clearAllBtn) clearAllBtn.onclick = () => {
   if (!holePlayers.length) return;
@@ -3218,6 +3453,9 @@ if (clearAllBtn) clearAllBtn.onclick = () => {
   holeNo = startAt;
   playedThru = -1;
   playoffs = {};
+  resetScoreHistory();
+  roundStop = null;
+  quitChoice = '';
   Object.keys(amounts).forEach(k => {
     if (!amounts[k]) return;
     amounts[k].manual = [];
@@ -3347,6 +3585,8 @@ function loadSavedSetup() {
   playoffs = card.playoffs && typeof card.playoffs === 'object' ? card.playoffs : {};
   if (card.cardMatch) cardMatchName = card.cardMatch;
   if (card.cardPick) cardPick = card.cardPick;
+  roundStop = copyRoundStop(card.roundStop);
+  quitChoice = '';
   syncPlayedNines();
   padCard();
 }
@@ -3387,7 +3627,9 @@ function snapshot(isAuto) {
     cardMatch: cardMatchName,
     cardPick: cardPick,
     name: roundName || '',
-    ownerNet: readOwnerNet(holePlayers)
+    ownerNet: readOwnerNet(holePlayers),
+    nets: readRoundNets(),
+    roundStop: copyRoundStop(roundStop)
   };
 }
 function findAutoSlot(list, snap) {
@@ -3498,13 +3740,14 @@ function paintRoundDetail() {
 function drawSaved() {
   const el = document.getElementById('savedList');
   const search = document.getElementById('roundSearch');
+  paintRunning();
   if (!el) return;
   const list = roundArchive();
   const liveId = roundId || '';
   const items = [];
   list.forEach((r, i) => {
     if (!r) return;
-    if (r.auto && liveId && r.id === liveId) return;
+    if (r.auto && liveId && r.id === liveId && !copyRoundStop(r.roundStop)) return;
     items.push({ r: r, i: i });
   });
   items.sort((a, b) => String(b.r.when || '').localeCompare(String(a.r.when || '')) || (a.i - b.i));
@@ -3512,7 +3755,7 @@ function drawSaved() {
   const q = items.length > 8 ? roundQuery.trim().toLowerCase() : '';
   const shown = items.filter(({ r }) => {
     if (!q) return true;
-    const blob = [roundTitle(r), r.course, roundTeeNames(r), roundInitials(r), roundDayOf(r), r.ownerNet || ''].join(' ').toLowerCase();
+    const blob = [roundTitle(r), r.course, roundTeeNames(r), roundInitials(r), roundDayOf(r), r.ownerNet || '', stopPhrase(r.roundStop)].join(' ').toLowerCase();
     return blob.indexOf(q) >= 0;
   });
   let html = '';
@@ -3522,7 +3765,8 @@ function drawSaved() {
     if (m !== month) { month = m; html += '<h3 class="month">' + esc(m) + '</h3>'; }
     const net = r.ownerNet || '';
     const cls = net.charAt(0) === '−' || net.charAt(0) === '-' ? 'dn' : (net.charAt(0) === '+' ? 'up' : '');
-    html += '<button type="button" class="round-open" data-open="' + i + '"><span class="r1"><span class="title">' + esc(roundTitle(r) || 'Saved round') + '</span>' + (net ? '<span class="rnet ' + cls + '">' + esc(net) + '</span>' : '') + '</span><span class="r2">' + esc(roundInitials(r)) + '</span></button>';
+    const stopLine = stopPhrase(r.roundStop);
+    html += '<button type="button" class="round-open" data-open="' + i + '"><span class="r1"><span class="title">' + esc(roundTitle(r) || 'Saved round') + '</span>' + (net ? '<span class="rnet ' + cls + '">' + esc(net) + '</span>' : '') + '</span><span class="r2">' + esc(roundInitials(r)) + '</span>' + (stopLine ? '<span class="r3">' + esc(stopLine) + '</span>' : '') + '</button>';
   });
   el.innerHTML = shown.length ? html : '<p>' + (items.length ? 'No rounds match.' : 'No saved rounds.') + '</p>';
 }
@@ -3574,6 +3818,9 @@ document.getElementById('savedList').onclick = e => {
       else if (!courseData().tees.includes(p.tee)) p.tee = validTee(p.tee);
     });
     roundId = (r.id && r.auto !== false) ? r.id : (r.auto === false ? newRoundId() : '');
+    roundStop = copyRoundStop(r.roundStop);
+    quitChoice = '';
+    resetScoreHistory();
     players = holePlayers.map(p => {
       const book = playerBook().find(b => String(b.initials).toUpperCase() === String(p.id).toUpperCase());
       return { name: (book && book.name) || p.id, initials: p.id, tee: validTee(p.tee), hcp: p.hcp || '0', box: !!p.box };
@@ -3649,6 +3896,9 @@ document.getElementById('deleteRound').onclick = () => {
   holeMarks = [];
   roundId = '';
   roundName = '';
+  roundStop = null;
+  quitChoice = '';
+  resetScoreHistory();
   players = [{ name: defaultPlayer.name, initials: defaultPlayer.initials, tee: defaultTee(), hcp: '', box: false }];
   try { localStorage.removeItem('golf-card'); } catch (e) {}
   suppressAutoSave = false;
@@ -4076,9 +4326,276 @@ document.getElementById('saveCourse').onclick = () => {
   courseMsg(name + ' saved.');
   document.getElementById('addCourse').hidden = true;
 };
+function scoreSnap() {
+  return JSON.stringify({ scores: holeScores, marks: holeMarks, hole: holeNo, stop: copyRoundStop(roundStop), cursor: scoreCursor });
+}
+function pushScoreHistory() {
+  scorePast.push(scoreSnap());
+  if (scorePast.length > 50) scorePast.shift();
+  scoreFuture = [];
+}
+function applyScoreSnap(raw) {
+  const data = JSON.parse(raw);
+  holeScores = data.scores;
+  holeMarks = data.marks;
+  if (data.hole != null) holeNo = data.hole;
+  if (typeof data.cursor === 'number') scoreCursor = data.cursor;
+  roundStop = copyRoundStop(data.stop);
+  quitChoice = '';
+  drawHole();
+}
+function undoScore() {
+  if (!scorePast.length) return;
+  scoreFuture.push(scoreSnap());
+  applyScoreSnap(scorePast.pop());
+}
+function redoScore() {
+  if (!scoreFuture.length) return;
+  scorePast.push(scoreSnap());
+  applyScoreSnap(scoreFuture.pop());
+}
+function resetScoreHistory() {
+  scorePast = [];
+  scoreFuture = [];
+  scoreCursor = 0;
+  paintUndo();
+}
+function paintUndo() {
+  const undo = document.getElementById('undoScore');
+  const redo = document.getElementById('redoScore');
+  if (undo) undo.disabled = !scorePast.length;
+  if (redo) redo.disabled = !scoreFuture.length;
+}
+function copyRoundStop(stop) {
+  if (!stop || (stop.mode !== 'asis' && stop.mode !== 'cancel')) return null;
+  const hole = Number(stop.hole);
+  return { mode: stop.mode, hole: hole > 0 ? hole : 0 };
+}
+function stopPhrase(stop) {
+  const saved = copyRoundStop(stop);
+  if (!saved) return '';
+  const where = saved.hole ? 'Stopped after hole ' + saved.hole : 'Stopped before play';
+  const how = saved.mode === 'cancel' ? 'Bets cancelled' : 'Bets paid as they stand';
+  return where + '. ' + how + '.';
+}
+function scoredThruLabel() {
+  const order = playOrder();
+  let last = null;
+  for (let i = 0; i < order.length; i++) {
+    const h = order[i];
+    const done = holePlayers.length && holePlayers.every((p, pi) => holeScores[pi] && holeScores[pi][h] != null);
+    if (!done) break;
+    last = h;
+  }
+  return last == null ? 0 : cardHoleLabel(last);
+}
+function paintQuit() {
+  const panel = document.getElementById('quitPanel');
+  const quitBtn = document.getElementById('quitRound');
+  const resumeBtn = document.getElementById('resumeRound');
+  const scoreNote = document.getElementById('scoreStop');
+  const cardNote = document.getElementById('cardStop');
+  const phrase = roundStop ? stopPhrase(roundStop) : '';
+  if (scoreNote) { scoreNote.textContent = phrase; scoreNote.hidden = !phrase; }
+  if (cardNote) { cardNote.textContent = phrase; cardNote.hidden = !phrase; }
+  if (quitBtn) quitBtn.hidden = !!roundStop;
+  if (resumeBtn) resumeBtn.hidden = !roundStop;
+  if (!panel) return;
+  if (!quitChoice || roundStop) { panel.hidden = true; panel.innerHTML = ''; return; }
+  panel.hidden = false;
+  const hole = scoredThruLabel();
+  const where = hole ? 'after hole ' + hole : 'before any hole is complete';
+  if (quitChoice === 'pick') {
+    panel.innerHTML = '<h2>Quit round</h2><p>Choose how the bets settle.</p><p class="quit-choices"><button type="button" class="choice" data-quit="asis">Pay out as is</button><button type="button" class="choice" data-quit="cancel">Cancel bets</button></p><p><button type="button" class="quiet" data-quit="close">Back</button></p>';
+    return;
+  }
+  const pay = quitChoice === 'cancel'
+    ? 'Cancel every bet. Settle shows $0 for everyone.'
+    : 'Pay every bet as it stands. Whoever is up wins the full amount. All square is a push. A match already closed, such as 4&3, settles as usual.';
+  panel.innerHTML = '<h2>Stop ' + where + '?</h2><p>' + pay + '</p><p class="actions"><button type="button" class="primary" data-quit="apply">Stop the round</button><button type="button" data-quit="back">Back</button></p>';
+}
+function applyQuit() {
+  if (quitChoice !== 'asis' && quitChoice !== 'cancel') return;
+  const mode = quitChoice;
+  pushScoreHistory();
+  roundStop = { mode: mode, hole: scoredThruLabel() };
+  quitChoice = '';
+  drawHole();
+}
+function resumeStoppedRound() {
+  if (!roundStop) return;
+  pushScoreHistory();
+  roundStop = null;
+  quitChoice = '';
+  drawHole();
+}
+function advanceScore() {
+  const n = holePlayers.length;
+  if (!n) return;
+  if (scoreCursor < 0 || scoreCursor >= n) scoreCursor = 0;
+  if (scoreCursor < n - 1) { scoreCursor += 1; return; }
+  const order = playOrder();
+  const at = order.indexOf(holeNo);
+  if (at >= 0 && at + 1 < order.length) {
+    holeNo = order[at + 1];
+    scoreCursor = 0;
+  }
+}
+function paintHoleJump() {
+  const el = document.getElementById('holeJump');
+  if (!el) return;
+  const order = playOrder();
+  el.innerHTML = order.map(h => {
+    const on = h === holeNo ? ' on' : '';
+    const done = holePlayers.length && holePlayers.every((p, i) => holeScores[i] && holeScores[i][h] != null);
+    return '<button type="button" class="hjump' + on + (done ? ' done' : '') + '" data-jump="' + h + '">' + cardHoleLabel(h) + '</button>';
+  }).join('');
+}
+function parseCash(text) {
+  const s = String(text || '').replace(/\u2212/g, '-').replace(/[$,\s]/g, '');
+  const n = Number(s);
+  return isFinite(n) ? Math.round(n * 100) / 100 : 0;
+}
+function playerMoneyKey(p) {
+  if (!p) return '';
+  const name = String(p.name || '').trim();
+  if (name) return name;
+  return String(p.id || p.initials || '').trim();
+}
+function readRoundNets() {
+  const nets = {};
+  const el = document.getElementById('settle');
+  if (!el || !holePlayers.length) return nets;
+  const ps = el.querySelectorAll('p');
+  let summary = false;
+  for (let i = 0; i < ps.length; i++) {
+    const b = ps[i].querySelector('b');
+    const label = b ? b.textContent.trim() : '';
+    if (label === 'Details') break;
+    if (label === 'Summary') { summary = true; continue; }
+    if (!summary) continue;
+    if (label === 'Settle up' || label === 'No money owed.') { summary = false; continue; }
+    if (ps[i].classList.contains('settlewho') || ps[i].classList.contains('settleup')) continue;
+    if (!b) continue;
+    const player = holePlayers.find(x => x.id === label);
+    const key = playerMoneyKey(player || { id: label });
+    if (!key) continue;
+    const rest = (ps[i].textContent || '').replace(b.textContent, '').trim();
+    nets[key] = parseCash(rest);
+  }
+  return nets;
+}
+function ownerMoneyKey(r) {
+  const list = (r && r.players) || [];
+  let book = [];
+  try { book = playerBook(); } catch (e) {}
+  for (let i = 0; i < list.length; i++) {
+    const p = list[i] || {};
+    const pid = String(p.id || p.initials || '').toUpperCase();
+    const rec = book.find(b => String(b.initials || '').toUpperCase() === pid);
+    const name = String(p.name || (rec && rec.name) || '').trim();
+    if (/topper larsen/i.test(name) || name.startsWith('_')) return name;
+  }
+  const tl = list.find(p => String((p && (p.id || p.initials)) || '').toUpperCase() === 'TL');
+  if (tl && String(tl.name || '').trim()) return String(tl.name).trim();
+  const bookTl = book.find(b => String(b.initials || '').toUpperCase() === 'TL' || /topper larsen/i.test(b.name || ''));
+  if (bookTl && bookTl.name) return bookTl.name;
+  return 'Topper Larsen';
+}
+function runningBalances() {
+  const totals = {};
+  const seen = {};
+  roundArchive().forEach(r => {
+    if (!r) return;
+    const key = r.id ? ('id:' + r.id) : ('day:' + roundDayOf(r) + ':' + playerKeyOf(r.players) + ':' + (r.auto ? 'a' : String(r.when || '')));
+    if (seen[key]) return;
+    seen[key] = true;
+    const nets = r.nets;
+    if (nets && typeof nets === 'object' && Object.keys(nets).length) {
+      Object.keys(nets).forEach(name => {
+        const n = Number(nets[name]);
+        if (!isFinite(n)) return;
+        totals[name] = Math.round(((totals[name] || 0) + n) * 100) / 100;
+      });
+      return;
+    }
+    if (r.ownerNet) {
+      const who = ownerMoneyKey(r);
+      totals[who] = Math.round(((totals[who] || 0) + parseCash(r.ownerNet)) * 100) / 100;
+    }
+  });
+  return totals;
+}
+function paintRunning() {
+  const el = document.getElementById('runningMoney');
+  if (!el) return;
+  const totals = runningBalances();
+  const names = Object.keys(totals).sort((a, b) => a.localeCompare(b));
+  if (!names.length) { el.innerHTML = ''; return; }
+  el.innerHTML = '<p class="psec">Running</p>' + names.map(name => {
+    const v = totals[name];
+    const cls = v > 0 ? 'up' : v < 0 ? 'dn' : '';
+    return '<p class="runline"><span>' + esc(name) + '</span><span class="' + cls + '">' + cashText(v) + '</span></p>';
+  }).join('');
+}
+let wakeWanted = false;
+let wakePending = false;
+function holdWake() {
+  wakeWanted = true;
+  try {
+    if (!navigator.wakeLock || document.visibilityState !== 'visible') return;
+    if (!holePlayers.length || document.body.classList.contains('gate')) return;
+    if (wakeLockSentinel || wakePending) return;
+    wakePending = true;
+    navigator.wakeLock.request('screen').then(lock => {
+      wakePending = false;
+      const keep = wakeWanted && document.visibilityState === 'visible' && holePlayers.length && !document.body.classList.contains('gate');
+      if (!keep) {
+        try { const done = lock.release(); if (done && done.catch) done.catch(() => {}); } catch (e) {}
+        return;
+      }
+      wakeLockSentinel = lock;
+      lock.addEventListener('release', () => { if (wakeLockSentinel === lock) wakeLockSentinel = null; });
+    }).catch(() => { wakePending = false; wakeLockSentinel = null; });
+  } catch (e) { wakePending = false; }
+}
+function releaseWake() {
+  wakeWanted = false;
+  const lock = wakeLockSentinel;
+  wakeLockSentinel = null;
+  if (!lock) return;
+  try { const done = lock.release(); if (done && done.catch) done.catch(() => {}); } catch (e) {}
+}
+function syncWake() {
+  if (!holePlayers.length || document.body.classList.contains('gate') || document.visibilityState !== 'visible') releaseWake();
+  else holdWake();
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') holdWake();
+  else releaseWake();
+});
+function openScoreLink() {
+  let go = '';
+  try { go = new URLSearchParams(location.search).get('go') || ''; } catch (e) {}
+  const hash = String(location.hash || '').replace(/^#/, '');
+  if (go !== 'score' && hash !== 'score') return;
+  if (holePlayers.length) {
+    showScreen('score');
+    try { drawHole(); } catch (e) {}
+    const btn = document.querySelector('#scores .grid.on button.score');
+    if (btn) { try { btn.focus(); } catch (e) {} }
+  } else showScreen('setup');
+}
+function registerGolfWorker() {
+  try {
+    if (!('serviceWorker' in navigator)) return;
+    if (!location.protocol || location.protocol === 'file:') return;
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  } catch (e) {}
+}
 function showScreen(name) {
   if (name === 'gate') refreshGate();
-  if (name === 'setup') paintNinePick();
+  if (name === 'setup') { paintNinePick(); drawSavedPlayers(); }
   const map = { gate: 'screen-gate', setup: 'screen-setup', score: 'holeView', standing: 'screen-standing', junk: 'screen-junk', card: 'screen-card', settle: 'screen-settle' };
   const id = map[name] || 'screen-gate';
   document.querySelectorAll('.screen').forEach(el => el.classList.toggle('on', el.id === id));
@@ -4092,6 +4609,8 @@ function showScreen(name) {
   const title = document.getElementById('screenTitle');
   if (title) title.textContent = titles[name] || 'Golf';
   document.title = titles[name] || 'Golf';
+  syncWake();
+  try { paintQuit(); } catch (e) {}
   const ready = holePlayers.length > 0;
   document.querySelectorAll('.empty-round').forEach(el => { el.hidden = ready; });
   document.querySelectorAll('.round-body').forEach(el => { el.hidden = !ready; });
@@ -4117,6 +4636,7 @@ function refreshGate() {
     const date = holePlayers.length ? roundDate : ((card && card.roundDate) || roundDate);
     const who = cardPlayers.map(p => p.id).join(', ');
     roundText.textContent = [courseName, formatDay(date), who, 'Hole ' + hole].filter(Boolean).join(' · ');
+    if (roundStop) roundText.textContent += ' · ' + stopPhrase(roundStop);
     btn.disabled = false;
   } else if (namedSetup()) {
     const setup = JSON.parse(localStorage.getItem('round-setup'));
@@ -4200,6 +4720,9 @@ syncStartButton();
 drawSaved();
 setFont(currentFont());
 showScreen('gate');
+openScoreLink();
+window.addEventListener('hashchange', openScoreLink);
+registerGolfWorker();
 </script>
 </body>
 </html>
