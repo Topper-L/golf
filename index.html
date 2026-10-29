@@ -362,6 +362,8 @@ try {
   .jtype.on { background:#1f6b45; color:#fff; border-color:#1f6b45; }
   .jtype:disabled { opacity:.38; }
   .sheet-note { color:#5e6f64; font-size:var(--text); margin:10px 0; }
+  .sheet-hint { color:#8a5a00; font-size:var(--text); font-weight:650; margin:8px 0 0; }
+  .sheet-hint[hidden] { display:none; }
   .sheet-card .primary { width:100%; min-height:48px; }
   table.pressgrid { width:100%; table-layout:fixed; border-collapse:separate; border-spacing:2px; margin:4px 0 8px; }
   table.pressgrid th, table.pressgrid td { height:32px; text-align:center; vertical-align:middle; font-size:12px; font-weight:700; padding:0; }
@@ -553,6 +555,7 @@ try {
   <div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="junkSheetTitle">
     <h2 id="junkSheetTitle">Junk on this hole</h2>
     <div id="junkSheetTypes" class="sheet-types"></div>
+    <p id="junkSheetHint" class="sheet-hint" hidden></p>
     <p class="sheet-note">Birdie/Eagle auto from gross score.</p>
     <button type="button" id="junkSheetDone" class="primary">Done</button>
   </div>
@@ -1007,7 +1010,7 @@ function junkGridHtml() {
         cells[i][t] += amt;
         if (amt) any = true;
       });
-      if (typeOn('greenie') && courseData().par[h] === 3 && holeMarks[i] && holeMarks[i][h] && holeMarks[i][h].KP > 0) {
+      if (typeOn('greenie') && kpPays(i, h)) {
         const amt = typeStake('greenie', bet, p.id);
         cells[i].greenie += amt;
         if (amt) any = true;
@@ -1042,6 +1045,13 @@ function paintJunkSheet() {
   if (title) title.textContent = 'Junk on this hole · ' + p.id;
   const par3 = courseData().par[holeNo] === 3;
   const mark = (holeMarks[i] && holeMarks[i][holeNo]) || blankMark();
+  const hint = document.getElementById('junkSheetHint');
+  if (hint) {
+    const gross = holeScores[i] && holeScores[i][holeNo];
+    const over = typeof gross === 'number' && gross > courseData().par[holeNo];
+    hint.hidden = !over;
+    hint.textContent = over ? 'Over par, so Greenie/KP does not pay on this hole.' : '';
+  }
   const buttons = JUNK_DEFS.filter(d => !d.auto && typeOn(d.id)).map(def => {
     const on = def.kp ? mark.KP > 0 : mark[def.id] > 0;
     const disabled = def.kp && !par3;
@@ -2212,7 +2222,7 @@ function junkHoleItems(i, matchIds) {
     const units = grossBirdieUnits(i, h);
     const bits = [];
     if (units) bits.push(birdieName(units));
-    if (m.KP) bits.push('KP');
+    if (kpPays(i, h)) bits.push('KP');
     if (m.Junk) bits.push(m.Junk > 1 ? 'Junk-' + m.Junk : 'Junk');
     if (bits.length) items.push((h + 1) + ' ' + bits.join(' '));
   }
@@ -2878,6 +2888,14 @@ function sideNet(ids, h, all) {
   });
   return Math.min(...nets);
 }
+function kpPays(i, h) {
+  const mark = holeMarks[i] && holeMarks[i][h];
+  if (!mark || !(Number(mark.KP) > 0)) return false;
+  const par = courseData().par && courseData().par[h];
+  if (par !== 3) return false;
+  const gross = holeScores[i] && holeScores[i][h];
+  return typeof gross === 'number' && gross <= par;
+}
 function kpForMatch(matchIds) {
   const par3 = courseData().par.map((p,i) => p === 3 ? i : -1).filter(i => i >= 0);
   const counts = {};
@@ -2888,7 +2906,7 @@ function kpForMatch(matchIds) {
     if (!holeReady(matchIds, h)) return;
     const winners = matchIds.filter(id => {
       const i = holePlayers.findIndex(p => p.id === id);
-      return i >= 0 && holeMarks[i] && holeMarks[i][h] && holeMarks[i][h].KP > 0;
+      return i >= 0 && kpPays(i, h);
     });
     if (winners.length) {
       const best = winners.reduce((x, y) => {
@@ -3196,7 +3214,7 @@ function settle() {
         const units = grossBirdieUnits(i, h);
         const bits = [];
         if (units && (typeOn('birdie') || typeOn('eagle'))) bits.push(birdieName(units));
-        if (m.KP && typeOn('greenie')) bits.push('Greenie/KP');
+        if (typeOn('greenie') && kpPays(i, h)) bits.push('Greenie/KP');
         MANUAL_JUNK.forEach(t => {
           if (!typeOn(t) || !m[t]) return;
           const def = junkDef(t);

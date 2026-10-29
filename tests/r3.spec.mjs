@@ -537,3 +537,53 @@ test('legacy saved round maps generic junk to Other', async ({ page }) => {
   await expect(page.locator('#junkSummary')).toContainText('Other');
   await shot(page, 'legacy-junk');
 });
+
+test('Greenie/KP on a bogey does not pay and the carry moves on', async ({ page }) => {
+  await twoPlayer(page, {
+    junk: 5,
+    first: 0,
+    second: 0,
+    overall: 0,
+    hole: 2,
+    tl: { 2: 4, 6: 3 },
+    ns: { 2: 4, 6: 3 },
+    mark: [
+      { id: 'TL', h: 2, fields: { KP: 1 } },
+      { id: 'NS', h: 6, fields: { KP: 1 } }
+    ]
+  });
+  const carried = await page.evaluate(() => ({
+    bogey: kpPays(0, 2),
+    par: kpPays(1, 6),
+    counts: kpForMatch(['TL', 'NS']),
+    roll: lastSettle.roll
+  }));
+  expect(carried.bogey).toBeFalsy();
+  expect(carried.par).toBeTruthy();
+  expect(carried.counts.TL).toBe(0);
+  expect(carried.counts.NS).toBe(2);
+  expect(carried.roll.NS).toBe(10);
+  expect(carried.roll.TL).toBe(-10);
+  await page.locator('.junkbtn').first().click();
+  await expect(page.locator('button[data-sheet-type="greenie"]')).toHaveClass(/on/);
+  await expect(page.locator('#junkSheetHint')).toBeVisible();
+  await expect(page.locator('#junkSheetHint')).toContainText('does not pay');
+  const closerBogey = await page.evaluate(() => {
+    holeMarks[0][2] = Object.assign(blankMark(), { KP: 1 });
+    holeMarks[1][2] = Object.assign(blankMark(), { KP: 2 });
+    holeScores[0][2] = 4;
+    holeScores[1][2] = 3;
+    holeMarks[0][6] = blankMark();
+    holeMarks[1][6] = blankMark();
+    holeScores[0][6] = 3;
+    holeScores[1][6] = 3;
+    drawHole();
+    return { counts: kpForMatch(['TL', 'NS']), roll: lastSettle.roll };
+  });
+  expect(closerBogey.counts.TL).toBe(0);
+  expect(closerBogey.counts.NS).toBe(1);
+  expect(closerBogey.roll.NS).toBe(5);
+  expect(closerBogey.roll.TL).toBe(-5);
+  await page.evaluate(() => { holeNo = 2; junkSheetPlayer = 1; paintJunkSheet(); });
+  await expect(page.locator('#junkSheetHint')).toBeHidden();
+});
