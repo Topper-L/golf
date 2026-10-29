@@ -335,6 +335,9 @@ try {
   .jswitch.on { background:#1f6b45; color:#fff; border-color:#1f6b45; }
   .jamt, .jauto { box-sizing:border-box; flex:none; width:64px; min-height:44px; text-align:center; font-weight:750; }
   .jauto { display:flex; align-items:center; justify-content:center; border:1px dashed #c5d1c8; border-radius:8px; color:#5e6f64; background:#f7faf6; }
+  .jstep { display:inline-flex; align-items:center; gap:1px; flex:none; }
+  .jstep button { min-width:32px; min-height:44px; padding:0; font-size:18px; font-weight:750; }
+  .jstep .jamt { width:2.6em; min-width:0; padding:2px 0; }
   .quick-line { display:flex; align-items:center; gap:8px; margin:8px 0 0; font-weight:650; }
   .quick-line input { width:22px; height:22px; }
   .srow { margin:0 0 12px; }
@@ -469,7 +472,7 @@ try {
   </div>
   <div class="card" id="junkSetup">
     <h2>Junk types</h2>
-    <p>Toggle on or off. Set $ per type, or leave the amount so it follows each player’s junk rate. Birdie and Eagle come from the gross score.</p>
+    <p>Toggle on or off. Set $ per type, or leave the amount so it follows each player’s junk rate. Birdie and Eagle come from the gross score. Eagle starts at twice the birdie.</p>
     <div id="junkTypes"></div>
     <label class="quick-line"><input type="checkbox" id="quickScores"> Quick scores (Birdie/Par/Bogey/Double)</label>
   </div>
@@ -501,7 +504,7 @@ try {
     <p>− and + change the score. X is a pickup. Junk marks this hole. The hole changes only when you tap Next hole.</p>
     <div class="card">
       <h2>Scores and junk</h2>
-      <p>Birdie and Eagle come from the gross score. An eagle pays twice the birdie. Tap Junk to mark the other types.</p>
+      <p>Birdie and Eagle come from the gross score. An eagle pays its own amount, which starts at twice the birdie. Tap Junk to mark the other types.</p>
       <p id="kpTip" class="note"></p><div id="scores"></div>
       <div id="holeJunk"></div>
       <button type="button" id="postReady" class="primary">Next hole</button>
@@ -739,7 +742,7 @@ let junkSheetPlayer = -1;
 let lastSettle = null;
 const JUNK_DEFS = [
   { id: 'birdie', name: 'Birdie', sub: 'Auto · gross', auto: true },
-  { id: 'eagle', name: 'Eagle', sub: 'Auto · 2× birdie', auto: true, mult: true },
+  { id: 'eagle', name: 'Eagle', sub: 'Auto · gross', auto: true },
   { id: 'sandy', name: 'Sandy', sub: 'Anyone · bunker → par+', auto: false },
   { id: 'greenie', name: 'Greenie / KP', sub: 'Par 3 · closest + par+', auto: false, kp: true },
   { id: 'chip', name: 'Chip-in', sub: 'Anyone · hole out off green', auto: false },
@@ -964,8 +967,13 @@ function stepPlayerHcp(i, dir) {
 function resolvedJunkAmt(id) {
   const row = junkTypes[id];
   if (row && row.amt != null && isFinite(Number(row.amt))) return Number(row.amt);
+  if (id === 'eagle') return 2 * resolvedJunkAmt('birdie');
   const el = document.getElementById('dJunk');
   return el ? (Number(el.value) || 0) : 3;
+}
+function junkAmtControl(id, name) {
+  const value = resolvedJunkAmt(id);
+  return '<span class="jstep"><button type="button" data-junk-step="-1" data-junk-amt="' + id + '" aria-label="Decrease ' + esc(name) + '">−</button><input class="jamt" data-junk-amt="' + id + '" inputmode="decimal" aria-label="' + esc(name) + ' amount" value="' + value + '"><button type="button" data-junk-step="1" data-junk-amt="' + id + '" aria-label="Increase ' + esc(name) + '">+</button></span>';
 }
 function drawJunkTypes() {
   const el = document.getElementById('junkTypes');
@@ -973,8 +981,7 @@ function drawJunkTypes() {
   el.innerHTML = JUNK_DEFS.map(def => {
     const row = junkTypes[def.id] || { on: false, amt: null };
     const sw = '<button type="button" class="jswitch' + (row.on ? ' on' : '') + '" data-junk-toggle="' + def.id + '" aria-pressed="' + (row.on ? 'true' : 'false') + '">' + (row.on ? 'On' : 'Off') + '</button>';
-    const amt = def.mult ? '<span class="jauto" aria-label="Eagle pays 2× birdie">2×</span>' : '<input class="jamt" data-junk-amt="' + def.id + '" inputmode="decimal" aria-label="' + esc(def.name) + ' amount" value="' + resolvedJunkAmt(def.id) + '">';
-    return '<div class="jrow"><div class="jmeta"><span class="jname">' + esc(def.name) + '</span><span class="jsub">' + esc(def.sub) + '</span></div>' + sw + amt + '</div>';
+    return '<div class="jrow"><div class="jmeta"><span class="jname">' + esc(def.name) + '</span><span class="jsub">' + esc(def.sub) + '</span></div>' + sw + junkAmtControl(def.id, def.name) + '</div>';
   }).join('');
   const q = document.getElementById('quickScores');
   if (q) q.checked = !!quickScores;
@@ -994,7 +1001,7 @@ function junkGridHtml() {
       if (!scoreEntered(i, h)) continue;
       const under = grossBirdieUnits(i, h);
       if (under >= 2 && typeOn('eagle')) {
-        const amt = junkTypes.eagle.amt != null ? Number(junkTypes.eagle.amt) || 0 : under * typeStake('birdie', bet, p.id);
+        const amt = autoGrossValue(i, h, bet, p.id);
         cells[i].eagle += amt;
         if (amt) any = true;
       } else if (under >= 1 && typeOn('birdie')) {
@@ -1086,6 +1093,19 @@ function toggleSheetType(id) {
 const junkSetupEl = document.getElementById('junkTypes');
 if (junkSetupEl) {
   junkSetupEl.onclick = e => {
+    const step = e.target.closest('button[data-junk-step]');
+    if (step && junkTypes[step.dataset.junkAmt]) {
+      const id = step.dataset.junkAmt;
+      const next = Math.max(0, resolvedJunkAmt(id) + Number(step.dataset.junkStep || 0));
+      junkTypes[id].amt = next;
+      if (id === 'birdie' && junkTypes.eagle.amt == null) drawJunkTypes();
+      else {
+        const input = junkSetupEl.querySelector('input[data-junk-amt="' + id + '"]');
+        if (input) input.value = String(next);
+      }
+      persistSetup();
+      return;
+    }
     const btn = e.target.closest('button[data-junk-toggle]');
     if (!btn) return;
     const id = btn.dataset.junkToggle;
@@ -1099,6 +1119,7 @@ if (junkSetupEl) {
     if (!input || !junkTypes[input.dataset.junkAmt]) return;
     const n = Number(input.value);
     junkTypes[input.dataset.junkAmt].amt = isFinite(n) ? n : null;
+    if (input.dataset.junkAmt === 'birdie' && junkTypes.eagle.amt == null) drawJunkTypes();
     persistSetup();
   });
 }
@@ -1792,13 +1813,17 @@ function typeStake(id, bet, playerId) {
   if (row.amt != null && row.amt !== '' && isFinite(Number(row.amt))) return Number(row.amt) || 0;
   return junkRate(bet, playerId);
 }
+function eagleStake(bet, id) {
+  const row = junkTypes.eagle || {};
+  if (row.amt != null && row.amt !== '' && isFinite(Number(row.amt))) return Number(row.amt) || 0;
+  return 2 * typeStake('birdie', bet, id);
+}
 function autoGrossValue(i, h, bet, id) {
   const under = grossBirdieUnits(i, h);
   if (!under) return 0;
-  const unit = typeOn('birdie') ? typeStake('birdie', bet, id) : typeStake('eagle', bet, id);
   if (under >= 2 && typeOn('eagle')) {
-    if (junkTypes.eagle && junkTypes.eagle.amt != null && junkTypes.eagle.amt !== '') return Number(junkTypes.eagle.amt) || 0;
-    return under * unit;
+    // The eagle amount is the price of a 2-under. Left unset, it is twice this player's birdie, so an eagle still pays 2× and an albatross 3×.
+    return eagleStake(bet, id) * under / 2;
   }
   if (under >= 1 && typeOn('birdie')) return typeStake('birdie', bet, id);
   return 0;

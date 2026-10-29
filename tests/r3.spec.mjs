@@ -122,6 +122,9 @@ test('setup junk defaults, plus handicap, and score dots stay aligned', async ({
   await expect(page.locator('#junkSetup')).toBeVisible();
   await expect(page.locator('button[data-junk-toggle="birdie"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('button[data-junk-toggle="eagle"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('input[data-junk-amt="birdie"]')).toHaveValue('3');
+  await expect(page.locator('input[data-junk-amt="eagle"]')).toHaveValue('6');
+  await expect(page.locator('button[data-junk-step="1"][data-junk-amt="eagle"]')).toBeVisible();
   await expect(page.locator('button[data-junk-toggle="sandy"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('button[data-junk-toggle="greenie"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('button[data-junk-toggle="chip"]')).toHaveAttribute('aria-pressed', 'false');
@@ -146,6 +149,13 @@ test('setup junk defaults, plus handicap, and score dots stay aligned', async ({
   await page.evaluate(m => { window.__setupScroll = m; }, scroll);
   await page.locator('#junkSetup').scrollIntoViewIfNeeded();
   await shot(page, 'setup-junk-plus');
+  await page.locator('button[data-junk-step="1"][data-junk-amt="birdie"]').click();
+  await expect(page.locator('input[data-junk-amt="birdie"]')).toHaveValue('4');
+  await expect(page.locator('input[data-junk-amt="eagle"]')).toHaveValue('8');
+  expect(await page.evaluate(() => junkTypes.eagle.amt)).toBeNull();
+  await page.locator('button[data-junk-step="1"][data-junk-amt="eagle"]').click();
+  await expect(page.locator('input[data-junk-amt="eagle"]')).toHaveValue('9');
+  expect(await page.evaluate(() => junkTypes.eagle.amt)).toBe(9);
   await twoPlayer(page, { tlHcp: '+2', nsHcp: '14', hole: 7, tl: { 7: 5 }, ns: { 7: 5 }, screen: 'score' });
   await expect(page.locator('#holeTitle')).toContainText('SI 11');
   await expect(page.locator('.sname').first()).toContainText('HCP +2');
@@ -469,6 +479,7 @@ test('payout regression stays zero-sum and matches the old unit math', async ({ 
     drawHole();
   });
   roll = await page.evaluate(() => lastSettle.roll);
+  expect(await page.evaluate(() => junkTypes.eagle.amt)).toBeNull();
   expect(roll.TL).toBe(30);
   expect(roll.NS).toBe(-30);
   await page.evaluate(() => {
@@ -536,6 +547,31 @@ test('legacy saved round maps generic junk to Other', async ({ page }) => {
   await page.locator('#tabbar button[data-screen="junk"]').click();
   await expect(page.locator('#junkSummary')).toContainText('Other');
   await shot(page, 'legacy-junk');
+});
+
+test('eagle amount is editable and still defaults to twice the birdie', async ({ page }) => {
+  await twoPlayer(page, { junk: 4, first: 0, second: 0, overall: 0, tl: { 0: 2 }, ns: { 0: 4 } });
+  let roll = await page.evaluate(() => lastSettle.roll);
+  expect(roll.TL).toBe(8);
+  expect(roll.NS).toBe(-8);
+  roll = await page.evaluate(() => {
+    junkTypes.eagle.amt = 7;
+    drawHole();
+    return lastSettle.roll;
+  });
+  expect(roll.TL).toBe(7);
+  expect(roll.NS).toBe(-7);
+  const legacy = await page.evaluate(() => {
+    applyJunkTypes(null);
+    const saved = { birdie: { on: true, amt: null }, sandy: { on: true, amt: null } };
+    applyJunkTypes(saved);
+    holeScores[0][0] = 2;
+    drawHole();
+    return { amt: junkTypes.eagle.amt, roll: lastSettle.roll };
+  });
+  expect(legacy.amt).toBeNull();
+  expect(legacy.roll.TL).toBe(8);
+  expect(legacy.roll.NS).toBe(-8);
 });
 
 test('Greenie/KP on a bogey does not pay and the carry moves on', async ({ page }) => {
