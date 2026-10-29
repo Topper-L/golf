@@ -549,6 +549,62 @@ test('legacy saved round maps generic junk to Other', async ({ page }) => {
   await shot(page, 'legacy-junk');
 });
 
+test('stacked setup players fit five across without sideways scroll', async ({ page }) => {
+  await page.evaluate(() => {
+    currentCourse = 'Wood Ranch';
+    players = [
+      { name: 'Topper Larsen', initials: 'TL', tee: 'Blue', hcp: '5', box: true, junk: 3 },
+      { name: 'Ned Green', initials: 'NG', tee: 'White', hcp: '+2', box: false, junk: 3 },
+      { name: 'Amy Chen', initials: 'AC', tee: 'Gold', hcp: '12', box: false, junk: 5 },
+      { name: 'Larry Brown', initials: 'LB', tee: 'Blue', hcp: '10', box: false, junk: 3 },
+      { name: 'Dana Kim', initials: 'DK', tee: 'Red', hcp: '14', box: false, junk: 3 }
+    ];
+    amounts = {};
+    draw();
+    showScreen('setup');
+  });
+  await expect(page.locator('.pcard')).toHaveCount(5);
+  await expect(page.locator('.hcpval').nth(1)).toHaveText('+2');
+  const fits = () => page.evaluate(() => {
+    const el = document.getElementById('players');
+    const pageWider = document.documentElement.scrollWidth > document.documentElement.clientWidth + 1;
+    const rowWider = [...el.querySelectorAll('.pline')].some(row => row.scrollWidth > row.clientWidth + 1);
+    return { pageWider: pageWider, rowWider: rowWider, listWider: el.scrollWidth > el.clientWidth + 1 };
+  });
+  let fit = await fits();
+  expect(fit).toEqual({ pageWider: false, rowWider: false, listWider: false });
+  const align = await page.locator('.pcard').first().locator('.pline').evaluateAll(rows => rows.map(row => {
+    const controls = [...row.querySelectorAll('input, select, button, .hcpval')];
+    return {
+      tops: controls.map(el => Math.round(el.getBoundingClientRect().top)),
+      heights: controls.map(el => Math.round(el.getBoundingClientRect().height))
+    };
+  }));
+  align.forEach(row => {
+    expect(Math.min(...row.heights)).toBeGreaterThanOrEqual(44);
+    expect(Math.max(...row.tops) - Math.min(...row.tops)).toBeLessThan(2);
+  });
+  await page.evaluate(() => { document.documentElement.setAttribute('data-font', '3'); });
+  fit = await fits();
+  expect(fit).toEqual({ pageWider: false, rowWider: false, listWider: false });
+  await page.evaluate(() => {
+    document.documentElement.setAttribute('data-font', '1');
+    const tabs = document.getElementById('tabbar');
+    if (tabs) tabs.style.visibility = 'hidden';
+  });
+  await page.locator('#players').screenshot({ path: shotDir + '/setup-stacked-built.png' });
+  await page.locator('#players').screenshot({ path: artDir + '/setup-stacked-built.png' });
+  await page.locator('.pcard').nth(4).locator('button[data-pjunk-step="1"]').click();
+  const after = await page.evaluate(() => {
+    const name = Object.keys(amounts).find(n => amounts[n] && amounts[n].player && amounts[n].player.DK != null);
+    return { junk: players[4].junk, match: name ? amounts[name].player.DK : null };
+  });
+  expect(after.junk).toBe(4);
+  expect(after.match).toBe(4);
+  await page.locator('.pcard').nth(4).locator('button.remove').click();
+  await expect(page.locator('.pcard')).toHaveCount(4);
+});
+
 test('score tee name stays fully readable at a larger font', async ({ page }) => {
   await twoPlayer(page, { tlHcp: '5', nsHcp: '14', hole: 0, screen: 'score' });
   await page.evaluate(() => {

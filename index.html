@@ -319,14 +319,21 @@ try {
   .quit-choices { display:flex; flex-direction:column; gap:8px; }
   button.round-open .r3 { display:block; margin-top:2px; color:#8a5a00; font-weight:750; }
   .empty-round[hidden], .round-body[hidden] { display:none; }
-  #players td, #players th { padding:4px 2px; }
-  #players input.name { width:7.2em; }
-  #players input.initials { width:2.4em; }
-  #players select { max-width:5.2em; }
-  .hcpstep { display:inline-flex; align-items:center; gap:1px; }
-  .hcpstep button { min-width:32px; min-height:36px; padding:0 4px; font-size:18px; font-weight:750; }
-  .hcpval { display:inline-block; min-width:2em; text-align:center; font-weight:800; font-variant-numeric:tabular-nums; padding:4px 2px; border-radius:6px; }
-  .hcpval.need { background:#fff4e5; }
+  #players.plist { display:flex; flex-direction:column; gap:8px; max-width:100%; }
+  #players .pcard { background:#fff; border:1px solid #d5e0d4; border-radius:12px; padding:8px; box-sizing:border-box; max-width:100%; }
+  #players .pline { display:flex; align-items:center; gap:6px; max-width:100%; min-width:0; }
+  #players .pline + .pline { margin-top:6px; }
+  #players input, #players select, #players button, #players .hcpval { box-sizing:border-box; height:44px; min-height:44px; margin:0; }
+  #players input.name { flex:1 1 0; width:0; min-width:0; padding:0 8px; }
+  #players input.initials { flex:none; width:3.2em; padding:0; text-align:center; }
+  #players .hcpstep, #players .pjunk { display:inline-flex; align-items:center; flex:none; height:44px; gap:1px; }
+  #players .hcpstep button, #players .pjunk button { width:36px; min-width:36px; padding:0; font-size:18px; font-weight:750; }
+  #players .hcpval { display:inline-flex; align-items:center; justify-content:center; min-width:2em; padding:0 2px; font-weight:800; font-variant-numeric:tabular-nums; border-radius:6px; }
+  #players .hcpval.need { background:#fff4e5; }
+  #players select.tee { flex:1 1 0; width:0; min-width:0; max-width:none; padding:0 4px; }
+  #players .pjunk input { width:2.4em; min-width:2.4em; padding:0; text-align:center; }
+  #players button.box { flex:none; min-width:44px; padding:0 8px; font-weight:750; }
+  #players button.remove { flex:none; width:44px; min-width:44px; padding:0; }
   .jrow { display:flex; align-items:center; gap:8px; padding:6px 0; border-top:1px solid #e4ece6; }
   .jrow .jmeta { flex:1; min-width:0; }
   .jrow .jname { font-weight:750; color:#1c2b22; }
@@ -448,7 +455,7 @@ try {
   <div class="card">
     <h2>Players</h2>
     <p>Course hcp is the handicap for these tees, not a Handicap Index.</p>
-    <div class="hscroll"><table id="players"></table></div>
+    <div id="players" class="plist"></div>
     <p><button type="button" id="add" tabindex="-1">Add player</button></p>
     <div id="savedPlayers">
       <p><b>Saved players</b></p>
@@ -857,7 +864,7 @@ function drawBets() {
     if (a.pressBack == null) a.pressBack = Number(a.press) || 0;
     pressCols.forEach(key => { if (a[key] == null) a[key] = Number(a.press) || 0; });
     if (a.pressDown == null) a.pressDown = 2;
-    ids.forEach(id => { if (a.player[id] == null) a.player[id] = 3; });
+    ids.forEach(id => { if (a.player[id] == null) a.player[id] = playerJunkForId(id); });
     const eName = esc(name);
     const mode = pressModeOf(a);
     const modeLabel = mode === 'off' ? 'Off' : mode === 'manual' ? 'Manual' : 'Auto';
@@ -891,15 +898,55 @@ function capWords(value) {
     return lead + (up.length === ch.length ? up : ch);
   });
 }
+function defaultJunkNumber() {
+  const el = document.getElementById('dJunk');
+  const n = el ? Number(el.value) : 3;
+  return isFinite(n) ? n : 3;
+}
+function playerJunkForId(id) {
+  const p = players.find(x => String(x.initials || '').toUpperCase() === String(id || '').toUpperCase());
+  if (p && p.junk != null && p.junk !== '' && isFinite(Number(p.junk))) return Number(p.junk);
+  return defaultJunkNumber();
+}
+function playerJunkValue(p) {
+  if (p && p.junk != null && p.junk !== '' && isFinite(Number(p.junk))) return Number(p.junk);
+  const id = String((p && p.initials) || '').toUpperCase();
+  const vals = [];
+  if (id) Object.keys(amounts).forEach(name => {
+    const bet = amounts[name];
+    if (bet && bet.player && bet.player[id] != null && isFinite(Number(bet.player[id]))) vals.push(Number(bet.player[id]));
+  });
+  if (vals.length) return vals[0];
+  return defaultJunkNumber();
+}
+function setPlayerJunk(i, value) {
+  const p = players[i];
+  if (!p) return;
+  const n = Math.max(0, Number(value) || 0);
+  p.junk = n;
+  const id = String(p.initials || '').toUpperCase();
+  if (!id) return;
+  Object.keys(amounts).forEach(name => {
+    if (!amounts[name]) return;
+    if (!amounts[name].player) amounts[name].player = {};
+    amounts[name].player[id] = n;
+  });
+}
 function draw() {
   players.forEach(p => { if (p) p.tee = validTee(p.tee); });
-  document.getElementById('players').innerHTML = '<tr><th>Name</th><th>Init</th><th>Tee</th><th>Hcp</th><th>Box</th><th></th></tr>' +
-    players.map((p, i) => '<tr><td><input class="name' + (p.name ? '' : ' need') + '" data-i="' + i + '" data-f="name" value="' + esc(p.name) + '" autocapitalize="words"></td><td><input class="initials' + (p.initials ? '' : ' need') + '" data-i="' + i + '" data-f="initials" value="' + esc(p.initials) + '" maxlength="3" autocapitalize="characters"></td><td><select data-i="' + i + '" aria-label="Tee">' +
-      courseData().tees.map(t => '<option' + (t === p.tee ? ' selected' : '') + '>' + esc(t) + '</option>').join('') +
-      '</select></td><td><span class="hcpstep"><button type="button" tabindex="-1" data-hcp-step="-1" data-i="' + i + '" aria-label="Lower handicap">−</button><span class="hcpval' + (String(p.hcp == null ? '' : p.hcp).trim() ? '' : ' need') + '" data-i="' + i + '">' + esc(hcpShown(p.hcp)) + '</span><button type="button" tabindex="-1" data-hcp-step="1" data-i="' + i + '" aria-label="Raise handicap">+</button></span></td><td><button type="button" tabindex="-1" data-box="' + i + '" class="' + (p.box ? 'on' : '') + '">' + (p.box ? 'In' : 'Off') + '</button></td><td><button type="button" tabindex="-1" data-remove="' + i + '" aria-label="Remove">✕</button></td></tr>').join('');
+  document.getElementById('players').innerHTML = players.map((p, i) => {
+    const tee = '<select class="tee" data-i="' + i + '" aria-label="Tee">' + courseData().tees.map(t => '<option' + (t === p.tee ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '</select>';
+    const hcp = '<span class="hcpstep"><button type="button" tabindex="-1" data-hcp-step="-1" data-i="' + i + '" aria-label="Lower handicap">−</button><span class="hcpval' + (String(p.hcp == null ? '' : p.hcp).trim() ? '' : ' need') + '" data-i="' + i + '">' + esc(hcpShown(p.hcp)) + '</span><button type="button" tabindex="-1" data-hcp-step="1" data-i="' + i + '" aria-label="Raise handicap">+</button></span>';
+    const junk = '<span class="pjunk"><button type="button" tabindex="-1" data-pjunk-step="-1" data-i="' + i + '" aria-label="Decrease junk">−</button><input data-pjunk="1" data-i="' + i + '" inputmode="decimal" aria-label="Junk override" value="' + playerJunkValue(p) + '"><button type="button" tabindex="-1" data-pjunk-step="1" data-i="' + i + '" aria-label="Increase junk">+</button></span>';
+    return '<div class="pcard"><div class="pline"><input class="name' + (p.name ? '' : ' need') + '" data-i="' + i + '" data-f="name" value="' + esc(p.name) + '" autocapitalize="words" aria-label="Name"><input class="initials' + (p.initials ? '' : ' need') + '" data-i="' + i + '" data-f="initials" value="' + esc(p.initials) + '" maxlength="3" autocapitalize="characters" aria-label="Initials">' + hcp + '</div><div class="pline">' + tee + junk + '<button type="button" tabindex="-1" data-box="' + i + '" class="box' + (p.box ? ' on' : '') + '">' + (p.box ? 'In' : 'Off') + '</button><button type="button" tabindex="-1" data-remove="' + i + '" class="remove" aria-label="Remove">✕</button></div></div>';
+  }).join('');
   drawBets();
   document.querySelectorAll('#players input').forEach(el => {
     el.oninput = () => {
+      if (!el.dataset.f) {
+        if (el.dataset.pjunk) setPlayerJunk(Number(el.dataset.i), el.value);
+        return;
+      }
       if (el.dataset.f === 'initials') {
         const up = el.value.toUpperCase();
         if (up !== el.value) {
@@ -946,7 +993,7 @@ function draw() {
   drawJunkTypes();
 }
 function syncPlayers() {
-  document.querySelectorAll('#players input').forEach(el => { players[el.dataset.i][el.dataset.f] = el.value; });
+  document.querySelectorAll('#players input[data-f]').forEach(el => { players[el.dataset.i][el.dataset.f] = el.value; });
   document.querySelectorAll('#players select').forEach(el => { players[el.dataset.i].tee = el.value; });
 }
 function hcpShown(raw) {
@@ -1138,7 +1185,10 @@ if (dJunkEl) dJunkEl.addEventListener('change', () => {
   names.forEach(name => {
     if (!amounts[name]) return;
     if (!amounts[name].player) amounts[name].player = {};
-    players.filter(p => p.initials).forEach(p => { amounts[name].player[String(p.initials).toUpperCase()] = junk; });
+    players.filter(p => p.initials).forEach(p => {
+      p.junk = junk;
+      amounts[name].player[String(p.initials).toUpperCase()] = junk;
+    });
   });
   drawBets();
   persistSetup();
@@ -1195,6 +1245,14 @@ document.addEventListener('touchend', e => {
   armGhostSwallow();
 }, { passive: false });
 document.getElementById('players').onclick = e => {
+  const junkStep = e.target.closest('button[data-pjunk-step]');
+  if (junkStep) {
+    syncPlayers();
+    const i = Number(junkStep.dataset.i);
+    setPlayerJunk(i, playerJunkValue(players[i]) + Number(junkStep.dataset.pjunkStep || 0));
+    draw();
+    return;
+  }
   const step = e.target.closest('button[data-hcp-step]');
   if (step) { syncPlayers(); stepPlayerHcp(Number(step.dataset.i), Number(step.dataset.hcpStep)); return; }
   const box = e.target.closest('button[data-box]');
@@ -1437,7 +1495,7 @@ function copyBets() {
     if (cols[1] !== cols[0]) amounts[name][cols[1]] = values.pressSecond;
     amounts[name].pressDown = values.pressDown;
     if (amounts[name].autoPress == null) amounts[name].autoPress = true;
-    players.filter(p => p.initials).forEach(p => amounts[name].player[p.initials] = junk);
+    players.filter(p => p.initials).forEach(p => { p.junk = junk; amounts[name].player[String(p.initials).toUpperCase()] = junk; });
   });
   drawBets();
   document.getElementById('status').textContent = 'Copied ' + values.first + ' / ' + values.second + ' / ' + values.overall + ', press ' + values.pressFirst + ' on the 1st 9 and ' + values.pressSecond + ' on the 2nd 9, at ' + values.pressDown + ' down, junk ' + junk + ' into ' + list.length + ' matches.';
@@ -1454,6 +1512,7 @@ function noMoneyRound() {
     a.first = 0; a.second = 0; a.overall = 0; a.press = 0; a.pressFront = 0; a.pressBack = 0; a.mp = 0;
     try { pressFields().forEach(k => { a[k] = 0; }); } catch (err) {}
     if (a.player) Object.keys(a.player).forEach(id => { a.player[id] = 0; });
+    players.forEach(p => { p.junk = 0; });
   });
   drawBets();
   const status = document.getElementById('status');
