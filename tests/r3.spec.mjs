@@ -568,32 +568,61 @@ test('stacked setup players fit five across without sideways scroll', async ({ p
   const fits = () => page.evaluate(() => {
     const el = document.getElementById('players');
     const pageWider = document.documentElement.scrollWidth > document.documentElement.clientWidth + 1;
-    const rowWider = [...el.querySelectorAll('.pline')].some(row => row.scrollWidth > row.clientWidth + 1);
-    return { pageWider: pageWider, rowWider: rowWider, listWider: el.scrollWidth > el.clientWidth + 1 };
+    const cardWider = [...el.querySelectorAll('.pcard')].some(row => row.scrollWidth > row.clientWidth + 1);
+    return { pageWider: pageWider, cardWider: cardWider, listWider: el.scrollWidth > el.clientWidth + 1 };
+  });
+  const columns = () => page.locator('.pcard').first().evaluate(card => {
+    const box = sel => {
+      const n = card.querySelector(sel);
+      const r = n.getBoundingClientRect();
+      const style = getComputedStyle(n);
+      return { left: r.left, right: r.right, top: r.top, width: r.width, height: r.height, border: style.borderTopWidth, background: style.backgroundColor };
+    };
+    const name = box('.name');
+    const init = box('.initials');
+    const hcp = box('.hcpstep');
+    const tee = box('.tee');
+    const x = box('.remove');
+    const flag = box('.box');
+    const junk = box('.pjunk');
+    const num = box('.hcpval');
+    const junkNum = box('.pjunk input');
+    const betNum = document.querySelector('#bets .amt input');
+    const betBorder = betNum ? getComputedStyle(betNum).borderTopWidth : '0px';
+    return { name, init, hcp, tee, x, flag, junk, num, junkNum, betBorder };
   });
   let fit = await fits();
-  expect(fit).toEqual({ pageWider: false, rowWider: false, listWider: false });
-  const align = await page.locator('.pcard').first().locator('.pline').evaluateAll(rows => rows.map(row => {
-    const controls = [...row.querySelectorAll('input, select, button, .hcpval')];
-    return {
-      tops: controls.map(el => Math.round(el.getBoundingClientRect().top)),
-      heights: controls.map(el => Math.round(el.getBoundingClientRect().height))
-    };
-  }));
-  align.forEach(row => {
-    expect(Math.min(...row.heights)).toBeGreaterThanOrEqual(44);
-    expect(Math.max(...row.tops) - Math.min(...row.tops)).toBeLessThan(2);
+  expect(fit).toEqual({ pageWider: false, cardWider: false, listWider: false });
+  let col = await columns();
+  expect(Math.abs(col.flag.left - col.init.left)).toBeLessThan(2);
+  expect(Math.abs(col.flag.width - col.init.width)).toBeLessThan(2);
+  expect(Math.abs(col.junk.left - col.hcp.left)).toBeLessThan(2);
+  expect(Math.abs(col.junk.width - col.hcp.width)).toBeLessThan(2);
+  expect(Math.abs(col.x.right - col.name.right)).toBeLessThan(2);
+  expect(col.tee.right).toBeLessThanOrEqual(col.x.left + 1);
+  expect(col.num.border).toBe('0px');
+  expect(col.junkNum.border).toBe('0px');
+  expect(col.betBorder).toBe('0px');
+  [col.name, col.init, col.tee, col.x, col.flag].forEach(item => {
+    expect(item.height).toBeGreaterThanOrEqual(44);
   });
+  expect(Math.abs(col.name.top - col.init.top)).toBeLessThan(2);
+  expect(Math.abs(col.tee.top - col.flag.top)).toBeLessThan(2);
+  expect(Math.abs(col.tee.top - col.x.top)).toBeLessThan(2);
   await page.evaluate(() => { document.documentElement.setAttribute('data-font', '3'); });
   fit = await fits();
-  expect(fit).toEqual({ pageWider: false, rowWider: false, listWider: false });
+  expect(fit).toEqual({ pageWider: false, cardWider: false, listWider: false });
+  col = await columns();
+  expect(Math.abs(col.flag.left - col.init.left)).toBeLessThan(2);
+  expect(Math.abs(col.junk.left - col.hcp.left)).toBeLessThan(2);
+  expect(Math.abs(col.x.right - col.name.right)).toBeLessThan(2);
   await page.evaluate(() => {
     document.documentElement.setAttribute('data-font', '1');
     const tabs = document.getElementById('tabbar');
     if (tabs) tabs.style.visibility = 'hidden';
   });
-  await page.locator('#players').screenshot({ path: shotDir + '/setup-stacked-built.png' });
-  await page.locator('#players').screenshot({ path: artDir + '/setup-stacked-built.png' });
+  await page.locator('#players').screenshot({ path: shotDir + '/setup-stacked-v2.png' });
+  await page.locator('#players').screenshot({ path: artDir + '/setup-stacked-v2.png' });
   await page.locator('.pcard').nth(4).locator('button[data-pjunk-step="1"]').click();
   const after = await page.evaluate(() => {
     const name = Object.keys(amounts).find(n => amounts[n] && amounts[n].player && amounts[n].player.DK != null);
