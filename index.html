@@ -323,7 +323,10 @@ try {
   #players .pcard { display:grid; grid-template-columns:minmax(0,1fr) 3.5em 7.8em; grid-template-areas:"name init hcp" "teex box junk"; column-gap:6px; row-gap:6px; align-items:center; background:#fff; border:1px solid #d5e0d4; border-radius:12px; padding:8px; box-sizing:border-box; max-width:100%; }
   #players input, #players select, #players button, #players .hcpval { box-sizing:border-box; height:44px; min-height:44px; margin:0; }
   #players input.name { grid-area:name; width:100%; min-width:0; padding:0 8px; }
-  #players input.initials { grid-area:init; width:100%; min-width:0; padding:0; text-align:center; }
+  #players .initcell { grid-area:init; position:relative; min-width:0; height:44px; }
+  #players input.initials { width:100%; min-width:0; padding:0; text-align:center; }
+  #players .initcell .pov { position:absolute; left:0; right:0; bottom:2px; text-align:center; font-size:9px; font-weight:800; color:#1f6b45; line-height:1; pointer-events:none; }
+  #players .initcell.has-ov input.initials { padding-bottom:11px; }
   #players .hcpstep { grid-area:hcp; }
   #players .tee-x { grid-area:teex; display:flex; align-items:center; gap:6px; min-width:0; }
   #players select.tee { flex:1 1 auto; width:auto; min-width:0; max-width:none; padding:0 4px; }
@@ -332,9 +335,54 @@ try {
   #players .hcpstep, #players .pjunk { display:grid; grid-template-columns:36px minmax(0,1fr) 36px; align-items:center; width:100%; height:44px; gap:1px; }
   #players .hcpstep button, #players .pjunk button { width:36px; min-width:36px; padding:0; font-size:18px; font-weight:750; }
   #players .hcpval, #players .pjunk input { width:100%; min-width:0; padding:0; text-align:center; font-weight:800; font-variant-numeric:tabular-nums; }
+  #players .hcpval { display:flex; align-items:center; justify-content:center; height:auto; min-height:0; line-height:1; }
   #players button.remove { flex:none; width:44px; min-width:44px; padding:0; }
   .amt input, #screen-setup .defaults .ctrl input, #screen-setup .hrow .amt input, .jstep .jamt, #players .hcpval, #players .pjunk input { border:0; background:transparent; box-shadow:none; border-radius:0; outline:none; -webkit-appearance:none; appearance:none; }
   #players .hcpval.need { color:#8a5a00; }
+  .setup-note { color:#5e6f64; margin:0 0 8px; }
+  #setupList { display:flex; flex-direction:column; }
+  button.grow { display:flex; align-items:flex-start; gap:10px; width:100%; text-align:left; background:transparent; border:0; border-bottom:1px solid #e4ece6; border-radius:0; padding:10px 2px; min-height:44px; }
+  button.grow:last-child { border-bottom:0; }
+  .check { flex:none; width:28px; height:28px; margin-top:2px; border-radius:50%; border:2px solid #c5d1c8; display:flex; align-items:center; justify-content:center; font-weight:800; color:transparent; background:#fff; }
+  .check.on { background:#1f6b45; border-color:#1f6b45; color:#fff; }
+  .gbody { flex:1; min-width:0; }
+  .gname { display:block; font-weight:800; font-size:var(--lead); line-height:1.25; color:#1c2b22; }
+  .gsum { display:block; margin-top:3px; font-size:var(--text); font-weight:650; color:#5e6f64; line-height:1.35; overflow-wrap:anywhere; }
+  .gnotes { display:block; margin-top:2px; font-size:12px; font-style:italic; color:#5e6f64; }
+  .tag { display:inline-block; margin-left:6px; padding:2px 7px; border-radius:6px; background:#e7f3ec; color:#146b34; font-size:11px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; vertical-align:middle; }
+  .tag.muted { background:#eef1ef; color:#5e6f64; }
+  #amountsFrom { text-transform:none; letter-spacing:0; font-size:12px; }
+  .setup-flags { display:flex; gap:8px; margin-top:8px; }
+  .setup-flags button { flex:1; min-height:44px; font-weight:750; }
+  .autosum { background:#e7f3ec; border-radius:8px; padding:8px 10px; font-size:var(--text); font-weight:700; color:#146b34; line-height:1.35; margin:8px 0; }
+  .sec { font-weight:800; margin:12px 0 6px; color:#1c2b22; }
+  .brow input.chg { color:#1f6b45; }
+  .linkbox { background:#fff; border:1px dashed #c5d1c8; border-radius:10px; padding:10px; font-size:12px; font-weight:650; color:#1c2b22; word-break:break-all; line-height:1.4; }
+  .jgrid { display:grid; grid-template-columns:1fr auto auto; gap:6px 10px; align-items:center; margin:8px 0; font-size:var(--text); }
+  .jgrid .jh { font-size:11px; font-weight:700; color:#5e6f64; text-transform:uppercase; letter-spacing:.04em; }
+  .jgrid .jn { font-weight:750; }
+  .jgrid .jon { color:#146b34; font-weight:800; }
+  .jgrid .joff { color:#9aa89e; font-weight:650; }
+  .jgrid .jv { font-weight:800; text-align:right; font-variant-numeric:tabular-nums; }
+  #bets { display:flex; flex-direction:column; gap:8px; }
+  .matchcard { border:1px solid #c5d1c8; border-radius:12px; padding:10px; background:#fff; }
+  .matchcard.changed { border-color:#1f6b45; background:#f7faf8; }
+  .matchhead { display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:6px; }
+  .matchhead .title { font-weight:800; font-size:var(--lead); min-width:0; }
+  .hint { display:inline-block; margin:0 0 8px; padding:4px 8px; border-radius:6px; background:#e7f3ec; color:#146b34; font-size:12px; font-weight:700; }
+  .povline { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 8px; }
+  .povchip { background:#e7f3ec; color:#146b34; border-radius:999px; padding:3px 8px; font-size:12px; font-weight:800; }
+  .brow { display:flex; flex-wrap:wrap; gap:8px 10px; }
+  .brow .b { display:flex; flex-direction:column; align-items:center; gap:2px; min-width:0; }
+  .brow .bl { font-size:11px; color:#5e6f64; font-weight:650; }
+  .brow .bv.chg { color:#1f6b45; }
+  .matchtools { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:8px; }
+  .matchtools button, .matchtools select { min-height:44px; }
+  .sheet-card .flab { display:block; margin:8px 0 4px; }
+  .sheet-card input[type="text"], .sheet-card textarea { width:100%; box-sizing:border-box; min-height:44px; font:inherit; font-weight:650; }
+  .sheet-card textarea { min-height:72px; }
+  .sheet-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  .sheet-actions button { flex:1 1 30%; min-height:44px; }
   .jrow { display:flex; align-items:center; gap:8px; padding:6px 0; border-top:1px solid #e4ece6; }
   .jrow .jmeta { flex:1; min-width:0; }
   .jrow .jname { font-weight:750; color:#1c2b22; }
@@ -465,8 +513,14 @@ try {
       <div id="playerDetail" hidden></div>
     </div>
   </div>
-  <div class="card">
-    <h2>Default bet</h2>
+  <div class="card" id="bettingSetup">
+    <h2>Betting Setup</h2>
+    <p class="setup-note">Money rules only. Last used loads next round. No Set Default.</p>
+    <div id="setupList"></div>
+    <p class="setup-actions"><button type="button" id="setupManage">Manage…</button> <button type="button" id="setupShare">Share</button> <button type="button" id="setupSaveAs" class="primary">Save as…</button></p>
+  </div>
+  <div class="card" id="amountsCard">
+    <h2>Amounts <span id="amountsFrom" class="tag muted" hidden></span></h2>
     <div class="defaults" id="defaults">
       <div class="col"><div class="lab">1st 9</div><div class="ctrl"><button type="button" data-step="-1" data-id="dFirst" aria-label="Decrease 1st 9">−</button><input id="dFirst" type="text" inputmode="decimal" value="0"><button type="button" data-step="1" data-id="dFirst" aria-label="Increase 1st 9">+</button></div></div>
       <div class="col"><div class="lab">2nd 9</div><div class="ctrl"><button type="button" data-step="-1" data-id="dSecond" aria-label="Decrease 2nd 9">−</button><input id="dSecond" type="text" inputmode="decimal" value="0"><button type="button" data-step="1" data-id="dSecond" aria-label="Increase 2nd 9">+</button></div></div>
@@ -477,7 +531,12 @@ try {
       <div class="col"><div class="lab">Junk</div><div class="ctrl"><button type="button" data-step="-1" data-id="dJunk" aria-label="Decrease junk">−</button><input id="dJunk" type="text" inputmode="decimal" value="3"><button type="button" data-step="1" data-id="dJunk" aria-label="Increase junk">+</button></div></div>
       <div class="col"><div class="lab">Strokes %</div><div class="ctrl"><button type="button" data-step="-1" data-id="dPct" aria-label="Decrease strokes percent">−</button><input id="dPct" type="text" inputmode="decimal" value="100"><button type="button" data-step="1" data-id="dPct" aria-label="Increase strokes percent">+</button></div></div>
     </div>
-    <p class="setup-actions"><button type="button" id="saveDefault" tabindex="-1">Set Default</button> <button type="button" id="apply" tabindex="-1" onclick="copyBets()">All Matches</button> <button type="button" id="noMoney" tabindex="-1">Set to $0</button></p>
+    <div class="setup-flags">
+      <button type="button" id="dPressMode">Auto presses</button>
+      <button type="button" id="dBox">Box off</button>
+    </div>
+    <p class="setup-actions"><button type="button" id="apply" tabindex="-1" onclick="copyBets()">All Matches</button> <button type="button" id="noMoney" tabindex="-1">Set to $0</button></p>
+    <p class="setup-actions" id="setupDiverge" hidden><button type="button" id="setupUpdate">Update</button> <button type="button" id="setupSaveAs2" class="primary">Save as…</button></p>
   </div>
   <div class="card" id="junkSetup">
     <h2>Junk types</h2>
@@ -488,7 +547,8 @@ try {
   <div class="card">
     <h2>Matches</h2>
     <p id="status"></p>
-    <div class="hscroll"><table id="bets"></table></div>
+    <div id="betSetupPanel"></div>
+    <div id="bets"></div>
     <p>Start on <button type="button" id="startPrev" tabindex="-1">−</button> <button type="button" id="startHole" tabindex="-1">1</button> <button type="button" id="startNext" tabindex="-1">+</button> <span class="note">Any hole. The nine you start in is the 1st 9.</span> Date <input type="date" id="roundDate"></p>
     <p><button type="button" id="save" class="primary" tabindex="-1">Start scoring</button> <button type="button" id="clearAll" tabindex="-1">Clear all scores</button></p>
     <p id="saveNote"></p>
@@ -562,6 +622,10 @@ try {
   <button type="button" data-screen="card">Card</button>
   <button type="button" data-screen="settle">Settle</button>
 </nav>
+<div id="setupSheet" class="sheet" hidden>
+  <div class="sheet-back" data-setup-close></div>
+  <div class="sheet-card" id="setupSheetCard" role="dialog" aria-modal="true"></div>
+</div>
 <div id="junkSheet" class="sheet" hidden>
   <div class="sheet-back" data-sheet-close></div>
   <div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="junkSheetTitle">
@@ -849,13 +913,16 @@ function syncBets() {
 function drawBets() {
   const m = matchNames();
   const nPlayers = players.filter(p => p.initials).length;
-  document.getElementById('status').textContent = nPlayers >= 5
+  const status = document.getElementById('status');
+  if (status && !status.dataset.lock) status.textContent = nPlayers >= 5
     ? (m.box.length === 2 ? 'Box is ' + m.box.join('+') + '. Tap a match On to play it.' : 'Five players. Set Box On for two players, then tap each match On.')
     : 'Tap a match On to play it.';
   const names = m.team.concat(m.side);
   const ids = players.filter(p => p.initials).map(p => String(p.initials).toUpperCase());
   const pressCols = pressFields();
-  document.getElementById('bets').innerHTML = names.length ? '<tr><th>Match</th><th></th><th>1st 9</th><th>2nd 9</th><th>Overall</th><th>1st 9 press</th><th>2nd 9 press</th><th>Down</th><th>Max presses per nine</th>' + ids.map(id => '<th>Junk ' + esc(id) + '</th>').join('') + '</tr>' + names.map(name => {
+  const betsEl = document.getElementById('bets');
+  if (!betsEl) return;
+  betsEl.innerHTML = names.map(name => {
     if (!amounts[name]) amounts[name] = { on: m.team.includes(name) || (names.length === 1 && !m.team.length), first:0, second:0, overall:0, press:0, pressFront:0, pressBack:0, pressDown:2, autoPress:true, player:{}, offers:[], mp18:false, mp:0 };
     const a = amounts[name];
     if (a.mp18 == null) a.mp18 = false;
@@ -869,29 +936,31 @@ function drawBets() {
     const eName = esc(name);
     const mode = pressModeOf(a);
     const modeLabel = mode === 'off' ? 'Off' : mode === 'manual' ? 'Manual' : 'Auto';
-    const amt = (f, value, extra) => '<span class="amt"><button type="button" tabindex="-1" data-nudge="-1" aria-label="Decrease">−</button><input data-bet="' + eName + '" data-f="' + f + '" type="text" inputmode="decimal" value="' + value + '"' + (extra || '') + '><button type="button" tabindex="-1" data-nudge="1" aria-label="Increase">+</button></span>';
-    const num = f => '<td>' + amt(f, a[f]) + '</td>';
+    const amt = (f, value, label) => '<span class="b"><span class="bl">' + label + '</span><span class="amt"><button type="button" tabindex="-1" data-nudge="-1" aria-label="Decrease ' + label + '">−</button><input data-bet="' + eName + '" data-f="' + f + '" type="text" inputmode="decimal" value="' + value + '" aria-label="' + label + '"><button type="button" tabindex="-1" data-nudge="1" aria-label="Increase ' + label + '">+</button></span></span>';
     const capCur = a.maxPresses == null || a.maxPresses === '' ? '' : String(Number(a.maxPresses));
     const capOpt = (v, label) => '<option value="' + v + '"' + (capCur === String(v) ? ' selected' : '') + '>' + label + '</option>';
-    const capSelect = '<td><select data-bet="' + eName + '" data-cap="1" aria-label="Max presses per nine">' + capOpt('', 'No limit') + [1, 2, 3, 4].map(n => capOpt(n, String(n))).join('') + '</select></td>';
+    const capSelect = '<select data-bet="' + eName + '" data-cap="1" aria-label="Max presses per nine">' + capOpt('', 'No limit') + [1, 2, 3, 4].map(n => capOpt(n, String(n))).join('') + '</select>';
     const mpBtn = '<button type="button" tabindex="-1" data-format="' + eName + '" class="' + (a.mp18 ? 'on' : '') + '">' + (a.mp18 ? '18 holes' : 'Nines') + '</button>';
-    const mpStake = a.mp18 ? ' ' + amt('mp', Number(a.mp) || 0, ' aria-label="18-hole stake"') : '';
-    return '<tr><td>' + eName + '<br>' + mpBtn + mpStake + '</td><td><button type="button" tabindex="-1" data-bet="' + eName + '" class="' + (a.on ? 'on' : '') + '">' + (a.on ? 'On' : 'Off') +
-      '</button></td>' + ['first','second','overall',pressCols[0],pressCols[1]].map(num).join('') +
-      '<td><button type="button" tabindex="-1" data-mode="' + eName + '" class="' + (mode === 'off' ? 'press-off' : 'on') + '">' + modeLabel + '</button>' + amt('pressDown', a.pressDown) + '</td>' +
-      capSelect +
-      ids.map(id => '<td><span class="amt"><button type="button" tabindex="-1" data-nudge="-1" aria-label="Decrease junk">−</button><input data-bet="' + eName + '" data-p="' + esc(id) + '" type="text" inputmode="decimal" value="' + (a.player[id] || 0) + '"><button type="button" tabindex="-1" data-nudge="1" aria-label="Increase junk">+</button></span></td>').join('') + '</tr>';
-  }).join('') : '';
+    const mpStake = a.mp18 ? amt('mp', Number(a.mp) || 0, '18-hole') : '';
+    const junkBits = ids.map(id => '<span class="b"><span class="bl">Junk ' + esc(id) + '</span><span class="amt"><button type="button" tabindex="-1" data-nudge="-1" aria-label="Decrease junk">−</button><input data-bet="' + eName + '" data-p="' + esc(id) + '" type="text" inputmode="decimal" value="' + (a.player[id] || 0) + '" aria-label="Junk ' + esc(id) + '"><button type="button" tabindex="-1" data-nudge="1" aria-label="Increase junk">+</button></span></span>').join('');
+    return '<div class="matchcard" data-match="' + eName + '"><div class="matchhead"><span class="title">' + eName + '</span><span class="tag muted" data-match-tag hidden></span></div><p class="hint" hidden></p><p class="povline" hidden></p><div class="brow">' +
+      amt('first', a.first, '1st 9') + amt('second', a.second, '2nd 9') + amt('overall', a.overall, 'Overall') +
+      amt(pressCols[0], a[pressCols[0]], '1st 9 press') + amt(pressCols[1], a[pressCols[1]], '2nd 9 press') +
+      amt('pressDown', a.pressDown, 'Down') + mpStake + '</div><div class="matchtools"><button type="button" tabindex="-1" data-bet="' + eName + '" class="' + (a.on ? 'on' : '') + '">' + (a.on ? 'On' : 'Off') +
+      '</button><button type="button" tabindex="-1" data-mode="' + eName + '" class="' + (mode === 'off' ? 'press-off' : 'on') + '">' + modeLabel + '</button>' + mpBtn + capSelect + '</div><div class="brow">' + junkBits + '</div></div>';
+  }).join('');
   document.querySelectorAll('#bets input').forEach(el => el.oninput = () => {
     if (el.dataset.p) amounts[el.dataset.bet].player[el.dataset.p] = Number(el.value);
     else amounts[el.dataset.bet][el.dataset.f] = Number(el.value);
+    refreshSetupChrome();
   });
   document.querySelectorAll('#bets select[data-cap]').forEach(el => el.onchange = () => {
     const bet = amounts[el.dataset.bet];
     if (!bet) return;
     bet.maxPresses = el.value === '' ? null : Number(el.value);
   });
-  armAmountFields(document.getElementById('bets'));
+  armAmountFields(betsEl);
+  refreshSetupChrome();
 }
 function capWords(value) {
   return String(value).replace(/(^|\s)(\S)/g, (all, lead, ch) => {
@@ -920,6 +989,11 @@ function playerJunkValue(p) {
   if (vals.length) return vals[0];
   return defaultJunkNumber();
 }
+function junkOverrideForPlayer(p) {
+  if (!p || p.junk == null || p.junk === '' || !isFinite(Number(p.junk))) return null;
+  if (sameNum(p.junk, defaultJunkNumber())) return null;
+  return Number(p.junk);
+}
 function setPlayerJunk(i, value) {
   const p = players[i];
   if (!p) return;
@@ -939,7 +1013,11 @@ function draw() {
     const tee = '<select class="tee" data-i="' + i + '" aria-label="Tee">' + courseData().tees.map(t => '<option' + (t === p.tee ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '</select>';
     const hcp = '<span class="hcpstep"><button type="button" tabindex="-1" data-hcp-step="-1" data-i="' + i + '" aria-label="Lower handicap">−</button><span class="hcpval' + (String(p.hcp == null ? '' : p.hcp).trim() ? '' : ' need') + '" data-i="' + i + '">' + esc(hcpShown(p.hcp)) + '</span><button type="button" tabindex="-1" data-hcp-step="1" data-i="' + i + '" aria-label="Raise handicap">+</button></span>';
     const junk = '<span class="pjunk"><button type="button" tabindex="-1" data-pjunk-step="-1" data-i="' + i + '" aria-label="Decrease junk">−</button><input data-pjunk="1" data-i="' + i + '" inputmode="decimal" aria-label="Junk override" value="' + playerJunkValue(p) + '"><button type="button" tabindex="-1" data-pjunk-step="1" data-i="' + i + '" aria-label="Increase junk">+</button></span>';
-    return '<div class="pcard"><input class="name' + (p.name ? '' : ' need') + '" data-i="' + i + '" data-f="name" value="' + esc(p.name) + '" autocapitalize="words" aria-label="Name"><input class="initials' + (p.initials ? '' : ' need') + '" data-i="' + i + '" data-f="initials" value="' + esc(p.initials) + '" maxlength="3" autocapitalize="characters" aria-label="Initials">' + hcp + '<div class="tee-x">' + tee + '<button type="button" tabindex="-1" data-remove="' + i + '" class="remove" aria-label="Remove">✕</button></div><button type="button" tabindex="-1" data-box="' + i + '" class="box' + (p.box ? ' on' : '') + '">' + (p.box ? 'In' : 'Off') + '</button>' + junk + '</div>';
+    const ov = junkOverrideForPlayer(p);
+    const ovId = String(p.initials || '').toUpperCase();
+    const pov = ov == null ? '' : '<span class="pov">' + esc(ovId) + ' ' + dollarText(ov) + '</span>';
+    const initials = '<span class="initcell' + (ov == null ? '' : ' has-ov') + '"><input class="initials' + (p.initials ? '' : ' need') + '" data-i="' + i + '" data-f="initials" value="' + esc(p.initials) + '" maxlength="3" autocapitalize="characters" aria-label="Initials">' + pov + '</span>';
+    return '<div class="pcard"><input class="name' + (p.name ? '' : ' need') + '" data-i="' + i + '" data-f="name" value="' + esc(p.name) + '" autocapitalize="words" aria-label="Name">' + initials + hcp + '<div class="tee-x">' + tee + '<button type="button" tabindex="-1" data-remove="' + i + '" class="remove" aria-label="Remove">✕</button></div><button type="button" tabindex="-1" data-box="' + i + '" class="box' + (p.box ? ' on' : '') + '">' + (p.box ? 'In' : 'Off') + '</button>' + junk + '</div>';
   }).join('');
   drawBets();
   document.querySelectorAll('#players input').forEach(el => {
@@ -1153,6 +1231,7 @@ if (junkSetupEl) {
         if (input) input.value = String(next);
       }
       persistSetup();
+      refreshSetupChrome();
       return;
     }
     const btn = e.target.closest('button[data-junk-toggle]');
@@ -1162,6 +1241,7 @@ if (junkSetupEl) {
     junkTypes[id].on = !junkTypes[id].on;
     drawJunkTypes();
     persistSetup();
+    refreshSetupChrome();
   };
   junkSetupEl.addEventListener('change', e => {
     const input = e.target.closest('input[data-junk-amt]');
@@ -1170,6 +1250,7 @@ if (junkSetupEl) {
     junkTypes[input.dataset.junkAmt].amt = isFinite(n) ? n : null;
     if (input.dataset.junkAmt === 'birdie' && junkTypes.eagle.amt == null) drawJunkTypes();
     persistSetup();
+    refreshSetupChrome();
   });
 }
 const quickScoresEl = document.getElementById('quickScores');
@@ -1191,7 +1272,7 @@ if (dJunkEl) dJunkEl.addEventListener('change', () => {
       amounts[name].player[String(p.initials).toUpperCase()] = junk;
     });
   });
-  drawBets();
+  draw();
   persistSetup();
 });
 const junkSheetEl = document.getElementById('junkSheet');
@@ -1279,6 +1360,7 @@ function armAmountFields(root) {
     el.dataset.armed = '1';
     el.addEventListener('focus', () => {
       setTimeout(() => {
+        if (document.activeElement !== el) return;
         const n = String(el.value).length;
         try { el.select(); } catch (e) {}
         try { el.setSelectionRange(0, n); } catch (e) {
@@ -1317,6 +1399,7 @@ function applyStep(btn) {
   const next = (Number(input.value) || 0) + Number(btn.dataset.step || btn.dataset.nudge || 0);
   input.value = String(Math.min(max, Math.max(min, next)));
   writeAmount(input);
+  if (typeof refreshSetupChrome === 'function') refreshSetupChrome();
 }
 let stepperTimer = 0, stepperRepeat = 0, stepperFromPointer = false;
 function stopStepRepeat() {
@@ -1361,6 +1444,7 @@ document.getElementById('bets').onclick = e => {
     bet.autoPress = next === 'auto';
     mode.className = next === 'off' ? 'press-off' : 'on';
     mode.textContent = next === 'off' ? 'Off' : next === 'manual' ? 'Manual' : 'Auto';
+    refreshSetupChrome();
     return;
   }
   const nudge = e.target.closest('button[data-nudge]');
@@ -1403,11 +1487,562 @@ function applyDefaultFields(saved) {
   set('dPct', saved.pct);
   if (saved.pct != null && saved.pct !== '') strokePct = Number(saved.pct);
 }
-document.getElementById('saveDefault').onclick = () => {
-  try { localStorage.setItem('bet-default', JSON.stringify(readDefaults())); } catch (e) {}
-  document.getElementById('status').textContent = 'Default saved for the next open.';
+let bettingSetups = [];
+let selectedSetupId = '';
+let lastUsedSetupId = '';
+let setupPressMode = 'auto';
+let setupBox = false;
+let chromeLock = false;
+function sameNum(a, b) { return Math.abs((Number(a) || 0) - (Number(b) || 0)) < 0.001; }
+function numOr(v, fallback) { const n = Number(v); return isFinite(n) ? n : fallback; }
+function newSetupId() { return 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function typesSnapshot() {
+  const out = {};
+  JUNK_DEFS.forEach(d => {
+    const row = junkTypes[d.id] || {};
+    out[d.id] = { on: !!row.on, amt: row.amt == null || row.amt === '' || !isFinite(Number(row.amt)) ? null : Number(row.amt) };
+  });
+  return out;
+}
+function readFormMoney() {
+  return {
+    first: numOr(document.getElementById('dFirst') && document.getElementById('dFirst').value, 0),
+    second: numOr(document.getElementById('dSecond') && document.getElementById('dSecond').value, 0),
+    overall: numOr(document.getElementById('dOverall') && document.getElementById('dOverall').value, 0),
+    pressFront: numOr(document.getElementById('dPressF') && document.getElementById('dPressF').value, 0),
+    pressBack: numOr(document.getElementById('dPressB') && document.getElementById('dPressB').value, 0),
+    pressDown: numOr(document.getElementById('dDown') && document.getElementById('dDown').value, 2) || 2,
+    junk: numOr(document.getElementById('dJunk') && document.getElementById('dJunk').value, 0),
+    pct: numOr(document.getElementById('dPct') && document.getElementById('dPct').value, 100),
+    pressMode: setupPressMode || 'auto',
+    box: !!setupBox,
+    types: typesSnapshot()
+  };
+}
+function typeDollar(types, id, base) {
+  const row = (types && types[id]) || {};
+  if (row.amt != null && row.amt !== '' && isFinite(Number(row.amt))) return Number(row.amt);
+  if (id === 'eagle') return 2 * typeDollar(types, 'birdie', base);
+  return Number(base) || 0;
+}
+function setupSummary(s) {
+  const f = Number(s.first) || 0, sec = Number(s.second) || 0, o = Number(s.overall) || 0;
+  const parts = [];
+  if (sameNum(f, sec) && sameNum(sec, o)) parts.push(dollarText(f) + ' Nassau');
+  else parts.push(dollarText(f) + ' / ' + dollarText(sec) + ' / ' + dollarText(o));
+  const mode = s.pressMode || 'auto';
+  const down = Number(s.pressDown) || 2;
+  if (mode === 'auto') parts.push('auto ' + down + '-down presses');
+  else if (mode === 'manual') parts.push('manual ' + down + '-down presses');
+  const types = s.types || {};
+  const onTypes = JUNK_DEFS.filter(d => types[d.id] && types[d.id].on);
+  const base = Number(s.junk) || 0;
+  const explicit = onTypes.some(d => {
+    const amt = types[d.id].amt;
+    if (d.id === 'eagle' && (amt == null || amt === '')) return false;
+    return !(amt == null || amt === '') && !sameNum(amt, base);
+  });
+  if (!f && !sec && !o && onTypes.length) parts.push('junk only');
+  if (!explicit) { if (onTypes.length) parts.push(dollarText(base) + ' junk'); }
+  else onTypes.forEach(d => {
+    const label = d.id === 'greenie' ? 'KP' : d.name;
+    parts.push(label + ' ' + dollarText(typeDollar(types, d.id, base)));
+  });
+  if (s.box) parts.push('box on');
+  return parts.join(' · ');
+}
+function normalizeSetup(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const types = defaultJunkTypes();
+  const src = raw.types && typeof raw.types === 'object' ? raw.types : null;
+  if (src) Object.keys(types).forEach(id => {
+    const row = src[id];
+    if (!row) return;
+    types[id].on = !!row.on;
+    types[id].amt = row.amt == null || row.amt === '' || !isFinite(Number(row.amt)) ? null : Number(row.amt);
+  });
+  const s = {
+    id: raw.id || newSetupId(),
+    name: String(raw.name || 'Betting Setup').trim() || 'Betting Setup',
+    notes: String(raw.notes || ''),
+    first: numOr(raw.first, 0),
+    second: numOr(raw.second, 0),
+    overall: numOr(raw.overall, 0),
+    pressFront: raw.pressFront != null && raw.pressFront !== '' ? numOr(raw.pressFront, 0) : numOr(raw.press, 0),
+    pressBack: raw.pressBack != null && raw.pressBack !== '' ? numOr(raw.pressBack, 0) : numOr(raw.press, 0),
+    pressDown: numOr(raw.pressDown, 2) || 2,
+    junk: numOr(raw.junk, 0),
+    pct: raw.pct == null || raw.pct === '' ? 100 : numOr(raw.pct, 100),
+    pressMode: raw.pressMode === 'manual' || raw.pressMode === 'off' ? raw.pressMode : 'auto',
+    box: !!raw.box,
+    types: types
+  };
+  s.summary = setupSummary(s);
+  return s;
+}
+function selectedSetup() { return bettingSetups.find(s => s.id === selectedSetupId) || null; }
+function moneySame(a, b) {
+  if (!a || !b) return false;
+  const keys = ['first', 'second', 'overall', 'pressFront', 'pressBack', 'pressDown', 'junk', 'pct'];
+  if (keys.some(k => !sameNum(a[k], b[k]))) return false;
+  if ((a.pressMode || 'auto') !== (b.pressMode || 'auto')) return false;
+  if (!!a.box !== !!b.box) return false;
+  return JUNK_DEFS.every(d => {
+    const x = (a.types && a.types[d.id]) || {};
+    const y = (b.types && b.types[d.id]) || {};
+    if (!!x.on !== !!y.on) return false;
+    const xa = x.amt == null || x.amt === '' ? null : Number(x.amt);
+    const ya = y.amt == null || y.amt === '' ? null : Number(y.amt);
+    if (xa == null && ya == null) return true;
+    return xa != null && ya != null && sameNum(xa, ya);
+  });
+}
+function matchDiffers(a, s) {
+  if (!a || !s) return false;
+  const cols = pressFields();
+  const pf = a[cols[0]] != null ? a[cols[0]] : a.pressFront;
+  const pb = a[cols[1]] != null ? a[cols[1]] : a.pressBack;
+  return !sameNum(a.first, s.first) || !sameNum(a.second, s.second) || !sameNum(a.overall, s.overall) || !sameNum(pf, s.pressFront) || !sameNum(pb, s.pressBack) || !sameNum(a.pressDown, s.pressDown) || pressModeOf(a) !== (s.pressMode || 'auto');
+}
+function overrideIds(a) {
+  const base = defaultJunkNumber();
+  return players.filter(p => p.initials).map(p => String(p.initials).toUpperCase()).filter(id => a && a.player && a.player[id] != null && !sameNum(a.player[id], base));
+}
+function anyChangedMatch() {
+  const s = selectedSetup();
+  if (!s) return false;
+  let names = [];
+  try { const m = matchNames(); names = m.team.concat(m.side); } catch (e) { return false; }
+  return names.some(name => { const a = amounts[name]; return a && (matchDiffers(a, s) || overrideIds(a).length); });
+}
+function formDiverges() {
+  const s = selectedSetup();
+  return !!(s && !moneySame(readFormMoney(), s));
+}
+function setupTag(name) { return String(name || '').replace(/\s+setup$/i, '').toUpperCase(); }
+function playerOverrideText(id) {
+  const base = defaultJunkNumber();
+  const p = players.find(x => String(x.initials || '').toUpperCase() === String(id || '').toUpperCase());
+  let rate = null;
+  if (p && p.junk != null && p.junk !== '' && isFinite(Number(p.junk))) rate = Number(p.junk);
+  else {
+    try { const cr = configuredJunkRate(id); if (!sameNum(cr, base)) rate = cr; } catch (e) {}
+  }
+  if (rate == null || sameNum(rate, base)) return '';
+  return String(id) + ' ' + dollarText(rate);
+}
+function paintSetupFlags() {
+  const mode = document.getElementById('dPressMode');
+  if (mode) {
+    mode.textContent = setupPressMode === 'off' ? 'Presses off' : setupPressMode === 'manual' ? 'Manual presses' : 'Auto presses';
+    mode.className = setupPressMode === 'off' ? 'press-off' : 'on';
+  }
+  const box = document.getElementById('dBox');
+  if (box) {
+    box.textContent = setupBox ? 'Box on' : 'Box off';
+    box.className = setupBox ? 'on' : '';
+  }
+}
+function writeFormMoney(s) {
+  if (!s) return;
+  applyDefaultFields({ first: s.first, second: s.second, overall: s.overall, pressFront: s.pressFront, pressBack: s.pressBack, pressDown: s.pressDown, junk: s.junk, pct: s.pct });
+  setupPressMode = s.pressMode === 'manual' || s.pressMode === 'off' ? s.pressMode : 'auto';
+  setupBox = !!s.box;
+  if (s.types) applyJunkTypes(s.types);
+  paintSetupFlags();
+}
+function saveBettingSetups() {
+  try { localStorage.setItem('golf-setups', JSON.stringify({ list: bettingSetups, lastUsedId: lastUsedSetupId, selectedId: selectedSetupId })); } catch (e) {}
+}
+function loadBettingSetups() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem('golf-setups') || 'null'); } catch (e) {}
+  bettingSetups = saved && Array.isArray(saved.list) ? saved.list.map(normalizeSetup).filter(Boolean) : [];
+  lastUsedSetupId = (saved && saved.lastUsedId) || '';
+  selectedSetupId = (saved && saved.selectedId) || lastUsedSetupId || '';
+  if (!bettingSetups.length) {
+    let legacy = null;
+    try { legacy = JSON.parse(localStorage.getItem('bet-default') || 'null'); } catch (e) {}
+    if (legacy && typeof legacy === 'object') {
+      const s = normalizeSetup(Object.assign({ id: newSetupId(), name: 'Previous default', notes: 'Moved from Set Default.' }, legacy));
+      bettingSetups = [s];
+      lastUsedSetupId = s.id;
+      selectedSetupId = s.id;
+      try { localStorage.removeItem('bet-default'); } catch (e) {}
+      saveBettingSetups();
+    }
+  }
+  if (!bettingSetups.some(s => s.id === selectedSetupId)) selectedSetupId = lastUsedSetupId;
+  if (!bettingSetups.some(s => s.id === selectedSetupId)) selectedSetupId = bettingSetups[0] ? bettingSetups[0].id : '';
+  const current = selectedSetup();
+  if (current) writeFormMoney(current);
+  else paintSetupFlags();
+}
+function blankAmounts() {
+  setupPressMode = 'auto';
+  setupBox = false;
+  applyJunkTypes(null);
+  ['dFirst', 'dSecond', 'dOverall', 'dPressF', 'dPressB', 'dJunk'].forEach(id => { const el = document.getElementById(id); if (el) el.value = '0'; });
+  const down = document.getElementById('dDown');
+  if (down) down.value = '2';
+  const pct = document.getElementById('dPct');
+  if (pct) pct.value = '100';
+  strokePct = 100;
+  paintSetupFlags();
+  Object.keys(amounts).forEach(name => {
+    const a = amounts[name];
+    if (!a) return;
+    a.first = 0; a.second = 0; a.overall = 0; a.press = 0; a.pressFront = 0; a.pressBack = 0;
+    try { pressFields().forEach(k => { a[k] = 0; }); } catch (e) {}
+    if (a.player) Object.keys(a.player).forEach(id => { a.player[id] = 0; });
+  });
+  players.forEach(p => { p.junk = 0; });
+}
+function applyLastUsedSetup() {
+  const s = bettingSetups.find(x => x.id === lastUsedSetupId) || null;
+  if (!s) return;
+  selectedSetupId = s.id;
+  writeFormMoney(s);
+  saveBettingSetups();
+}
+function closeSetupSheet() {
+  const el = document.getElementById('setupSheet');
+  if (el) el.hidden = true;
+}
+function openSetupSheet(html) {
+  const card = document.getElementById('setupSheetCard');
+  const el = document.getElementById('setupSheet');
+  if (!card || !el) return;
+  card.innerHTML = html;
+  el.hidden = false;
+}
+function paintSetupList() {
+  const el = document.getElementById('setupList');
+  if (!el) return;
+  if (!bettingSetups.length) { el.innerHTML = '<p class="setup-note">No Betting Setups yet. Save as… keeps these amounts for the next round.</p>'; return; }
+  el.innerHTML = bettingSetups.map(s => {
+    const on = s.id === selectedSetupId;
+    const last = s.id === lastUsedSetupId ? ' <span class="tag">Last used</span>' : '';
+    const notes = s.notes ? '<span class="gnotes">' + esc(s.notes) + '</span>' : '';
+    return '<button type="button" class="grow" data-setup-id="' + esc(s.id) + '"><span class="check' + (on ? ' on' : '') + '">' + (on ? '✓' : '') + '</span><span class="gbody"><span class="gname">' + esc(s.name) + last + '</span><span class="gsum">' + esc(s.summary || setupSummary(s)) + '</span>' + notes + '</span></button>';
+  }).join('');
+}
+function paintAmountsFrom() {
+  const el = document.getElementById('amountsFrom');
+  const s = selectedSetup();
+  if (!el) return;
+  if (!s) { el.hidden = true; el.textContent = ''; return; }
+  el.hidden = false;
+  el.textContent = 'from ' + s.name;
+}
+function paintDiverge() {
+  const el = document.getElementById('setupDiverge');
+  const btn = document.getElementById('setupUpdate');
+  const s = selectedSetup();
+  const show = !!(s && (formDiverges() || anyChangedMatch()));
+  if (el) el.hidden = !show;
+  if (btn && s) btn.textContent = 'Update “' + s.name + '”';
+}
+function paintBetPanel() {
+  const el = document.getElementById('betSetupPanel');
+  if (!el) return;
+  const s = selectedSetup();
+  if (!s) { el.innerHTML = ''; return; }
+  const live = readFormMoney();
+  const diverged = formDiverges();
+  const summary = diverged ? setupSummary(live) : (s.summary || setupSummary(s));
+  const types = diverged ? live.types : s.types;
+  const base = diverged ? live.junk : s.junk;
+  const rows = JUNK_DEFS.map(d => {
+    const row = (types && types[d.id]) || {};
+    const on = !!row.on;
+    const amt = typeDollar(types, d.id, base);
+    return '<span class="jn">' + esc(d.name) + '</span><span class="' + (on ? 'jon' : 'joff') + '">' + (on ? 'On' : 'Off') + '</span><span class="jv">' + esc(dollarText(amt).replace(/^\$/, '')) + '</span>';
+  }).join('');
+  const showUpdate = diverged || anyChangedMatch();
+  const actions = showUpdate ? '<p class="setup-actions"><button type="button" id="setupUpdate2">Update “' + esc(s.name) + '”</button> <button type="button" class="primary" id="setupSaveAs3">Save as…</button></p>' : '';
+  const notes = s.notes ? '<p class="gnotes">' + esc(s.notes) + '</p>' : '';
+  el.innerHTML = '<p class="setup-note">Betting Setup: <b>' + esc(s.name) + '</b></p><div class="autosum" id="betSummary">' + esc(summary) + '</div><div class="sec">Junk in this setup</div><div class="jgrid"><span class="jh">Type</span><span class="jh">On</span><span class="jh">$</span>' + rows + '</div>' + notes + actions;
+  const update = document.getElementById('setupUpdate2');
+  const save = document.getElementById('setupSaveAs3');
+  if (update) update.onclick = updateSelectedSetup;
+  if (save) save.onclick = openSaveAsSheet;
+}
+function paintMatchCards() {
+  const selected = selectedSetup();
+  document.querySelectorAll('#bets .matchcard').forEach(card => {
+    const name = card.getAttribute('data-match');
+    const a = amounts[name];
+    const tag = card.querySelector('[data-match-tag]');
+    const hint = card.querySelector('.hint');
+    const line = card.querySelector('.povline');
+    if (!a) return;
+    const amtChanged = !!(selected && matchDiffers(a, selected));
+    const ovs = overrideIds(a);
+    const changed = amtChanged || ovs.length > 0;
+    card.classList.toggle('changed', changed);
+    if (tag) {
+      tag.hidden = !(changed || selected);
+      tag.className = 'tag' + (changed ? '' : ' muted');
+      tag.textContent = changed ? 'Changed' : (selected ? setupTag(selected.name) : '');
+    }
+    if (hint) {
+      hint.hidden = !amtChanged;
+      hint.textContent = amtChanged ? 'Changed from ' + selected.name : '';
+    }
+    if (line) {
+      line.hidden = !ovs.length;
+      line.innerHTML = ovs.map(id => '<span class="povchip">' + esc(id) + ' ' + dollarText(Number(a.player[id]) || 0) + '</span>').join('');
+    }
+    const cols = pressFields();
+    card.querySelectorAll('input[data-f]').forEach(input => {
+      const f = input.dataset.f;
+      let base = null;
+      if (!selected) base = null;
+      else if (f === 'first' || f === 'second' || f === 'overall' || f === 'pressDown') base = selected[f];
+      else if (f === cols[0]) base = selected.pressFront;
+      else if (f === cols[1]) base = selected.pressBack;
+      input.classList.toggle('chg', base != null && !sameNum(a[f], base));
+    });
+  });
+}
+function refreshSetupChrome() {
+  if (chromeLock) return;
+  chromeLock = true;
+  try {
+    paintSetupFlags();
+    paintSetupList();
+    paintAmountsFrom();
+    paintDiverge();
+    paintBetPanel();
+    paintMatchCards();
+  } finally { chromeLock = false; }
+}
+function updateSelectedSetup() {
+  const s = selectedSetup();
+  if (!s) return;
+  const money = readFormMoney();
+  ['first', 'second', 'overall', 'pressFront', 'pressBack', 'pressDown', 'junk', 'pct', 'pressMode', 'box', 'types'].forEach(k => { s[k] = money[k]; });
+  s.summary = setupSummary(s);
+  lastUsedSetupId = s.id;
+  saveBettingSetups();
+  refreshSetupChrome();
+  const status = document.getElementById('status');
+  if (status) status.textContent = 'Updated “' + s.name + '”. Player junk overrides stay on this round.';
+}
+function addSetupFromForm(name, notes) {
+  const money = readFormMoney();
+  const s = normalizeSetup(Object.assign({ id: newSetupId(), name: name, notes: notes || '' }, money));
+  bettingSetups.push(s);
+  selectedSetupId = s.id;
+  lastUsedSetupId = s.id;
+  saveBettingSetups();
+  refreshSetupChrome();
+  return s;
+}
+function openSaveAsSheet() {
+  const summary = setupSummary(readFormMoney());
+  openSetupSheet('<h2>Save as…</h2><span class="flab">Name</span><input id="setupNameInput" type="text" autocomplete="off" aria-label="Betting Setup name"><span class="flab">Notes</span><textarea id="setupNotesInput" aria-label="Notes"></textarea><div class="autosum">' + esc(summary) + '</div><div class="sheet-actions"><button type="button" data-setup-close>Cancel</button><button type="button" id="setupSaveConfirm" class="primary">Save</button></div>');
+  const input = document.getElementById('setupNameInput');
+  if (input) input.focus();
+  const save = document.getElementById('setupSaveConfirm');
+  if (save) save.onclick = () => {
+    const name = input ? input.value.trim() : '';
+    const notesEl = document.getElementById('setupNotesInput');
+    if (!name) { if (input) input.focus(); return; }
+    addSetupFromForm(name, notesEl ? notesEl.value.trim() : '');
+    closeSetupSheet();
+    const status = document.getElementById('status');
+    if (status) status.textContent = 'Saved “' + name + '”. It loads next round.';
+  };
+}
+function openManageSheet() {
+  const rows = bettingSetups.map(s => '<div class="manage-row" data-id="' + esc(s.id) + '"><span class="flab">Name</span><input type="text" data-manage-name value="' + esc(s.name) + '" aria-label="Name"><span class="flab">Notes</span><textarea data-manage-notes aria-label="Notes">' + esc(s.notes || '') + '</textarea><p><button type="button" data-setup-delete="' + esc(s.id) + '">Delete</button></p></div>').join('');
+  openSetupSheet('<h2>Manage</h2>' + (rows || '<p class="setup-note">No Betting Setups yet.</p>') + '<div class="sheet-actions"><button type="button" id="setupManageDone" class="primary">Done</button></div>');
+  const done = document.getElementById('setupManageDone');
+  if (done) done.onclick = () => {
+    document.querySelectorAll('#setupSheet .manage-row').forEach(row => {
+      const s = bettingSetups.find(x => x.id === row.getAttribute('data-id'));
+      if (!s) return;
+      const name = row.querySelector('[data-manage-name]');
+      const notes = row.querySelector('[data-manage-notes]');
+      if (name && name.value.trim()) s.name = name.value.trim();
+      if (notes) s.notes = notes.value.trim();
+      s.summary = setupSummary(s);
+    });
+    saveBettingSetups();
+    closeSetupSheet();
+    refreshSetupChrome();
+  };
+}
+function deleteSetup(id) {
+  const idx = bettingSetups.findIndex(s => s.id === id);
+  if (idx < 0) return;
+  const was = bettingSetups[idx];
+  if (!window.confirm('Delete “' + was.name + '”?')) return;
+  bettingSetups.splice(idx, 1);
+  if (selectedSetupId === id || lastUsedSetupId === id) {
+    const next = bettingSetups[idx] || bettingSetups[idx - 1] || null;
+    if (next) {
+      selectedSetupId = next.id;
+      lastUsedSetupId = next.id;
+      writeFormMoney(next);
+      copyBets();
+    } else {
+      selectedSetupId = '';
+      lastUsedSetupId = '';
+      blankAmounts();
+    }
+  }
+  saveBettingSetups();
+  draw();
+  closeSetupSheet();
+  const status = document.getElementById('status');
+  if (status) status.textContent = bettingSetups.length ? 'Deleted “' + was.name + '”.' : 'Deleted “' + was.name + '”. Amounts are blank.';
+}
+function setupShareUrl(s) {
+  const pack = { n: s.name, notes: s.notes || '', f: s.first, s: s.second, o: s.overall, pf: s.pressFront, pb: s.pressBack, d: s.pressDown, m: s.pressMode || 'auto', p: s.pct, b: s.box ? 1 : 0, j: s.junk, t: s.types };
+  const bytes = new TextEncoder().encode(JSON.stringify(pack));
+  let bin = '';
+  bytes.forEach(n => { bin += String.fromCharCode(n); });
+  const b64 = btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  return 'https://topper-l.github.io/golf/?setup=' + encodeURIComponent(b64);
+}
+function decodeSetupParam(raw) {
+  let s = String(raw || '').replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  const bin = atob(s);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const pack = JSON.parse(new TextDecoder().decode(bytes));
+  const types = defaultJunkTypes();
+  if (pack.t && typeof pack.t === 'object') Object.keys(types).forEach(id => {
+    const row = pack.t[id];
+    if (!row) return;
+    types[id].on = !!row.on;
+    types[id].amt = row.amt == null || row.amt === '' || !isFinite(Number(row.amt)) ? null : Number(row.amt);
+  });
+  return normalizeSetup({ name: pack.n, notes: pack.notes, first: pack.f, second: pack.s, overall: pack.o, pressFront: pack.pf, pressBack: pack.pb, pressDown: pack.d, pressMode: pack.m, pct: pack.p, box: pack.b, junk: pack.j, types: types });
+}
+function stripSetupQuery() {
+  try {
+    const url = new URL(location.href);
+    if (!url.searchParams.has('setup')) return;
+    url.searchParams.delete('setup');
+    const next = url.pathname + (url.search ? url.search : '') + url.hash;
+    history.replaceState(null, '', next);
+  } catch (e) {}
+}
+function copySetupLink(url) {
+  const done = () => { const status = document.getElementById('status'); if (status) status.textContent = 'Link copied.'; };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done).catch(done);
+  else done();
+}
+function openShareSheet() {
+  const s = selectedSetup();
+  if (!s) { openSaveAsSheet(); return; }
+  const url = setupShareUrl(s);
+  const notes = s.notes ? '<p class="setup-note">Notes: ' + esc(s.notes) + '</p>' : '';
+  openSetupSheet('<h2>' + esc(s.name) + '</h2><div class="autosum">' + esc(s.summary || setupSummary(s)) + '</div>' + notes + '<div class="sec">Link (no server)</div><div class="linkbox" id="setupLink">' + esc(url) + '</div><p class="setup-note">Opens the app and offers to add this Betting Setup. Money rules only — not players or tees.</p><div class="sheet-actions"><button type="button" id="setupCopy">Copy link</button><button type="button" id="setupShareBtn" class="primary">Share…</button></div>');
+  const copy = document.getElementById('setupCopy');
+  const share = document.getElementById('setupShareBtn');
+  if (copy) copy.onclick = () => copySetupLink(url);
+  if (share) share.onclick = () => {
+    if (navigator.share) navigator.share({ title: s.name, text: s.summary || setupSummary(s), url: url }).catch(() => copySetupLink(url));
+    else copySetupLink(url);
+  };
+}
+function storeImported(pack, mode) {
+  const existing = bettingSetups.find(s => String(s.name).trim().toLowerCase() === String(pack.name).trim().toLowerCase());
+  let saved = pack;
+  if (mode === 'replace' && existing) {
+    pack.id = existing.id;
+    const idx = bettingSetups.indexOf(existing);
+    bettingSetups[idx] = pack;
+    saved = pack;
+  } else bettingSetups.push(pack);
+  selectedSetupId = saved.id;
+  lastUsedSetupId = saved.id;
+  writeFormMoney(saved);
+  saveBettingSetups();
+  copyBets();
+  draw();
+  showScreen('setup');
+  const status = document.getElementById('status');
+  if (status) status.textContent = 'Added “' + saved.name + '”.';
+}
+function offerSetupImport() {
+  let raw = '';
+  try { raw = new URL(location.href).searchParams.get('setup') || ''; } catch (e) { raw = ''; }
+  if (!raw) return;
+  let pack = null;
+  try { pack = decodeSetupParam(raw); } catch (e) { pack = null; }
+  stripSetupQuery();
+  if (!pack) {
+    openSetupSheet('<h2>Betting Setup</h2><p class="setup-note">This link could not be read.</p><div class="sheet-actions"><button type="button" data-setup-close class="primary">Close</button></div>');
+    return;
+  }
+  const existing = bettingSetups.find(s => String(s.name).trim().toLowerCase() === String(pack.name).trim().toLowerCase());
+  const notes = pack.notes ? '<p class="setup-note">Notes: ' + esc(pack.notes) + '</p>' : '';
+  const actions = existing
+    ? '<button type="button" id="setupReplace">Replace</button><button type="button" id="setupKeep" class="primary">Keep both</button><button type="button" data-setup-close>Cancel</button>'
+    : '<button type="button" data-setup-close>Cancel</button><button type="button" id="setupAdd" class="primary">Add</button>';
+  openSetupSheet('<h2>Add “' + esc(pack.name) + '”?</h2><div class="autosum">' + esc(pack.summary || setupSummary(pack)) + '</div>' + notes + '<p class="setup-note">Money rules only. Cancel leaves your Betting Setups unchanged.</p><div class="sheet-actions">' + actions + '</div>');
+  const add = document.getElementById('setupAdd');
+  const replace = document.getElementById('setupReplace');
+  const keep = document.getElementById('setupKeep');
+  if (add) add.onclick = () => { closeSetupSheet(); storeImported(pack, 'add'); };
+  if (replace) replace.onclick = () => { closeSetupSheet(); storeImported(pack, 'replace'); };
+  if (keep) keep.onclick = () => { closeSetupSheet(); storeImported(pack, 'keep'); };
+}
+function pickSetup(id) {
+  const s = bettingSetups.find(x => x.id === id);
+  if (!s) return;
+  if (id === selectedSetupId && anyChangedMatch()) {
+    if (!window.confirm('Re-apply “' + s.name + '” to every match? Changed matches go back to this Betting Setup.')) return;
+  }
+  selectedSetupId = id;
+  lastUsedSetupId = id;
+  writeFormMoney(s);
+  copyBets();
+  saveBettingSetups();
+  persistSetup();
+  draw();
+  const status = document.getElementById('status');
+  if (status) status.textContent = 'Loaded “' + s.name + '” into every match.';
+}
+loadBettingSetups();
+const setupListEl = document.getElementById('setupList');
+if (setupListEl) setupListEl.onclick = e => {
+  const btn = e.target.closest('[data-setup-id]');
+  if (btn) pickSetup(btn.getAttribute('data-setup-id'));
 };
-try { applyDefaultFields(JSON.parse(localStorage.getItem('bet-default') || 'null')); } catch (e) {}
+const setupManageBtn = document.getElementById('setupManage');
+if (setupManageBtn) setupManageBtn.onclick = openManageSheet;
+const setupShareBtn = document.getElementById('setupShare');
+if (setupShareBtn) setupShareBtn.onclick = openShareSheet;
+const setupSaveAsBtn = document.getElementById('setupSaveAs');
+if (setupSaveAsBtn) setupSaveAsBtn.onclick = openSaveAsSheet;
+const setupSaveAs2 = document.getElementById('setupSaveAs2');
+if (setupSaveAs2) setupSaveAs2.onclick = openSaveAsSheet;
+const setupUpdateBtn = document.getElementById('setupUpdate');
+if (setupUpdateBtn) setupUpdateBtn.onclick = updateSelectedSetup;
+const pressModeBtn = document.getElementById('dPressMode');
+if (pressModeBtn) pressModeBtn.onclick = () => {
+  const order = ['auto', 'manual', 'off'];
+  setupPressMode = order[(order.indexOf(setupPressMode) + 1) % 3];
+  refreshSetupChrome();
+};
+const boxFlagBtn = document.getElementById('dBox');
+if (boxFlagBtn) boxFlagBtn.onclick = () => { setupBox = !setupBox; refreshSetupChrome(); };
+const setupSheetEl = document.getElementById('setupSheet');
+if (setupSheetEl) setupSheetEl.onclick = e => {
+  if (e.target.id === 'setupSheet' || e.target.closest('[data-setup-close]')) { closeSetupSheet(); return; }
+  const del = e.target.closest('[data-setup-delete]');
+  if (del) deleteSetup(del.getAttribute('data-setup-delete'));
+};
+const defaultsEl = document.getElementById('defaults');
+if (defaultsEl) defaultsEl.addEventListener('input', () => refreshSetupChrome());
 document.getElementById('add').onclick = () => {
   syncPlayers();
   players.push(players.length ? { name:'', initials:'', tee:defaultTee(), hcp:'', box:false } : { ...defaultPlayer, tee:defaultTee(), hcp:'', box:false });
@@ -1459,6 +2094,7 @@ document.getElementById('newRound').onclick = () => {
   try { localStorage.removeItem('golf-card'); localStorage.removeItem('round-setup'); } catch (e) {}
   showHandicapNote(false);
   initCourseSelect();
+  applyLastUsedSetup();
   draw();
   showScreen('setup');
   document.getElementById('status').textContent = 'New round. Add the players.';
@@ -1495,10 +2131,11 @@ function copyBets() {
     amounts[name][cols[0]] = values.pressFirst;
     if (cols[1] !== cols[0]) amounts[name][cols[1]] = values.pressSecond;
     amounts[name].pressDown = values.pressDown;
-    if (amounts[name].autoPress == null) amounts[name].autoPress = true;
+    amounts[name].pressMode = setupPressMode || 'auto';
+    amounts[name].autoPress = (setupPressMode || 'auto') === 'auto';
     players.filter(p => p.initials).forEach(p => { p.junk = junk; amounts[name].player[String(p.initials).toUpperCase()] = junk; });
   });
-  drawBets();
+  draw();
   document.getElementById('status').textContent = 'Copied ' + values.first + ' / ' + values.second + ' / ' + values.overall + ', press ' + values.pressFirst + ' on the 1st 9 and ' + values.pressSecond + ' on the 2nd 9, at ' + values.pressDown + ' down, junk ' + junk + ' into ' + list.length + ' matches.';
 }
 document.getElementById('apply').onclick = copyBets;
@@ -1515,9 +2152,9 @@ function noMoneyRound() {
     if (a.player) Object.keys(a.player).forEach(id => { a.player[id] = 0; });
     players.forEach(p => { p.junk = 0; });
   });
-  drawBets();
+  draw();
   const status = document.getElementById('status');
-  if (status) status.textContent = 'Bets set to $0. Saved defaults are unchanged.';
+  if (status) status.textContent = 'Bets set to $0. The saved Betting Setup is unchanged.';
 }
 document.getElementById('noMoney').onclick = noMoneyRound;
 let playoffs = {};
@@ -1712,7 +2349,10 @@ function persistSetup() {
       cardPick: cardPick,
       roundName: roundName,
       junkTypes: junkTypes,
-      quickScores: !!quickScores
+      quickScores: !!quickScores,
+      setupId: selectedSetupId || '',
+      setupPressMode: setupPressMode,
+      setupBox: !!setupBox
     }));
   } catch (e) {}
 }
@@ -3374,7 +4014,8 @@ function settle() {
     return '<p' + cls + '><b>' + esc(p.id) + '</b> ' + cashText(v) + '</p>';
   }).join('');
   const anyRoll = holePlayers.some(p => roll[p.id]);
-  const math = '<div class="settle-math">' + (cancelled || anyRoll ? '<p><b>Summary</b></p>' + (cancelled ? holePlayers.map(p => '<p><b>' + esc(p.id) + '</b> ' + cashText(0) + '</p>').join('') : playerLines) : '<p><b>No money owed.</b></p>') + '<p><b>Details</b></p></div>';
+  const ovLines = holePlayers.map(p => { const text = playerOverrideText(p.id); return text ? '<p class="junk-ov">' + esc(text) + '</p>' : ''; }).join('');
+  const math = '<div class="settle-math">' + (cancelled || anyRoll ? '<p><b>Summary</b></p>' + (cancelled ? holePlayers.map(p => '<p><b>' + esc(p.id) + '</b> ' + cashText(0) + '</p>').join('') : playerLines) : '<p><b>No money owed.</b></p>') + '<p><b>Details</b></p>' + ovLines + '</div>';
   const viewBtn = (id, label) => '<button type="button" data-settle-view="' + id + '" class="' + (settleView === id ? 'on' : '') + '">' + label + '</button>';
   const views = '<div class="settle-views">' + viewBtn('pot', 'Cash pot') + viewBtn('match', 'By match') + viewBtn('both', 'Both') + '</div>';
   const debtors = holePlayers.filter(p => (roll[p.id] || 0) < 0).sort((x, y) => roll[x.id] - roll[y.id]);
@@ -3391,7 +4032,9 @@ function settle() {
   const folds = holePlayers.map(p => {
     const open = !!settleOpen[p.id];
     const chunks = lines.map(line => line.byPlayer && line.byPlayer[p.id]).filter(Boolean).join('');
-    return '<button type="button" class="player-fold" data-player-fold="' + esc(p.id) + '">' + esc(p.id) + ' ' + cashText(roll[p.id] || 0) + '</button><div class="section-body' + (open ? '' : ' collapsed') + '" id="fold-' + esc(p.id) + '">' + (chunks || '<p class="comp">No matches.</p>') + '</div>';
+    const ov = playerOverrideText(p.id);
+    const ovHtml = ov ? '<p class="comp junk-ov">' + esc(ov) + '</p>' : '';
+    return '<button type="button" class="player-fold" data-player-fold="' + esc(p.id) + '">' + esc(p.id) + ' ' + cashText(roll[p.id] || 0) + '</button><div class="section-body' + (open ? '' : ' collapsed') + '" id="fold-' + esc(p.id) + '">' + ovHtml + (chunks || '<p class="comp">No matches.</p>') + '</div>';
   }).join('');
   const warn = warnings.length ? '<p class="miss-warn">' + esc(warnings.join('. ')) + '</p>' : '';
   const stopped = roundStop ? '<p class="stop-note">' + esc(stopPhrase(roundStop)) + '</p>' : '';
@@ -4150,6 +4793,7 @@ document.addEventListener('keydown', e => {
   e.preventDefault();
   const fields = [...document.querySelectorAll('#players input, #players select, #defaults input, #bets input, #junk input')];
   const i = fields.indexOf(el);
+  if (i < 0) return;
   const next = fields[i + (e.shiftKey ? -1 : 1)];
   if (next) { next.focus(); setTimeout(() => { try { next.select(); } catch (err) {} }, 10); }
 }, true);
@@ -4207,13 +4851,17 @@ function loadSavedSetup() {
   if (cardCourse) currentCourse = cardCourse;
   else if (setupCourse) currentCourse = setupCourse;
   if (setupPlayers) {
-    players = setupPlayers.map(p => ({
-      name: p.name || '',
-      initials: p.initials || '',
-      tee: validTee(p.tee),
-      hcp: p.hcp != null ? String(p.hcp) : '',
-      box: !!p.box
-    }));
+    players = setupPlayers.map(p => {
+      const row = {
+        name: p.name || '',
+        initials: p.initials || '',
+        tee: validTee(p.tee),
+        hcp: p.hcp != null ? String(p.hcp) : '',
+        box: !!p.box
+      };
+      if (p.junk != null && p.junk !== '' && isFinite(Number(p.junk))) row.junk = Number(p.junk);
+      return row;
+    });
     if (setup.amounts && typeof setup.amounts === 'object') amounts = cloneAmounts(setup.amounts);
     if (setup.roundDate) roundDate = setup.roundDate;
     if (setup.startAt != null) startAt = clampStart(setup.startAt);
@@ -4226,6 +4874,10 @@ function loadSavedSetup() {
     if (setup.roundName) roundName = setup.roundName;
     if (setup.junkTypes) applyJunkTypes(setup.junkTypes);
     if (setup.quickScores != null) quickScores = !!setup.quickScores;
+    if (setup.setupId && bettingSetups.some(s => s.id === setup.setupId)) selectedSetupId = setup.setupId;
+    if (setup.setupPressMode === 'auto' || setup.setupPressMode === 'manual' || setup.setupPressMode === 'off') setupPressMode = setup.setupPressMode;
+    if (setup.setupBox != null) setupBox = !!setup.setupBox;
+    paintSetupFlags();
   }
   if (!cardPlayers) { syncPlayedNines(); return; }
   const formIds = players.filter(p => p.initials).map(p => String(p.initials).toUpperCase()).join();
@@ -5409,6 +6061,7 @@ syncStartButton();
 drawSaved();
 setFont(currentFont());
 showScreen('gate');
+offerSetupImport();
 openScoreLink();
 window.addEventListener('hashchange', openScoreLink);
 registerGolfWorker();

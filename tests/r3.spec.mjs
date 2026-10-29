@@ -609,6 +609,16 @@ test('stacked setup players fit five across without sideways scroll', async ({ p
   expect(Math.abs(col.name.top - col.init.top)).toBeLessThan(2);
   expect(Math.abs(col.tee.top - col.flag.top)).toBeLessThan(2);
   expect(Math.abs(col.tee.top - col.x.top)).toBeLessThan(2);
+  const hcpMid = await page.locator('.pcard').nth(1).evaluate(card => {
+    const num = card.querySelector('.hcpval').getBoundingClientRect();
+    const btn = card.querySelector('.hcpstep button').getBoundingClientRect();
+    return {
+      delta: Math.abs((num.top + num.bottom) / 2 - (btn.top + btn.bottom) / 2),
+      inset: num.top - btn.top
+    };
+  });
+  expect(hcpMid.delta).toBeLessThan(2);
+  expect(hcpMid.inset).toBeGreaterThan(4);
   await page.evaluate(() => { document.documentElement.setAttribute('data-font', '3'); });
   fit = await fits();
   expect(fit).toEqual({ pageWider: false, cardWider: false, listWider: false });
@@ -623,6 +633,8 @@ test('stacked setup players fit five across without sideways scroll', async ({ p
   });
   await page.locator('#players').screenshot({ path: shotDir + '/setup-stacked-v2.png' });
   await page.locator('#players').screenshot({ path: artDir + '/setup-stacked-v2.png' });
+  await page.locator('#players').screenshot({ path: shotDir + '/setup-hcp.png' });
+  await page.locator('#players').screenshot({ path: artDir + '/setup-hcp.png' });
   await page.locator('.pcard').nth(4).locator('button[data-pjunk-step="1"]').click();
   const after = await page.evaluate(() => {
     const name = Object.keys(amounts).find(n => amounts[n] && amounts[n].player && amounts[n].player.DK != null);
@@ -729,4 +741,273 @@ test('Greenie/KP on a bogey does not pay and the carry moves on', async ({ page 
   expect(closerBogey.roll.TL).toBe(-5);
   await page.evaluate(() => { holeNo = 2; junkSheetPlayer = 1; paintJunkSheet(); });
   await expect(page.locator('#junkSheetHint')).toBeHidden();
+});
+
+async function showSetup(page) {
+  await page.evaluate(() => showScreen('setup'));
+}
+
+test('betting setup is created, renamed, and still last-used after reload', async ({ page }) => {
+  await showSetup(page);
+  await page.locator('#dFirst').fill('10');
+  await page.locator('#dSecond').fill('10');
+  await page.locator('#dOverall').fill('10');
+  await page.locator('#dPressF').fill('10');
+  await page.locator('#dPressB').fill('10');
+  await page.locator('#dBox').click();
+  await page.locator('#setupSaveAs').click();
+  await page.locator('#setupNameInput').fill("Andy's setup");
+  await page.locator('#setupNotesInput').fill('Wood Ranch Saturday');
+  await page.locator('#setupSaveConfirm').click();
+  await expect(page.locator('#setupList')).toContainText("Andy's setup");
+  await expect(page.locator('#setupList')).toContainText('Last used');
+  await expect(page.locator('#setupList')).toContainText('$10 Nassau · auto 2-down presses · $3 junk · box on');
+  await expect(page.locator('#setupList')).toContainText('Wood Ranch Saturday');
+  await expect(page.locator('#saveDefault')).toHaveCount(0);
+  await page.locator('#bettingSetup').evaluate(el => {
+    const y = el.getBoundingClientRect().top + window.scrollY - 64;
+    window.scrollTo(0, Math.max(0, y));
+  });
+  await shot(page, 'setup-picker');
+  await page.locator('#setupManage').click();
+  await page.locator('[data-manage-name]').fill("Andy's weekend");
+  await page.locator('#setupManageDone').click();
+  await expect(page.locator('#setupList')).toContainText("Andy's weekend");
+  await page.reload();
+  await showSetup(page);
+  await expect(page.locator('#setupList')).toContainText("Andy's weekend");
+  await expect(page.locator('#setupList .tag')).toContainText('Last used');
+  await expect(page.locator('#dFirst')).toHaveValue('10');
+  await expect(page.locator('#dBox')).toContainText('Box on');
+});
+
+test('deleting the last-used setup falls back, then blanks the amounts', async ({ page }) => {
+  await showSetup(page);
+  await page.locator('#dFirst').fill('10');
+  await page.locator('#dSecond').fill('10');
+  await page.locator('#dOverall').fill('10');
+  await page.locator('#setupSaveAs').click();
+  await page.locator('#setupNameInput').fill('Andys');
+  await page.locator('#setupSaveConfirm').click();
+  await page.locator('#dFirst').fill('5');
+  await page.locator('#dSecond').fill('5');
+  await page.locator('#dOverall').fill('5');
+  await page.locator('#setupSaveAs').click();
+  await page.locator('#setupNameInput').fill('Neals');
+  await page.locator('#setupSaveConfirm').click();
+  await page.locator('#setupManage').click();
+  await page.locator('button[data-setup-delete]').nth(1).click();
+  await expect(page.locator('#setupList')).toContainText('Andys');
+  await expect(page.locator('#setupList')).not.toContainText('Neals');
+  await expect(page.locator('#dFirst')).toHaveValue('10');
+  await expect(page.locator('#setupList .tag')).toContainText('Last used');
+  await page.locator('#setupManage').click();
+  await page.locator('button[data-setup-delete]').click();
+  await expect(page.locator('#setupList')).toContainText('No Betting Setups');
+  await expect(page.locator('#dFirst')).toHaveValue('0');
+  await expect(page.locator('#dOverall')).toHaveValue('0');
+  await expect(page.locator('#dJunk')).toHaveValue('0');
+});
+
+test('a picked setup fills every match; changes update or save as without storing player junk', async ({ page }) => {
+  await page.evaluate(() => {
+    showScreen('setup');
+    players = [
+      { name: 'Gina Smith', initials: 'GS', tee: 'Blue', hcp: '5', box: false },
+      { name: 'Ned S', initials: 'NS', tee: 'Blue', hcp: '8', box: false }
+    ];
+    amounts = {};
+    ['dFirst', 'dSecond'].forEach(id => { document.getElementById(id).value = '10'; });
+    document.getElementById('dOverall').value = '20';
+    document.getElementById('dPressF').value = '10';
+    document.getElementById('dPressB').value = '10';
+    document.getElementById('dJunk').value = '3';
+    draw();
+  });
+  await page.locator('#setupSaveAs').click();
+  await page.locator('#setupNameInput').fill("Andy's setup");
+  await page.locator('#setupSaveConfirm').click();
+  await page.locator('button.grow').click();
+  await expect(page.locator('#bets input[data-f="first"]').first()).toHaveValue('10');
+  await expect(page.locator('#bets input[data-f="overall"]').first()).toHaveValue('20');
+  const first = page.locator('#bets input[data-f="first"]').first();
+  await first.fill('5');
+  await first.dispatchEvent('input');
+  await expect(page.locator('.hint').first()).toContainText("Changed from Andy's setup");
+  await expect(page.locator('#setupUpdate')).toContainText("Update");
+  await page.evaluate(() => { setPlayerJunk(0, 0.5); draw(); });
+  await expect(page.locator('.pov').first()).toHaveText('GS $0.50');
+  await expect(page.locator('.povchip').first()).toHaveText('GS $0.50');
+  await expect(page.locator('.matchcard.changed').first()).toBeVisible();
+  await page.locator('#betSetupPanel').evaluate(el => {
+    const y = el.getBoundingClientRect().top + window.scrollY - 64;
+    window.scrollTo(0, Math.max(0, y));
+  });
+  await shot(page, 'setup-bets');
+  const savedBase = await page.evaluate(() => bettingSetups.find(s => s.name === "Andy's setup").first);
+  expect(savedBase).toBe(10);
+  await page.locator('#setupSaveAs2').click();
+  await page.locator('#setupNameInput').fill('Side setup');
+  await page.locator('#setupSaveConfirm').click();
+  const afterSave = await page.evaluate(() => ({
+    count: bettingSetups.length,
+    andy: bettingSetups.find(s => s.name === "Andy's setup").first,
+    stored: JSON.stringify(bettingSetups)
+  }));
+  expect(afterSave.count).toBe(2);
+  expect(afterSave.andy).toBe(10);
+  expect(afterSave.stored).not.toContain('0.5');
+  await page.locator('button.grow', { hasText: "Andy's setup" }).click();
+  await page.locator('#dFirst').fill('8');
+  await page.locator('#dFirst').dispatchEvent('input');
+  await page.locator('#setupUpdate').click();
+  expect(await page.evaluate(() => bettingSetups.find(s => s.name === "Andy's setup").first)).toBe(8);
+});
+
+test('re-apply confirms before a changed match is reset', async ({ page }) => {
+  await page.evaluate(() => {
+    showScreen('setup');
+    players = [
+      { name: 'Topper Larsen', initials: 'TL', tee: 'Blue', hcp: '1', box: false },
+      { name: 'Ned S', initials: 'NS', tee: 'Blue', hcp: '2', box: false }
+    ];
+    amounts = {};
+    ['dFirst', 'dSecond', 'dOverall'].forEach(id => { document.getElementById(id).value = '10'; });
+    draw();
+  });
+  await page.locator('#setupSaveAs').click();
+  await page.locator('#setupNameInput').fill('Even');
+  await page.locator('#setupSaveConfirm').click();
+  const first = page.locator('#bets input[data-f="first"]').first();
+  await first.fill('4');
+  await first.dispatchEvent('input');
+  await expect(page.locator('.hint')).toContainText('Changed from Even');
+  await page.evaluate(() => { window.confirm = () => false; });
+  await page.locator('button.grow').click();
+  await expect(first).toHaveValue('4');
+  await page.evaluate(() => { window.confirm = () => true; });
+  await page.locator('button.grow').click();
+  await expect(first).toHaveValue('10');
+});
+
+test('share link adds, replaces, or keeps both, and drops the query', async ({ page }) => {
+  await showSetup(page);
+  await page.locator('#dFirst').fill('10');
+  await page.locator('#dSecond').fill('10');
+  await page.locator('#dOverall').fill('10');
+  await page.locator('#dJunk').fill('3');
+  await page.locator('#dBox').click();
+  await page.locator('#setupSaveAs').click();
+  await page.locator('#setupNameInput').fill("Andy's setup");
+  await page.locator('#setupNotesInput').fill('Wood Ranch Saturday');
+  await page.locator('#setupSaveConfirm').click();
+  await page.locator('#setupShare').click();
+  const url = await page.locator('#setupLink').innerText();
+  expect(url).toContain('https://topper-l.github.io/golf/?setup=');
+  await shot(page, 'setup-share');
+  const payload = new URL(url).searchParams.get('setup');
+  const decoded = await page.evaluate(raw => JSON.stringify(decodeSetupParam(raw)), payload);
+  expect(decoded).toContain("Andy's setup");
+  expect(decoded).not.toContain('Topper');
+  await page.evaluate(() => { bettingSetups = []; selectedSetupId = ''; lastUsedSetupId = ''; saveBettingSetups(); });
+  await page.goto('/?setup=' + encodeURIComponent(payload));
+  await expect(page.locator('#setupSheet')).toContainText("Andy's setup");
+  await expect(page.locator('#setupSheet')).toContainText('$10 Nassau');
+  await expect(page.locator('#setupSheet')).toContainText('Wood Ranch Saturday');
+  await page.locator('#setupAdd').click();
+  expect(page.url()).not.toContain('setup=');
+  await expect(page.locator('#setupList')).toContainText("Andy's setup");
+  await page.goto('/?setup=' + encodeURIComponent(payload));
+  await expect(page.locator('#setupReplace')).toBeVisible();
+  await expect(page.locator('#setupKeep')).toBeVisible();
+  const before = await page.evaluate(() => bettingSetups.length);
+  await page.locator('#setupSheet').getByRole('button', { name: 'Cancel' }).click();
+  expect(page.url()).not.toContain('setup=');
+  expect(await page.evaluate(() => bettingSetups.length)).toBe(before);
+  await page.goto('/?setup=' + encodeURIComponent(payload));
+  await page.locator('#setupKeep').click();
+  expect(await page.evaluate(() => bettingSetups.length)).toBe(before + 1);
+  await page.goto('/?setup=' + encodeURIComponent(payload));
+  await page.locator('#setupReplace').click();
+  expect(await page.evaluate(() => bettingSetups.filter(s => s.name === "Andy's setup").length)).toBe(before + 1);
+});
+
+test('set to $0 clears the round and leaves the saved setup alone', async ({ page }) => {
+  await showSetup(page);
+  await page.evaluate(() => {
+    players = [
+      { name: 'Topper Larsen', initials: 'TL', tee: 'Blue', hcp: '1', box: false },
+      { name: 'Ned S', initials: 'NS', tee: 'Blue', hcp: '2', box: false }
+    ];
+    amounts = {};
+    draw();
+  });
+  await page.locator('#dFirst').fill('9');
+  await page.locator('#dSecond').fill('9');
+  await page.locator('#dOverall').fill('9');
+  await page.locator('#setupSaveAs').click();
+  await page.locator('#setupNameInput').fill('Nines');
+  await page.locator('#setupSaveConfirm').click();
+  await page.locator('button.grow').click();
+  await page.locator('#noMoney').click();
+  await expect(page.locator('#dFirst')).toHaveValue('0');
+  await expect(page.locator('#bets input[data-f="first"]').first()).toHaveValue('0');
+  expect(await page.evaluate(() => bettingSetups.find(s => s.name === 'Nines').first)).toBe(9);
+  await expect(page.locator('#setupUpdate')).toBeVisible();
+});
+
+test('an old Set Default blob becomes the last-used Betting Setup', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('bet-default', JSON.stringify({ first: '7', second: '7', overall: '7', press: '0', pressDown: '2', junk: '2', pct: '100' }));
+    localStorage.removeItem('golf-setups');
+  });
+  await page.reload();
+  await showSetup(page);
+  await expect(page.locator('#setupList')).toContainText('Previous default');
+  await expect(page.locator('#setupList')).toContainText('Last used');
+  await expect(page.locator('#dFirst')).toHaveValue('7');
+  await expect(page.locator('#dJunk')).toHaveValue('2');
+  expect(await page.evaluate(() => localStorage.getItem('bet-default'))).toBeNull();
+});
+
+test('a player junk override shows on setup, bets, and settle details', async ({ page }) => {
+  await twoPlayer(page, { junk: 3, first: 0, second: 0, overall: 0, tl: { 0: 3 }, ns: { 0: 4 } });
+  await page.evaluate(() => {
+    document.getElementById('dJunk').value = '3';
+    players[0].initials = 'GS';
+    players[0].junk = 0.5;
+    holePlayers[0].id = 'GS';
+    const bet = amounts['TL vs NS'];
+    bet.player.GS = 0.5;
+    draw();
+    settle();
+  });
+  await showSetup(page);
+  await expect(page.locator('.pov').first()).toHaveText('GS $0.50');
+  await expect(page.locator('.povchip').first()).toContainText('GS $0.50');
+  await expect(page.locator('.matchcard').first()).toContainText('Changed');
+  await expect(page.locator('.settle-math')).toContainText('GS $0.50');
+  const sum = await page.evaluate(() => {
+    const roll = lastSettle.roll;
+    return Math.round(Object.keys(roll).reduce((n, id) => n + roll[id], 0) * 100) / 100;
+  });
+  expect(sum).toBe(0);
+});
+
+test('applying a betting setup keeps settle nets at zero', async ({ page }) => {
+  await twoPlayer(page, { junk: 5, first: 10, second: 10, overall: 10, tl: { 0: 3 }, ns: { 0: 5 } });
+  const sum = await page.evaluate(() => {
+    showScreen('setup');
+    document.getElementById('dFirst').value = '10';
+    document.getElementById('dSecond').value = '10';
+    document.getElementById('dOverall').value = '10';
+    document.getElementById('dJunk').value = '5';
+    const s = addSetupFromForm('Nassau day', '');
+    pickSetup(s.id);
+    settle();
+    const roll = lastSettle.roll;
+    return Math.round(((roll.TL || 0) + (roll.NS || 0)) * 100) / 100;
+  });
+  expect(sum).toBe(0);
+  expect(await page.evaluate(() => bettingSetups[0].name)).toBe('Nassau day');
 });
