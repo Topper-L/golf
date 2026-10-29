@@ -158,8 +158,8 @@ test('setup junk defaults, plus handicap, and score dots stay aligned', async ({
   expect(await page.evaluate(() => junkTypes.eagle.amt)).toBe(9);
   await twoPlayer(page, { tlHcp: '+2', nsHcp: '14', hole: 7, tl: { 7: 5 }, ns: { 7: 5 }, screen: 'score' });
   await expect(page.locator('#holeTitle')).toContainText('SI 11');
-  await expect(page.locator('.sname').first()).toContainText('HCP +2');
-  await expect(page.locator('.sname').nth(1)).toContainText('HCP 14');
+  await expect(page.locator('.sname .meta').first()).toHaveText('HCP +2 · Blue');
+  await expect(page.locator('.sname .meta').nth(1)).toHaveText('HCP 14 · Blue');
   const dots = await page.locator('.teedot').evaluateAll(els => els.map(el => ({ text: el.textContent, width: el.getBoundingClientRect().width })));
   expect(dots[0].text).toBe('');
   expect(dots[1].text).toContain('•');
@@ -547,6 +547,28 @@ test('legacy saved round maps generic junk to Other', async ({ page }) => {
   await page.locator('#tabbar button[data-screen="junk"]').click();
   await expect(page.locator('#junkSummary')).toContainText('Other');
   await shot(page, 'legacy-junk');
+});
+
+test('score tee name stays fully readable at a larger font', async ({ page }) => {
+  await twoPlayer(page, { tlHcp: '5', nsHcp: '14', hole: 0, screen: 'score' });
+  await page.evaluate(() => {
+    document.documentElement.setAttribute('data-font', '3');
+    holePlayers[0].tee = 'White tournament';
+    holePlayers[1].tee = 'Blue/White';
+    players[0].tee = 'White tournament';
+    players[1].tee = 'Blue/White';
+    drawHole();
+  });
+  await expect(page.locator('.sname').first()).toContainText('White tournament');
+  await expect(page.locator('.sname').nth(1)).toContainText('Blue/White');
+  const fit = await page.locator('.sname').evaluateAll(els => els.slice(0, 2).map(el => ({
+    text: el.textContent,
+    wider: el.scrollWidth > el.clientWidth + 1,
+    pageWider: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  })));
+  expect(fit[0].wider).toBeFalsy();
+  expect(fit[1].wider).toBeFalsy();
+  expect(fit[0].pageWider).toBeFalsy();
 });
 
 test('eagle amount is editable and still defaults to twice the birdie', async ({ page }) => {

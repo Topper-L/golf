@@ -341,8 +341,9 @@ try {
   .quick-line { display:flex; align-items:center; gap:8px; margin:8px 0 0; font-weight:650; }
   .quick-line input { width:22px; height:22px; }
   .srow { margin:0 0 12px; }
-  .sname { font-weight:750; font-size:var(--lead); line-height:1.25; margin:0 0 4px; }
-  .sname .meta { font-weight:650; color:#5e6f64; }
+  .sname { display:block; max-width:100%; margin:0 0 4px; font-weight:750; font-size:var(--lead); line-height:1.3; overflow-wrap:anywhere; }
+  .sname .who, .sname .meta { display:inline; }
+  .sname .meta { font-weight:650; color:#5e6f64; overflow-wrap:anywhere; }
   .sline { display:flex; align-items:center; gap:4px; }
   .srels { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:4px; margin:0 0 4px; }
   .srels button { min-height:44px; font-weight:750; font-size:12px; padding:0 2px; }
@@ -3595,7 +3596,7 @@ function drawHole() {
     const full = String(p.name || '').trim();
     const who = full ? full + ' (' + p.id + ')' : p.id;
     const hcp = hcpLabel(p) || String(p.hcp || '0');
-    return '<div class="srow"><div class="sname">' + esc(who) + ' <span class="meta">HCP ' + esc(hcp) + ' · ' + esc(teeCode(p.tee)) + '</span></div>'
+    return '<div class="srow"><div class="sname"><span class="who">' + esc(who) + '</span> <span class="meta">HCP ' + esc(hcp) + ' · ' + esc(teeFullName(p.tee) || p.tee) + '</span></div>'
       + rels
       + '<div class="sline"><span class="teedot">' + dot + '</span>'
       + '<button type="button" class="step" data-i="' + i + '" data-d="-1" aria-label="Lower score">−</button>'
