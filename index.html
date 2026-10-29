@@ -323,10 +323,7 @@ try {
   #players .pcard { display:grid; grid-template-columns:minmax(0,1fr) 3.5em 7.8em; grid-template-areas:"name init hcp" "teex box junk"; column-gap:6px; row-gap:6px; align-items:center; background:#fff; border:1px solid #d5e0d4; border-radius:12px; padding:8px; box-sizing:border-box; max-width:100%; }
   #players input, #players select, #players button, #players .hcpval { box-sizing:border-box; height:44px; min-height:44px; margin:0; }
   #players input.name { grid-area:name; width:100%; min-width:0; padding:0 8px; }
-  #players .initcell { grid-area:init; position:relative; min-width:0; height:44px; }
-  #players input.initials { width:100%; min-width:0; padding:0; text-align:center; }
-  #players .initcell .pov { position:absolute; left:0; right:0; bottom:2px; text-align:center; font-size:9px; font-weight:800; color:#1f6b45; line-height:1; pointer-events:none; }
-  #players .initcell.has-ov input.initials { padding-bottom:11px; }
+  #players input.initials { grid-area:init; width:100%; min-width:0; padding:0; text-align:center; }
   #players .hcpstep { grid-area:hcp; }
   #players .tee-x { grid-area:teex; display:flex; align-items:center; gap:6px; min-width:0; }
   #players select.tee { flex:1 1 auto; width:auto; min-width:0; max-width:none; padding:0 4px; }
@@ -989,11 +986,6 @@ function playerJunkValue(p) {
   if (vals.length) return vals[0];
   return defaultJunkNumber();
 }
-function junkOverrideForPlayer(p) {
-  if (!p || p.junk == null || p.junk === '' || !isFinite(Number(p.junk))) return null;
-  if (sameNum(p.junk, defaultJunkNumber())) return null;
-  return Number(p.junk);
-}
 function setPlayerJunk(i, value) {
   const p = players[i];
   if (!p) return;
@@ -1013,10 +1005,7 @@ function draw() {
     const tee = '<select class="tee" data-i="' + i + '" aria-label="Tee">' + courseData().tees.map(t => '<option' + (t === p.tee ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '</select>';
     const hcp = '<span class="hcpstep"><button type="button" tabindex="-1" data-hcp-step="-1" data-i="' + i + '" aria-label="Lower handicap">−</button><span class="hcpval' + (String(p.hcp == null ? '' : p.hcp).trim() ? '' : ' need') + '" data-i="' + i + '">' + esc(hcpShown(p.hcp)) + '</span><button type="button" tabindex="-1" data-hcp-step="1" data-i="' + i + '" aria-label="Raise handicap">+</button></span>';
     const junk = '<span class="pjunk"><button type="button" tabindex="-1" data-pjunk-step="-1" data-i="' + i + '" aria-label="Decrease junk">−</button><input data-pjunk="1" data-i="' + i + '" inputmode="decimal" aria-label="Junk override" value="' + playerJunkValue(p) + '"><button type="button" tabindex="-1" data-pjunk-step="1" data-i="' + i + '" aria-label="Increase junk">+</button></span>';
-    const ov = junkOverrideForPlayer(p);
-    const ovId = String(p.initials || '').toUpperCase();
-    const pov = ov == null ? '' : '<span class="pov">' + esc(ovId) + ' ' + dollarText(ov) + '</span>';
-    const initials = '<span class="initcell' + (ov == null ? '' : ' has-ov') + '"><input class="initials' + (p.initials ? '' : ' need') + '" data-i="' + i + '" data-f="initials" value="' + esc(p.initials) + '" maxlength="3" autocapitalize="characters" aria-label="Initials">' + pov + '</span>';
+    const initials = '<input class="initials' + (p.initials ? '' : ' need') + '" data-i="' + i + '" data-f="initials" value="' + esc(p.initials) + '" maxlength="3" autocapitalize="characters" aria-label="Initials">';
     return '<div class="pcard"><input class="name' + (p.name ? '' : ' need') + '" data-i="' + i + '" data-f="name" value="' + esc(p.name) + '" autocapitalize="words" aria-label="Name">' + initials + hcp + '<div class="tee-x">' + tee + '<button type="button" tabindex="-1" data-remove="' + i + '" class="remove" aria-label="Remove">✕</button></div><button type="button" tabindex="-1" data-box="' + i + '" class="box' + (p.box ? ' on' : '') + '">' + (p.box ? 'In' : 'Off') + '</button>' + junk + '</div>';
   }).join('');
   drawBets();

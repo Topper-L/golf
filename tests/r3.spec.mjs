@@ -836,7 +836,8 @@ test('a picked setup fills every match; changes update or save as without storin
   await expect(page.locator('.hint').first()).toContainText("Changed from Andy's setup");
   await expect(page.locator('#setupUpdate')).toContainText("Update");
   await page.evaluate(() => { setPlayerJunk(0, 0.5); draw(); });
-  await expect(page.locator('.pov').first()).toHaveText('GS $0.50');
+  await expect(page.locator('#players .pov')).toHaveCount(0);
+  await expect(page.locator('#players')).not.toContainText('GS $0.50');
   await expect(page.locator('.povchip').first()).toHaveText('GS $0.50');
   await expect(page.locator('.matchcard.changed').first()).toBeVisible();
   await page.locator('#betSetupPanel').evaluate(el => {
@@ -970,7 +971,7 @@ test('an old Set Default blob becomes the last-used Betting Setup', async ({ pag
   expect(await page.evaluate(() => localStorage.getItem('bet-default'))).toBeNull();
 });
 
-test('a player junk override shows on setup, bets, and settle details', async ({ page }) => {
+test('a player junk override shows on the match and in settle details', async ({ page }) => {
   await twoPlayer(page, { junk: 3, first: 0, second: 0, overall: 0, tl: { 0: 3 }, ns: { 0: 4 } });
   await page.evaluate(() => {
     document.getElementById('dJunk').value = '3';
@@ -983,7 +984,8 @@ test('a player junk override shows on setup, bets, and settle details', async ({
     settle();
   });
   await showSetup(page);
-  await expect(page.locator('.pov').first()).toHaveText('GS $0.50');
+  await expect(page.locator('#players .pov')).toHaveCount(0);
+  await expect(page.locator('#players')).not.toContainText('GS $0.50');
   await expect(page.locator('.povchip').first()).toContainText('GS $0.50');
   await expect(page.locator('.matchcard').first()).toContainText('Changed');
   await expect(page.locator('.settle-math')).toContainText('GS $0.50');
