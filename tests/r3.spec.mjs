@@ -1176,3 +1176,105 @@ test('banner collapses eight presses to plus five and expands in place', async (
   await page.locator('.banner').first().click();
   await expect(page.locator('.b-full')).toHaveCount(0);
 });
+
+test('score page keeps the round box below quit and the rows above the fold', async ({ page }) => {
+  const fit = () => page.evaluate(() => {
+    window.scrollTo(0, 0);
+    const junk = document.querySelector('#scores .srow:last-child .junkbtn');
+    const banner = document.querySelector('.banner');
+    const bar = document.getElementById('tabbar').getBoundingClientRect();
+    const jr = junk.getBoundingClientRect();
+    const br = banner.getBoundingClientRect();
+    return {
+      players: document.querySelectorAll('#scores .srow').length,
+      bannerTop: br.top,
+      junkBottom: jr.bottom,
+      limit: bar.top,
+      fits: br.top >= 0 && jr.bottom <= bar.top + 1
+    };
+  });
+  await twoPlayer(page, { junk: 0, first: 10, second: 10, overall: 10, screen: 'score' });
+  await expect(page.locator('#scoreHint')).toBeHidden();
+  await expect(page.locator('#roundDetail')).toBeVisible();
+  const order = await page.evaluate(() => {
+    const quit = document.getElementById('quitRound').getBoundingClientRect().top;
+    const box = document.getElementById('roundDetail').getBoundingClientRect().top;
+    const scores = document.getElementById('scores').getBoundingClientRect().top;
+    return { quit, box, scores };
+  });
+  expect(order.box).toBeGreaterThan(order.quit);
+  expect(order.scores).toBeLessThan(order.quit);
+  const two = await fit();
+  expect(two.fits).toBeTruthy();
+  await shot(page, 'score-top-2');
+  await page.evaluate(() => {
+    holeScores.forEach(row => row.fill(null));
+    drawHole();
+  });
+  await expect(page.locator('#scoreHint')).toBeVisible();
+  await expect(page.locator('#scoreHint')).toHaveText('− and + set the score. X is a pickup.');
+  await page.evaluate(() => { holeScores[0][0] = 4; holeScores[1][0] = 5; drawHole(); });
+  await expect(page.locator('#scoreHint')).toBeHidden();
+  const weights = await page.evaluate(() => {
+    setFont(0);
+    const read = () => parseFloat(getComputedStyle(document.querySelector('.b-primary')).fontSize);
+    const small = read();
+    setFont(1);
+    const mid = read();
+    setFont(3);
+    const big = read();
+    const kicker = parseInt(getComputedStyle(document.querySelector('.b-kicker')).fontWeight, 10);
+    const nine = parseInt(getComputedStyle(document.querySelector('.b-line')).fontWeight, 10);
+    setFont(0);
+    return { small, mid, big, kicker, nine };
+  });
+  expect(weights.small).toBeLessThan(weights.mid);
+  expect(weights.mid).toBeLessThan(weights.big);
+  expect(weights.mid).toBe(18);
+  expect(weights.nine).toBeGreaterThan(weights.kicker);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await shot(page, 'banner-a-minus');
+  await page.evaluate(() => { setFont(3); window.scrollTo(0, 0); });
+  await shot(page, 'banner-a-plus');
+  await page.evaluate(() => setFont(1));
+  await page.locator('#roundDetail').evaluate(el => el.scrollIntoView());
+  await shot(page, 'score-bottom-round');
+  let confirmed = false;
+  await page.evaluate(() => { window.confirm = () => false; });
+  await page.locator('#deleteRound').click();
+  await expect(page.locator('#holeView')).toBeVisible();
+  await page.evaluate(() => { window.confirm = (msg) => { window.__deleteAsk = msg; return true; }; });
+  await page.locator('#deleteRound').click();
+  confirmed = await page.evaluate(() => window.__deleteAsk || '');
+  expect(confirmed).toContain('Delete');
+  await expect(page.locator('#screen-gate')).toBeVisible();
+  await page.evaluate(() => {
+    const pars = [4, 5, 3, 4, 4, 5, 3, 4, 4, 4, 4, 4, 3, 4, 5, 4, 3, 5];
+    currentCourse = 'Wood Ranch';
+    const raw = [
+      { name: 'Topper Larsen', initials: 'TL', tee: 'Blue', hcp: '5', box: false },
+      { name: 'Ned Green', initials: 'NG', tee: 'White', hcp: '8', box: false },
+      { name: 'Amy Chen', initials: 'AC', tee: 'Gold', hcp: '12', box: false },
+      { name: 'Dana Kim', initials: 'DK', tee: 'Red', hcp: '14', box: false }
+    ];
+    players = raw;
+    holePlayers = raw.map(p => ({ id: p.initials, name: p.name, tee: p.tee, hcp: p.hcp, box: false }));
+    holeScores = raw.map(() => pars.slice());
+    holeMarks = holePlayers.map(() => freshMarks());
+    amounts = { 'TL vs NG': { on: true, first: 10, second: 10, overall: 10, press: 0, pressFront: 0, pressBack: 0, pressDown: 2, autoPress: true, player: { TL: 0, NG: 0, AC: 0, DK: 0 }, offers: [], mp18: false, mp: 0 } };
+    roundStop = null;
+    holeNo = 0;
+    startAt = 0;
+    playedThru = 17;
+    ninesPlayed = null;
+    roundId = 'four';
+    syncPlayedNines();
+    showScreen('score');
+    drawHole();
+    window.scrollTo(0, 0);
+  });
+  const four = await fit();
+  expect(four.players).toBe(4);
+  expect(four.fits).toBeTruthy();
+  await shot(page, 'score-top-4');
+});
