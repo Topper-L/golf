@@ -222,7 +222,7 @@ test('junk sheet multi-select, 5-some box, and settle sums to zero', async ({ pa
     drawHole();
   });
   await expect(page.locator('.banner')).toHaveCount(3);
-  await expect(page.locator('.b-primary').first()).toContainText('Thru');
+  await expect(page.locator('.b-primary').first()).toContainText(/thru/i);
   const primarySize = await page.locator('.b-primary').first().evaluate(el => getComputedStyle(el).fontSize);
   await page.locator('#fontUp').click();
   const bigger = await page.locator('.b-primary').first().evaluate(el => getComputedStyle(el).fontSize);
@@ -318,20 +318,22 @@ test('press rows use P1 and P2', async ({ page }) => {
   await shot(page, 'press-rows');
   await page.getByRole('button', { name: 'Score', exact: true }).click();
   await expect(page.locator('.banner.dn, .banner.up, .banner.as').first()).toBeVisible();
-  await expect(page.locator('.b-primary').first()).toContainText(/up|dn|AS/);
-  await expect(page.locator('.b-sub').first()).toContainText('Press from');
+  await expect(page.locator('.b-primary').first()).toContainText(/↑|↓|AS/);
+  await expect(page.locator('#presses')).toHaveCount(0);
+  await page.locator('.banner').first().click();
+  await expect(page.locator('.b-full').first()).toContainText('P1 from');
   await shot(page, 'banner-press');
 });
 
 test('banner colors for up, down, and all square', async ({ page }) => {
   await twoPlayer(page, { tl: { 0: 3 }, ns: { 0: 5 }, junk: 0, first: 10, second: 0, overall: 0 });
   await expect(page.locator('.banner')).toHaveClass(/up/);
-  await expect(page.locator('.b-primary')).toContainText('1 up');
-  await expect(page.locator('.b-primary')).toContainText('Thru');
+  await expect(page.locator('.b-primary')).toContainText('1↑');
+  await expect(page.locator('.b-primary')).toContainText(/thru/i);
   await shot(page, 'banner-up');
   await twoPlayer(page, { tl: { 0: 6 }, ns: { 0: 4 }, junk: 0, first: 10, second: 0, overall: 0 });
   await expect(page.locator('.banner')).toHaveClass(/dn/);
-  await expect(page.locator('.b-primary')).toContainText('1 dn');
+  await expect(page.locator('.b-primary')).toContainText('1↓');
   await shot(page, 'banner-dn');
   await twoPlayer(page, { junk: 0, first: 10, second: 0, overall: 0 });
   await expect(page.locator('.banner')).toHaveClass(/as/);
@@ -1012,4 +1014,165 @@ test('applying a betting setup keeps settle nets at zero', async ({ page }) => {
   });
   expect(sum).toBe(0);
   expect(await page.evaluate(() => bettingSetups[0].name)).toBe('Nassau day');
+});
+
+test('card dots align, match line is original only, and arrows follow the number', async ({ page }) => {
+  await page.evaluate(() => {
+    const pars = [4, 5, 3, 4, 4, 5, 3, 4, 4, 4, 4, 4, 3, 4, 5, 4, 3, 5];
+    currentCourse = 'Wood Ranch';
+    players = [
+      { name: 'Topper Larsen', initials: 'TL', tee: 'Blue', hcp: '18', box: false },
+      { name: 'Ned S', initials: 'NS', tee: 'Blue', hcp: '0', box: false }
+    ];
+    holePlayers = players.map(p => ({ id: p.initials, name: p.name, tee: 'Blue', hcp: p.hcp, box: false }));
+    holeScores = [pars.slice(), pars.slice()];
+    for (let h = 0; h < 9; h++) holeScores[1][h] = pars[h] + 1;
+    for (let h = 9; h < 18; h++) { holeScores[0][h] = null; holeScores[1][h] = null; }
+    holeMarks = holePlayers.map(() => freshMarks());
+    amounts = { 'TL vs NS': { on: true, first: 10, second: 10, overall: 10, press: 0, pressFront: 0, pressBack: 0, pressDown: 2, autoPress: false, player: { TL: 0, NS: 0 }, offers: [], mp18: false, mp: 0 } };
+    roundStop = null;
+    holeNo = 0;
+    startAt = 0;
+    playedThru = 8;
+    ninesPlayed = null;
+    roundId = 'card-line';
+    cardPick = 'TL';
+    cardMatchName = 'TL vs NS';
+    syncPlayedNines();
+    showScreen('card');
+    drawHole();
+  });
+  await expect(page.locator('#card table.scorecard .mcell')).toHaveCount(0);
+  await expect(page.locator('#cardMatchLine')).toContainText('1st 9');
+  await expect(page.locator('#cardMatchLine')).toContainText('Overall');
+  await expect(page.locator('#cardMatchLine')).not.toContainText('2nd 9');
+  await expect(page.locator('#cardMatchLine')).toContainText('↑');
+  const align = await page.locator('#card table.scorecard tr').nth(1).locator('.stack').evaluateAll(stacks => stacks.slice(0, 2).map(stack => {
+    const num = stack.querySelector('.num, .shape');
+    const dots = stack.querySelector('.dots');
+    const nr = num.getBoundingClientRect();
+    const dr = dots.getBoundingClientRect();
+    return { bottom: nr.bottom, dots: dr.height, empty: dots.textContent === '' };
+  }));
+  expect(align[0].dots).toBe(align[1].dots);
+  expect(align.some(row => row.empty)).toBeTruthy();
+  expect(align.some(row => !row.empty)).toBeTruthy();
+  expect(Math.abs(align[0].bottom - align[1].bottom)).toBeLessThan(2);
+  await page.evaluate(() => {
+    const pars = [4, 5, 3, 4, 4, 5, 3, 4, 4, 4, 4, 4, 3, 4, 5, 4, 3, 5];
+    for (let h = 9; h < 18; h++) {
+      holeScores[0][h] = pars[h];
+      holeScores[1][h] = pars[h] + 1;
+    }
+    playedThru = 17;
+    drawHole();
+  });
+  const line = await page.locator('#cardMatchLine').innerText();
+  expect(line).toContain('1st 9');
+  expect(line).toContain('2nd 9');
+  expect(line).toContain('Overall');
+  expect(line).not.toMatch(/↑\d|↓\d/);
+  await shot(page, 'card-matchline');
+  await page.evaluate(() => {
+    amounts['TL vs NS'].first = 0;
+    amounts['TL vs NS'].second = 0;
+    amounts['TL vs NS'].overall = 10;
+    drawHole();
+  });
+  const only = await page.locator('#cardMatchLine').innerText();
+  expect(only.startsWith('Overall')).toBeTruthy();
+  expect(only).not.toContain('1st 9');
+  await page.getByRole('button', { name: 'Score', exact: true }).click();
+  await page.locator('#standing').evaluate(el => {
+    const y = el.getBoundingClientRect().top + window.scrollY - 70;
+    window.scrollTo(0, Math.max(0, y));
+  });
+  const standing = await page.locator('#standing').innerText();
+  expect(standing).not.toMatch(/↑\d|↓\d/);
+  expect(standing).toMatch(/\d↑|\d↓|AS/);
+  await shot(page, 'standing-arrows');
+});
+
+test('score actions keep their size and the press list is gone', async ({ page }) => {
+  await twoPlayer(page, { junk: 0, first: 10, second: 0, overall: 0, hole: 0, screen: 'score' });
+  await page.evaluate(() => {
+    holeScores[0][0] = null;
+    holeScores[1][0] = null;
+    drawHole();
+  });
+  await expect(page.locator('#postReady')).toHaveCount(0);
+  await expect(page.locator('#presses')).toHaveCount(0);
+  const boxes = () => page.locator('#scoreActions button').evaluateAll(els => els.filter(el => !el.hidden).map(el => {
+    const parent = el.parentElement.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    return { id: el.id, x: Math.round(r.x - parent.x), y: Math.round(r.y - parent.y), w: Math.round(r.width), h: Math.round(r.height) };
+  }));
+  const before = await boxes();
+  expect(before.map(b => b.id)).toEqual(['back', 'post', 'clearHole', 'toSetup', 'quitRound']);
+  await page.locator('#scoreActions').evaluate(el => {
+    const y = el.getBoundingClientRect().top + window.scrollY - 80;
+    window.scrollTo(0, Math.max(0, y));
+  });
+  await shot(page, 'score-actions-before');
+  await page.evaluate(() => {
+    holeScores[0][0] = 4;
+    holeScores[1][0] = 5;
+    drawHole();
+  });
+  const after = await boxes();
+  expect(after).toEqual(before);
+  await expect(page.locator('#post')).toHaveClass(/ready/);
+  const width = await page.locator('#post').evaluate(el => el.getBoundingClientRect().width);
+  const row = await page.locator('#scoreActions').evaluate(el => el.getBoundingClientRect().width);
+  expect(width).toBeLessThan(row * 0.7);
+  await page.locator('#scoreActions').evaluate(el => {
+    const y = el.getBoundingClientRect().top + window.scrollY - 80;
+    window.scrollTo(0, Math.max(0, y));
+  });
+  await shot(page, 'score-actions-after');
+});
+
+test('banner collapses eight presses to plus five and expands in place', async ({ page }) => {
+  await page.evaluate(() => {
+    const pars = [4, 5, 3, 4, 4, 5, 3, 4, 4, 4, 4, 4, 3, 4, 5, 4, 3, 5];
+    currentCourse = 'Wood Ranch';
+    players = [
+      { name: 'Topper Larsen', initials: 'TL', tee: 'Blue', hcp: '0', box: false },
+      { name: 'Ned S', initials: 'ZT', tee: 'Blue', hcp: '0', box: false }
+    ];
+    holePlayers = players.map(p => ({ id: p.initials, name: p.name, tee: 'Blue', hcp: '0', box: false }));
+    holeScores = [pars.map(p => p + 1), pars.slice()];
+    for (let h = 9; h < 18; h++) { holeScores[0][h] = null; holeScores[1][h] = null; }
+    holeMarks = holePlayers.map(() => freshMarks());
+    amounts = { 'TL vs ZT': { on: true, first: 10, second: 10, overall: 10, press: 5, pressFront: 5, pressBack: 5, pressDown: 1, autoPress: true, pressMode: 'auto', player: { TL: 0, ZT: 0 }, offers: [], mp18: false, mp: 0 } };
+    roundStop = null;
+    holeNo = 8;
+    startAt = 0;
+    playedThru = 8;
+    ninesPlayed = null;
+    roundId = 'eight-press';
+    bannerOpen = {};
+    syncPlayedNines();
+    showScreen('score');
+    drawHole();
+  });
+  const count = await page.evaluate(() => bannerPresses(simulateMatch('TL vs ZT', ['TL'], ['ZT']), 0).length);
+  expect(count).toBe(8);
+  const collapsed = await page.locator('.banner').first().innerText();
+  expect(collapsed).toContain('TL vs ZT · 1 of 1');
+  expect(collapsed).toContain('thru 9');
+  expect(collapsed).toContain('+5');
+  expect(collapsed).toContain('Tap for all 8 presses');
+  expect(collapsed).not.toContain('2nd 9');
+  expect(collapsed).not.toMatch(/↑\d|↓\d/);
+  await shot(page, 'banner-collapsed');
+  await page.locator('.banner').first().click();
+  const open = await page.locator('.banner').first().innerText();
+  expect(open).toContain('Tap to collapse');
+  expect(open).toContain('P1 from 2');
+  expect(open).toContain('P8 from 9');
+  expect(open).toContain('+5');
+  await shot(page, 'banner-expanded');
+  await page.locator('.banner').first().click();
+  await expect(page.locator('.b-full')).toHaveCount(0);
 });
