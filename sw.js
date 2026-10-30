@@ -1,5 +1,5 @@
 /* Network-first while online. Offline reads the versioned cache and never calls fetch. Bump CACHE to drop old copies. */
-const CACHE = 'golf-v23';
+const CACHE = 'golf-v25';
 const FILES = ['index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', event => {
