@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import fs from 'fs';
+import zlib from 'zlib';
 
 const shotDir = '/workspace/2026-10-29-build';
 const artDir = '/opt/cursor/artifacts';
@@ -11,6 +12,123 @@ async function shot(page, name, opts) {
   const fullPage = !!(opts && opts.fullPage);
   await page.screenshot({ path: shotDir + '/' + file, fullPage });
   await page.screenshot({ path: artDir + '/' + file, fullPage });
+}
+
+async function stitchShots(name, buffers) {
+  const pngs = buffers.map(decodePng);
+  const gap = 16;
+  const width = Math.max(...pngs.map(p => p.width));
+  const height = pngs.reduce((n, p) => n + p.height, 0) + gap * (pngs.length - 1);
+  const canvas = Buffer.alloc(width * height * 4, 0);
+  canvas.fill(231); // #e7efe6 page background, filled per channel below
+  for (let i = 0; i < canvas.length; i += 4) {
+    canvas[i] = 231; canvas[i + 1] = 239; canvas[i + 2] = 230; canvas[i + 3] = 255;
+  }
+  let y = 0;
+  pngs.forEach(p => {
+    const x0 = Math.floor((width - p.width) / 2);
+    for (let row = 0; row < p.height; row++) {
+      const src = p.rgba.subarray(row * p.width * 4, (row + 1) * p.width * 4);
+      src.copy(canvas, ((y + row) * width + x0) * 4);
+    }
+    y += p.height + gap;
+  });
+  const file = encodePng(width, height, canvas);
+  fs.writeFileSync(shotDir + '/' + name + '.png', file);
+  fs.writeFileSync(artDir + '/' + name + '.png', file);
+}
+
+function decodePng(buf) {
+  const sig = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  if (!buf.subarray(0, 8).equals(sig)) throw new Error('not a png');
+  let width = 0, height = 0, bitDepth = 8, colorType = 6;
+  const idat = [];
+  let o = 8;
+  while (o < buf.length) {
+    const len = buf.readUInt32BE(o);
+    const type = buf.toString('ascii', o + 4, o + 8);
+    const data = buf.subarray(o + 8, o + 8 + len);
+    if (type === 'IHDR') {
+      width = data.readUInt32BE(0);
+      height = data.readUInt32BE(4);
+      bitDepth = data[8];
+      colorType = data[9];
+    } else if (type === 'IDAT') idat.push(data);
+    else if (type === 'IEND') break;
+    o += 12 + len;
+  }
+  if (bitDepth !== 8 || (colorType !== 2 && colorType !== 6)) throw new Error('unsupported png');
+  const raw = zlib.inflateSync(Buffer.concat(idat));
+  const bpp = colorType === 6 ? 4 : 3;
+  const stride = width * bpp;
+  const rgba = Buffer.alloc(width * height * 4);
+  let src = 0;
+  let prev = Buffer.alloc(stride);
+  for (let y = 0; y < height; y++) {
+    const filter = raw[src++];
+    const row = Buffer.from(raw.subarray(src, src + stride));
+    src += stride;
+    for (let i = 0; i < stride; i++) {
+      const left = i >= bpp ? row[i - bpp] : 0;
+      const up = prev[i];
+      const ul = i >= bpp ? prev[i - bpp] : 0;
+      if (filter === 1) row[i] = (row[i] + left) & 255;
+      else if (filter === 2) row[i] = (row[i] + up) & 255;
+      else if (filter === 3) row[i] = (row[i] + Math.floor((left + up) / 2)) & 255;
+      else if (filter === 4) row[i] = (row[i] + paeth(left, up, ul)) & 255;
+    }
+    for (let x = 0; x < width; x++) {
+      const s = x * bpp;
+      const d = (y * width + x) * 4;
+      rgba[d] = row[s];
+      rgba[d + 1] = row[s + 1];
+      rgba[d + 2] = row[s + 2];
+      rgba[d + 3] = bpp === 4 ? row[s + 3] : 255;
+    }
+    prev = row;
+  }
+  return { width, height, rgba };
+}
+
+function paeth(a, b, c) {
+  const p = a + b - c;
+  const pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+  return pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+}
+
+function encodePng(width, height, rgba) {
+  const stride = width * 4;
+  const raw = Buffer.alloc((stride + 1) * height);
+  for (let y = 0; y < height; y++) {
+    raw[y * (stride + 1)] = 0;
+    rgba.copy(raw, y * (stride + 1) + 1, y * stride, (y + 1) * stride);
+  }
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8; ihdr[9] = 6;
+  const chunks = [chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))];
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), ...chunks]);
+}
+
+function chunk(type, data) {
+  const out = Buffer.alloc(12 + data.length);
+  out.writeUInt32BE(data.length, 0);
+  out.write(type, 4, 'ascii');
+  data.copy(out, 8);
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(Buffer.concat([Buffer.from(type), data])) >>> 0, 0);
+  crc.copy(out, 8 + data.length);
+  return out;
+}
+
+function crc32(buf) {
+  let c = ~0;
+  for (let i = 0; i < buf.length; i++) {
+    c ^= buf[i];
+    for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+  }
+  return ~c;
 }
 
 function parOf() {
@@ -1362,10 +1480,24 @@ test('junk counts pay per tap and undo restores them', async ({ page }) => {
 
 test('sandy rule is saved on a Betting Setup and in the share link', async ({ page }) => {
   await page.evaluate(() => showScreen('setup'));
-  await page.locator('#sandyRuleBtn').click();
-  await expect(page.locator('#sandyRuleBtn')).toContainText('Up and down only');
-  await page.locator('#sandyRuleBtn').scrollIntoViewIfNeeded();
-  await shot(page, 'setup-sandy-rule');
+  const rule = page.locator('#sandyRule');
+  const each = rule.locator('button[data-sandy-rule="each"]');
+  const updown = rule.locator('button[data-sandy-rule="updown"]');
+  await expect(rule).toBeVisible();
+  await expect(rule).toContainText('Sandy rule');
+  await expect(each).toHaveClass(/on/);
+  await expect(updown).not.toHaveClass(/on/);
+  await page.locator('.sandy-block').scrollIntoViewIfNeeded();
+  const eachShot = await page.locator('.sandy-block').screenshot();
+  await updown.click();
+  await expect(updown).toHaveClass(/on/);
+  await expect(each).not.toHaveClass(/on/);
+  const upShot = await page.locator('.sandy-block').screenshot();
+  await stitchShots('setup-sandy-rule', [eachShot, upShot]);
+  await page.locator('button[data-junk-toggle="sandy"]').click();
+  await expect(rule).toHaveCount(0);
+  await page.locator('button[data-junk-toggle="sandy"]').click();
+  await expect(updown).toHaveClass(/on/);
   await page.locator('#setupSaveAs').click();
   await page.locator('#setupNameInput').fill('Sandy day');
   await page.locator('#setupSaveConfirm').click();
@@ -1374,8 +1506,8 @@ test('sandy rule is saved on a Betting Setup and in the share link', async ({ pa
   await page.locator('#setupShare').click();
   const url = await page.locator('#setupLink').innerText();
   const payload = new URL(url).searchParams.get('setup');
-  const rule = await page.evaluate(raw => decodeSetupParam(raw).sandyRule, payload);
-  expect(rule).toBe('updown');
+  const decoded = await page.evaluate(raw => decodeSetupParam(raw).sandyRule, payload);
+  expect(decoded).toBe('updown');
 });
 
 test('a pickup loses the hole unless both sides pick up, and counts as net double bogey', async ({ page }) => {

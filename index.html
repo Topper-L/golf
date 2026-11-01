@@ -408,6 +408,12 @@ try {
   .sheet-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
   .sheet-actions button { flex:1 1 30%; min-height:44px; }
   .jrow { display:flex; align-items:center; gap:8px; padding:6px 0; border-top:1px solid #e4ece6; }
+  .sandy-rule { display:flex; flex-direction:column; align-items:stretch; gap:4px; margin:0 0 8px; }
+  .sandy-rule .flab { margin:0; }
+  .sandy-rule .seg { display:flex; align-items:stretch; width:100%; border:1px solid #c5d1c8; border-radius:8px; overflow:hidden; background:#fff; }
+  .sandy-rule .seg button { flex:1 1 0; min-width:0; min-height:36px; margin:0; padding:4px 8px; border:0; border-radius:0; background:transparent; color:#3d4f44; font-weight:700; white-space:nowrap; }
+  .sandy-rule .seg button + button { box-shadow:inset 1px 0 0 #c5d1c8; }
+  .sandy-rule .seg button.on { background:#1f6b45; color:#fff; }
   .jrow .jmeta { flex:1; min-width:0; }
   .jrow .jname { font-weight:750; color:#1c2b22; }
   .jrow .jsub { display:block; color:#5e6f64; font-size:11px; font-weight:650; letter-spacing:.03em; text-transform:uppercase; }
@@ -575,7 +581,6 @@ try {
     <h2>Junk types</h2>
     <p>Toggle on or off. Set $ per type, or leave the amount so it follows each player’s junk rate. Birdie and Eagle come from the gross score. Eagle starts at twice the birdie.</p>
     <div id="junkTypes"></div>
-    <p><button type="button" id="sandyRuleBtn">Sandy: Each counts</button></p>
     <label class="quick-line"><input type="checkbox" id="quickScores"> Quick scores (Birdie/Par/Bogey/Double)</label>
   </div>
   <div class="card">
@@ -1125,13 +1130,30 @@ function junkAmtControl(id, name) {
   const value = resolvedJunkAmt(id);
   return '<span class="jstep"><button type="button" data-junk-step="-1" data-junk-amt="' + id + '" aria-label="Decrease ' + esc(name) + '">−</button><input class="jamt" data-junk-amt="' + id + '" inputmode="decimal" aria-label="' + esc(name) + ' amount" value="' + value + '"><button type="button" data-junk-step="1" data-junk-amt="' + id + '" aria-label="Increase ' + esc(name) + '">+</button></span>';
 }
+function sandyRuleHtml() {
+  const each = sandyRule !== 'updown';
+  const side = (id, label, on) => '<button type="button" data-sandy-rule="' + id + '"' + (on ? ' class="on" aria-pressed="true"' : ' aria-pressed="false"') + '>' + label + '</button>';
+  return '<div class="sandy-rule" id="sandyRule"><span class="flab">Sandy rule</span><div class="seg" role="group" aria-label="Sandy rule">' + side('each', 'Each counts', each) + side('updown', 'Up and down only', !each) + '</div></div>';
+}
+function paintSandyRule() {
+  const box = document.getElementById('sandyRule');
+  if (!box) return;
+  const current = sandyRule === 'updown' ? 'updown' : 'each';
+  box.querySelectorAll('button[data-sandy-rule]').forEach(btn => {
+    const on = btn.dataset.sandyRule === current;
+    btn.classList.toggle('on', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+}
 function drawJunkTypes() {
   const el = document.getElementById('junkTypes');
   if (!el) return;
   el.innerHTML = JUNK_DEFS.map(def => {
     const row = junkTypes[def.id] || { on: false, amt: null };
     const sw = '<button type="button" class="jswitch' + (row.on ? ' on' : '') + '" data-junk-toggle="' + def.id + '" aria-pressed="' + (row.on ? 'true' : 'false') + '">' + (row.on ? 'On' : 'Off') + '</button>';
-    return '<div class="jrow"><div class="jmeta"><span class="jname">' + esc(def.name) + '</span><span class="jsub">' + esc(def.sub) + '</span></div>' + sw + junkAmtControl(def.id, def.name) + '</div>';
+    const rowHtml = '<div class="jrow"><div class="jmeta"><span class="jname">' + esc(def.name) + '</span><span class="jsub">' + esc(def.sub) + '</span></div>' + sw + junkAmtControl(def.id, def.name) + '</div>';
+    if (def.id !== 'sandy') return rowHtml;
+    return '<div class="sandy-block">' + rowHtml + (row.on ? sandyRuleHtml() : '') + '</div>';
   }).join('');
   const q = document.getElementById('quickScores');
   if (q) q.checked = !!quickScores;
@@ -1275,6 +1297,14 @@ if (junkSetupEl) {
         const input = junkSetupEl.querySelector('input[data-junk-amt="' + id + '"]');
         if (input) input.value = String(next);
       }
+      persistSetup();
+      refreshSetupChrome();
+      return;
+    }
+    const rule = e.target.closest('button[data-sandy-rule]');
+    if (rule) {
+      sandyRule = rule.dataset.sandyRule === 'updown' ? 'updown' : 'each';
+      paintSandyRule();
       persistSetup();
       refreshSetupChrome();
       return;
@@ -1693,11 +1723,7 @@ function paintSetupFlags() {
     box.textContent = setupBox ? 'Box on' : 'Box off';
     box.className = setupBox ? 'on' : '';
   }
-  const sandyBtn = document.getElementById('sandyRuleBtn');
-  if (sandyBtn) {
-    sandyBtn.textContent = sandyRule === 'updown' ? 'Sandy: Up and down only' : 'Sandy: Each counts';
-    sandyBtn.className = sandyRule === 'updown' ? 'on' : '';
-  }
+  paintSandyRule();
 }
 function writeFormMoney(s) {
   if (!s) return;
@@ -2092,12 +2118,6 @@ if (pressModeBtn) pressModeBtn.onclick = () => {
 };
 const boxFlagBtn = document.getElementById('dBox');
 if (boxFlagBtn) boxFlagBtn.onclick = () => { setupBox = !setupBox; refreshSetupChrome(); };
-const sandyRuleBtn = document.getElementById('sandyRuleBtn');
-if (sandyRuleBtn) sandyRuleBtn.onclick = () => {
-  sandyRule = sandyRule === 'updown' ? 'each' : 'updown';
-  refreshSetupChrome();
-  persistSetup();
-};
 const setupSheetEl = document.getElementById('setupSheet');
 if (setupSheetEl) setupSheetEl.onclick = e => {
   if (e.target.id === 'setupSheet' || e.target.closest('[data-setup-close]')) { closeSetupSheet(); return; }
