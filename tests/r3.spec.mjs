@@ -6,10 +6,11 @@ const artDir = '/opt/cursor/artifacts';
 fs.mkdirSync(shotDir, { recursive: true });
 fs.mkdirSync(artDir, { recursive: true });
 
-async function shot(page, name) {
+async function shot(page, name, opts) {
   const file = name + '.png';
-  await page.screenshot({ path: shotDir + '/' + file });
-  await page.screenshot({ path: artDir + '/' + file });
+  const fullPage = !!(opts && opts.fullPage);
+  await page.screenshot({ path: shotDir + '/' + file, fullPage });
+  await page.screenshot({ path: artDir + '/' + file, fullPage });
 }
 
 function parOf() {
@@ -232,13 +233,12 @@ test('junk sheet multi-select, 5-some box, and settle sums to zero', async ({ pa
   await expect(page.locator('#junkSheet')).toBeVisible();
   await expect(page.locator('#junkSheetTitle')).toContainText('TL');
   await expect(page.locator('#junkSheet')).toContainText('Birdie/Eagle auto from gross score');
-  const chip = page.locator('button[data-sheet-type="chip"]');
-  const sandy = page.locator('button[data-sheet-type="sandy"]');
+  const chip = page.locator('button[data-count-type="chip"][data-count-step="1"]');
+  const sandyUp = page.locator('button[data-count-type="sandy"][data-count-step="1"]');
   await expect(chip).toBeEnabled();
-  await sandy.click();
+  await sandyUp.click();
   await chip.click();
-  await expect(sandy).toHaveClass(/on/);
-  await expect(chip).toHaveClass(/on/);
+  await expect(page.locator('button[data-sheet-type="greenie"]')).toBeVisible();
   await shot(page, 'junk-sheet');
   await page.locator('#junkSheetDone').click();
   await expect(page.locator('#junkSheet')).toBeHidden();
@@ -309,7 +309,9 @@ test('press rows use P1 and P2', async ({ page }) => {
     drawHole();
   });
   const headers = await page.locator('#cardStanding .pressgrid th').allInnerTexts();
-  expect(headers).toContain('Orig');
+  expect(headers).toContain('Match');
+  expect(headers).toContain('1st');
+  expect(headers).toContain('2nd');
   expect(headers).toContain('P1');
   expect(headers).toContain('P2');
   expect(headers.some(t => /^P\d{2}$/.test(t.trim()) || /^P[3-9]$/.test(t.trim()))).toBeFalsy();
@@ -1047,7 +1049,7 @@ test('card dots align, match line is original only, and arrows follow the number
   await expect(page.locator('#cardMatchLine')).toContainText('Overall');
   await expect(page.locator('#cardMatchLine')).not.toContainText('2nd 9');
   await expect(page.locator('#cardMatchLine')).toContainText('↑');
-  const align = await page.locator('#card table.scorecard tr').nth(1).locator('.stack').evaluateAll(stacks => stacks.slice(0, 2).map(stack => {
+  const align = await page.locator('#card table.scorecard tr').nth(1).locator('.stack').evaluateAll(stacks => stacks.slice(-2).map(stack => {
     const num = stack.querySelector('.num, .shape');
     const dots = stack.querySelector('.dots');
     const nr = num.getBoundingClientRect();
@@ -1277,4 +1279,140 @@ test('score page keeps the round box below quit and the rows above the fold', as
   expect(four.players).toBe(4);
   expect(four.fits).toBeTruthy();
   await shot(page, 'score-top-4');
+});
+
+test('card shapes share a center line and the columns fill the card', async ({ page }) => {
+  await twoPlayer(page, { tl: { 0: 5, 4: 3 }, ns: { 0: 4, 4: 5 }, junk: 0, first: 10, second: 10, overall: 10, screen: 'card' });
+  await page.evaluate(() => { holeScores[0][9] = 'X'; drawHole(); });
+  await expect(page.locator('#card .nine-lab').nth(0)).toContainText('1st 9');
+  await expect(page.locator('#card .nine-lab').nth(1)).toContainText('2nd 9');
+  await expect(page.locator('#card table.grand')).toContainText('Tot');
+  await expect(page.locator('#card col.cgap')).toHaveCount(0);
+  await expect(page.locator('#card .shape.par').first()).toBeVisible();
+  await expect(page.locator('#card .shape.x').first()).toBeVisible();
+  const align = await page.locator('#card table.scorecard').first().locator('tr').nth(1).evaluate(row => {
+    const shapes = [...row.querySelectorAll('.shape')].map(el => el.getBoundingClientRect());
+    const mids = shapes.map(r => (r.top + r.bottom) / 2);
+    const table = row.closest('table').getBoundingClientRect();
+    const last = row.querySelector('td:last-child').getBoundingClientRect();
+    return { spread: Math.max(...mids) - Math.min(...mids), gap: table.right - last.right };
+  });
+  expect(align.spread).toBeLessThan(2);
+  expect(align.gap).toBeLessThan(4);
+  const nineWrap = await page.locator('#card .nine-lab').first().evaluate(el => el.scrollWidth - el.clientWidth);
+  expect(nineWrap).toBeLessThanOrEqual(1);
+  await page.evaluate(() => {
+    document.getElementById('tabbar').style.visibility = 'hidden';
+    document.querySelector('.topbar').style.position = 'relative';
+  });
+  await shot(page, 'card-both-nines', { fullPage: true });
+  await page.evaluate(() => setFont(3));
+  const aplus = await page.locator('#card table.scorecard').first().locator('tr').nth(1).evaluate(row => {
+    const shapes = [...row.querySelectorAll('.shape')];
+    const mids = shapes.map(el => { const r = el.getBoundingClientRect(); return (r.top + r.bottom) / 2; });
+    const box = shapes[2].getBoundingClientRect();
+    const table = row.closest('table').getBoundingClientRect();
+    const last = row.querySelector('td:last-child').getBoundingClientRect();
+    return { spread: Math.max(...mids) - Math.min(...mids), square: Math.abs(box.width - box.height), gap: table.right - last.right };
+  });
+  expect(aplus.spread).toBeLessThan(2);
+  expect(aplus.square).toBeLessThan(2);
+  expect(aplus.gap).toBeLessThan(4);
+  await shot(page, 'card-aplus', { fullPage: true });
+  await page.evaluate(() => {
+    setFont(1);
+    document.getElementById('tabbar').style.visibility = '';
+    document.querySelector('.topbar').style.position = '';
+    showScreen('standing');
+    window.scrollTo(0, 0);
+  });
+  await expect(page.locator('#cardStanding .matchlab').first()).toContainText('Match');
+  await expect(page.locator('#cardStanding .ordlab').first()).toContainText('1st');
+  await expect(page.locator('#cardStanding .ordlab').nth(1)).toContainText('2nd');
+  await shot(page, 'match-table', { fullPage: true });
+  await page.evaluate(() => { setFont(3); window.scrollTo(0, 0); });
+  await shot(page, 'match-aplus', { fullPage: true });
+});
+
+test('junk counts pay per tap and undo restores them', async ({ page }) => {
+  await twoPlayer(page, { junk: 3, first: 0, second: 0, overall: 0, tl: { 0: 4 }, ns: { 0: 4 }, screen: 'score' });
+  await page.evaluate(() => { junkTypes.chip.on = true; });
+  await page.locator('.junkbtn').first().click();
+  await page.locator('button[data-count-type="sandy"][data-count-step="1"]').click();
+  await page.locator('button[data-count-type="sandy"][data-count-step="1"]').click();
+  await page.locator('button[data-count-type="chip"][data-count-step="1"]').click();
+  await expect(page.locator('.jcount-val').first()).toHaveText('2');
+  await expect(page.locator('.jcount').filter({ hasText: 'Chip-in' }).locator('.jcount-val')).toHaveText('1');
+  await shot(page, 'junk-sandy-chip');
+  await page.locator('#junkSheetDone').click();
+  await expect(page.locator('.schips').first()).toContainText('Sandy ×2');
+  await expect(page.locator('.schips').first()).toContainText('Chip-in');
+  await expect(page.locator('.schips-pay').first()).toContainText('$3 each · $9');
+  const paid = await page.evaluate(() => lastSettle.roll.TL);
+  expect(paid).toBe(9);
+  await page.locator('#undoScore').click();
+  await expect(page.locator('.schips').first()).not.toContainText('Chip-in');
+  const afterUndo = await page.evaluate(() => holeMarks[0][0].chip);
+  expect(afterUndo).toBe(0);
+  await page.evaluate(() => { sandyRule = 'updown'; holeScores[0][0] = 5; holeMarks[0][0].sandy = 2; drawHole(); });
+  expect(await page.evaluate(() => lastSettle.roll.TL)).toBe(0);
+  await page.evaluate(() => { holeScores[0][0] = 4; drawHole(); });
+  expect(await page.evaluate(() => lastSettle.roll.TL)).toBe(3);
+});
+
+test('sandy rule is saved on a Betting Setup and in the share link', async ({ page }) => {
+  await page.evaluate(() => showScreen('setup'));
+  await page.locator('#sandyRuleBtn').click();
+  await expect(page.locator('#sandyRuleBtn')).toContainText('Up and down only');
+  await page.locator('#sandyRuleBtn').scrollIntoViewIfNeeded();
+  await shot(page, 'setup-sandy-rule');
+  await page.locator('#setupSaveAs').click();
+  await page.locator('#setupNameInput').fill('Sandy day');
+  await page.locator('#setupSaveConfirm').click();
+  const saved = await page.evaluate(() => bettingSetups.find(s => s.name === 'Sandy day').sandyRule);
+  expect(saved).toBe('updown');
+  await page.locator('#setupShare').click();
+  const url = await page.locator('#setupLink').innerText();
+  const payload = new URL(url).searchParams.get('setup');
+  const rule = await page.evaluate(raw => decodeSetupParam(raw).sandyRule, payload);
+  expect(rule).toBe('updown');
+});
+
+test('a pickup loses the hole unless both sides pick up, and counts as net double bogey', async ({ page }) => {
+  await twoPlayer(page, { junk: 0, first: 10, second: 0, overall: 0, tl: { 0: 4 }, ns: { 0: 4 }, screen: 'score' });
+  const pickup = await page.evaluate(() => {
+    holeScores[0][0] = 'X';
+    const ids = ['TL', 'NS'];
+    const one = { a: sideNet(['TL'], 0, ids), b: sideNet(['NS'], 0, ids) };
+    holeScores[1][0] = 'X';
+    const both = { a: sideNet(['TL'], 0, ids), b: sideNet(['NS'], 0, ids) };
+    holeScores[0][0] = 'X';
+    holeScores[1][0] = 4;
+    const ghin = { gross: countedScore(0, 0), net: countedScore(0, 0) - ownStrokes(0, 0), expect: netDoubleBogey(0, 0) };
+    return { one, both, ghin };
+  });
+  expect(pickup.one.a).toBeGreaterThan(pickup.one.b);
+  expect(pickup.both.a).toBe(pickup.both.b);
+  expect(pickup.ghin.gross).toBe(pickup.ghin.expect);
+  expect(pickup.ghin.net).toBe(6);
+  const team = await page.evaluate(() => {
+    const pars = [4, 5, 3, 4, 4, 5, 3, 4, 4, 4, 4, 4, 3, 4, 5, 4, 3, 5];
+    players = [
+      { name: 'A', initials: 'TL', tee: 'Blue', hcp: '0', box: true },
+      { name: 'B', initials: 'NG', tee: 'Blue', hcp: '0', box: true },
+      { name: 'C', initials: 'AC', tee: 'Blue', hcp: '0', box: false },
+      { name: 'D', initials: 'DK', tee: 'Blue', hcp: '0', box: false }
+    ];
+    holePlayers = players.map(p => ({ id: p.initials, name: p.name, tee: 'Blue', hcp: '0', box: p.box }));
+    holeScores = holePlayers.map(() => pars.slice());
+    holeScores[0][0] = 'X';
+    holeScores[1][0] = 'X';
+    holeScores[2][0] = 4;
+    holeScores[3][0] = 5;
+    const box = ['TL', 'NG'];
+    const opp = ['AC', 'DK'];
+    const ids = box.concat(opp);
+    return { box: sideNet(box, 0, ids), opp: sideNet(opp, 0, ids) };
+  });
+  expect(team.box).toBeGreaterThan(team.opp);
 });
