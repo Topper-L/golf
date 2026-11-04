@@ -3415,6 +3415,8 @@ function bannerCard(board, index, total) {
   const totalScore = (void0 ? 0 : frontScore) + (void1 ? 0 : backScore);
   const thru = thruNumber();
   const started = frontPlayed || backPlayed;
+  const asStand = betsAsTheyStand(board.name, board.sides.a, board.sides.b);
+  const overallDone = asStand || (nineCanPay(front, void0, false) && nineCanPay(back, void1, false) && (frontPlayed || void0) && (backPlayed || void1));
   const primaryScore = started ? totalScore : 0;
   const primary = arrowMark(primaryScore) + (thru ? ' thru ' + thru : '');
   const ninePresses = seg => bannerPresses(sim, seg);
@@ -3438,8 +3440,13 @@ function bannerCard(board, index, total) {
   const p1 = ninePresses(1);
   const pressCount = p0.length + p1.length;
   const open = !!bannerOpen[board.name];
-  const summary = collapsedNine('1st 9', frontPlayed ? front : null, p0) + collapsedNine('2nd 9', backPlayed ? back : null, p1);
-  const overall = started ? '<p class="b-line"><b>Overall</b> ' + arrowMark(totalScore) + '</p>' : '';
+  const nineBit = (label, leg, presses, isVoid) => {
+    const html = collapsedNine(label, leg, presses);
+    if (!html || nineCanPay(leg, isVoid, asStand)) return html;
+    return html.replace('</p>', ' in progress</p>');
+  };
+  const summary = nineBit('1st 9', frontPlayed ? front : null, p0, void0) + nineBit('2nd 9', backPlayed ? back : null, p1, void1);
+  const overall = !started ? '' : '<p class="b-line"><b>Overall</b> ' + (overallDone ? arrowMark(totalScore) : 'in progress') + '</p>';
   const full = open ? '<div class="b-full">' + expandedNine('1st 9', frontPlayed ? front : null, p0) + expandedNine('2nd 9', backPlayed ? back : null, p1) + '</div>' : '';
   const tap = pressCount ? '<p class="b-tap">' + (open ? 'Tap to collapse' : 'Tap for all ' + pressCount + ' presses') + '</p>' : '';
   const kind = statusKind(primaryScore);
@@ -3643,15 +3650,21 @@ function shareText() {
         lines.push(said ? board.label + ' ' + said : board.label);
         const rows = playoffProgress(board.name, board.sides.a, board.sides.b);
         if (rows.length) lines.push('Playoff ' + rows.map(row => playoffHoleNo(row.i) + ' ' + playoffStatusText(row.score, board.sides.a, board.sides.b)).join(', '));
-        nassauStatusLines(board.sim, board.sim.bet, false).forEach(t => lines.push(board.label + ' ' + t));
+        const mpIds = board.sides.a.concat(board.sides.b);
+        const mpVoid0 = segmentVoid(mpIds, 0);
+        const mpVoid1 = segmentVoid(mpIds, 1);
+        nassauStatusLines(board.sim, board.sim.bet, false, { void0: mpVoid0, void1: mpVoid1, voidAll: mpVoid0 || mpVoid1, asStand: betsAsTheyStand(board.name, board.sides.a, board.sides.b) }).forEach(t => lines.push(board.label + ' ' + t));
         return;
       }
       const run = runningScore(board);
       if (!run.played) { lines.push(board.label); return; }
       const presses = board.sim.legs.filter(l => l.kind === 'press' && pressAmt(board.sim.bet, l.from));
       const extra = presses.map(l => l.played ? 'P' + l.from + ' ' + holeMark(l.score) : 'P' + l.from).join(' · ');
-      lines.push(board.label + ' ' + upMark(run.score) + ' thru ' + (run.last + 1) + (extra ? ' · ' + extra : ''));
-      nassauStatusLines(board.sim, board.sim.bet, false).forEach(t => lines.push(board.label + ' ' + t));
+      const shareIds = board.sides.a.concat(board.sides.b);
+      const shareVoid0 = segmentVoid(shareIds, 0);
+      const shareVoid1 = segmentVoid(shareIds, 1);
+      lines.push(board.label + ' ' + upMark(run.score) + ' thru ' + thruCount(shareIds) + (extra ? ' · ' + extra : ''));
+      nassauStatusLines(board.sim, board.sim.bet, false, { void0: shareVoid0, void1: shareVoid1, voidAll: shareVoid0 || shareVoid1, asStand: betsAsTheyStand(board.name, board.sides.a, board.sides.b) }).forEach(t => lines.push(board.label + ' ' + t));
     });
   }
   lines.push('', 'Settle');
@@ -3787,7 +3800,9 @@ function configuredJunkRate(id) {
   if (!vals.length) return 3;
   return vals[0];
 }
-function nassauStatusLines(sim, bet, html) {
+function nassauStatusLines(sim, bet, html, info) {
+  info = info || {};
+  const asStand = !!info.asStand || !!(roundStop && roundStop.mode === 'asis');
   const say = n => {
     if (!n) return html ? '<b>AS</b>' : 'AS';
     if (!html) return arrowPlain(n);
@@ -3795,19 +3810,33 @@ function nassauStatusLines(sim, bet, html) {
   };
   const nineLeg = seg => sim.legs.find(l => l.kind === 'nine' && l.seg === seg);
   const frontLeg = nineLeg(0), backLeg = nineLeg(1);
-  const backPlayed = !!(backLeg && backLeg.played);
   const lines = [];
+  const nineLine = (label, leg, segVoid, stake) => {
+    if (!Number(stake) || !leg || !leg.played) return '';
+    if (!nineCanPay(leg, segVoid, asStand)) return label + ' in progress';
+    return label + ' ' + say(leg.score);
+  };
   const pressLine = leg => {
     if (!leg || !leg.played || !pressAmt(bet, leg.from)) return '';
+    const segVoid = leg.seg === 0 ? info.void0 : info.void1;
+    const tag = leg.manual ? ' (M)' : ' (A)';
+    if (!nineCanPay(leg, segVoid, asStand)) return 'Press from ' + leg.from + tag + ' in progress';
     let last = leg.score, any = false;
     (leg.holes || []).forEach(h => { if (leg.cells[h] != null) { last = leg.cells[h]; any = true; } });
-    return 'Press from ' + leg.from + (leg.manual ? ' (M)' : ' (A)') + ' ' + say(any ? last : leg.score);
+    return 'Press from ' + leg.from + tag + ' ' + say(any ? last : leg.score);
   };
-  if (Number(bet.first) && frontLeg && frontLeg.played) lines.push('1st 9 ' + say(frontLeg.score));
+  const frontText = nineLine('1st 9', frontLeg, info.void0, bet.first);
+  if (frontText) lines.push(frontText);
   sim.legs.filter(l => l.kind === 'press' && l.seg === 0).forEach(leg => { const t = pressLine(leg); if (t) lines.push(t); });
-  if (backPlayed && Number(bet.second)) lines.push('2nd 9 ' + say(backLeg.score));
+  const backText = nineLine('2nd 9', backLeg, info.void1, bet.second);
+  if (backText) lines.push(backText);
   sim.legs.filter(l => l.kind === 'press' && l.seg === 1).forEach(leg => { const t = pressLine(leg); if (t) lines.push(t); });
-  if (backPlayed && Number(bet.overall)) lines.push('Overall ' + say((frontLeg ? frontLeg.score : 0) + backLeg.score));
+  const started = !!((frontLeg && frontLeg.played) || (backLeg && backLeg.played));
+  if (Number(bet.overall) && started) {
+    const both = nineCanPay(frontLeg, info.void0, asStand) && nineCanPay(backLeg, info.void1, asStand) && ((frontLeg && frontLeg.played) || info.void0) && ((backLeg && backLeg.played) || info.void1);
+    if (info.voidAll || both) lines.push('Overall ' + say((frontLeg && frontLeg.played ? frontLeg.score : 0) + (backLeg && backLeg.played ? backLeg.score : 0)));
+    else lines.push('Overall in progress');
+  }
   return lines;
 }
 function orderedPresses(sim) {
@@ -3851,17 +3880,35 @@ function statusKind(n) {
   if (!n) return 'as';
   return n > 0 ? 'up' : 'dn';
 }
-function thruNumber() {
+function legSettled(leg) {
+  return !!(leg && leg.holes && leg.holes.length && leg.cells && leg.cells[leg.holes[leg.holes.length - 1]] != null);
+}
+function thruCount(ids) {
   const order = playOrder();
-  let last = null;
+  let n = 0;
   for (let i = 0; i < order.length; i++) {
     const h = order[i];
-    const seg = segmentIndex(h);
-    if (holePlayers.some((p, pi) => !nineAllBlank(pi, seg) && !scoreEntered(pi, h))) break;
-    if (!holeScores.some(row => row && row[h] != null)) break;
-    last = h;
+    const ok = ids && ids.length ? holeReady(ids, h) : holePlayers.length > 0 && holePlayers.every((p, pi) => scoreEntered(pi, h));
+    if (!ok) break;
+    n += 1;
   }
-  return last == null ? 0 : cardHoleLabel(last);
+  return n;
+}
+function thruNumber() {
+  return thruCount();
+}
+function betsAsTheyStand(name, a, b) {
+  if (roundStop && roundStop.mode === 'asis') return true;
+  if (!name || !a || !b) return false;
+  const bet = amountFor(name) || {};
+  if (!bet.mp18) return false;
+  const mp = matchPlay(name, a, b);
+  if (mp.closed || (mp.playoff && mp.playoff.winner)) return true;
+  return mp.played >= playOrder().length && !!mp.score;
+}
+function nineCanPay(leg, segVoid, asStand) {
+  if (segVoid || asStand) return true;
+  return legSettled(leg);
 }
 function holeStanding() {
   let names = [];
@@ -3891,7 +3938,7 @@ function holeStanding() {
       const form = mp.playoff && mp.playoff.pending != null ? playoffForm(name, matchIds, mp.playoff.pending, mp.playoff.index) : '';
       const po = playoffStandingHtml(name, a, b);
       const simN = simulateMatch(name, a, b);
-      const nassau = nassauStatusLines(simN, simN.bet, true);
+      const nassau = nassauStatusLines(simN, simN.bet, true, { void0: segmentVoid(matchIds, 0), void1: segmentVoid(matchIds, 1), voidAll: segmentVoid(matchIds, 0) || segmentVoid(matchIds, 1), asStand: betsAsTheyStand(name, a, b) });
       const nassauHtml = nassau.length ? '<p>' + nassau.join('<br>') + '</p>' : '';
       return '<div class="mp-block"><p><b>' + name + '</b> 18-hole<br>' + matchIds.map(id => { const p = holePlayers.find(x => x.id === id); return id + ' ' + hcpLabel(p); }).join(' · ') + '<br>' + status + '</p>' + nineTableMp(h0) + nineTableMp(h1) + po + form + nassauHtml + junkStandingHtml(a, b, matchIds, betEarly) + '</div>';
     }
@@ -3914,22 +3961,24 @@ function holeStanding() {
     const frontLeg = nineLeg(0), backLeg = nineLeg(1);
     const frontScore = frontLeg ? frontLeg.score : 0;
     const backScore = backLeg ? backLeg.score : 0;
-    const backPlayed = !!(backLeg && backLeg.played);
     const void0 = segmentVoid(matchIds, 0);
     const void1 = segmentVoid(matchIds, 1);
     const voidAll = void0 || void1;
+    const asStand = betsAsTheyStand(name, a, b);
+    const frontPay = nineCanPay(frontLeg, void0, asStand);
+    const backPay = nineCanPay(backLeg, void1, asStand);
     const overallScore = (void0 ? 0 : frontScore) + (void1 ? 0 : backScore);
     let dollars = 0;
     const add = (score, amt) => { if (score && amt) dollars += score < 0 ? amt : -amt; };
-    if (!void0) {
+    if (frontPay && !void0) {
       add(frontScore, bet.first);
-      sim.legs.filter(l => l.kind === 'press' && l.seg === 0).forEach(p => add(p.score, pressAmt(bet, p.from)));
+      sim.legs.filter(l => l.kind === 'press' && l.seg === 0 && nineCanPay(l, void0, asStand)).forEach(p => add(p.score, pressAmt(bet, p.from)));
     }
-    if (backPlayed && !void1) {
+    if (backPay && !void1) {
       add(backScore, bet.second);
-      sim.legs.filter(l => l.kind === 'press' && l.seg === 1).forEach(p => add(p.score, pressAmt(bet, p.from)));
+      sim.legs.filter(l => l.kind === 'press' && l.seg === 1 && nineCanPay(l, void1, asStand)).forEach(p => add(p.score, pressAmt(bet, p.from)));
     }
-    if (backPlayed && !voidAll) add(overallScore, bet.overall);
+    if (!voidAll && (asStand || (legSettled(frontLeg) && legSettled(backLeg)))) add(overallScore, bet.overall);
     const junkOf = id => {
       const i = holePlayers.findIndex(p => p.id === id);
       if (i < 0) return 0;
@@ -3940,11 +3989,12 @@ function holeStanding() {
     dollars -= teamJunk;
     const nineTable = holes => pressGridHtml(holes, sim, bet);
     const h0 = holesOfNine(0), h1 = holesOfNine(1);
-    const statusLines = nassauStatusLines(sim, bet, true);
-    const running = dollars ? (dollars > 0 ? b.join('+') : a.join('+')) + ' +' + dollarText(dollars) : 'even';
+    const statusLines = nassauStatusLines(sim, bet, true, { void0: void0, void1: void1, voidAll: voidAll, asStand: asStand });
+    const openMoney = !asStand && (((frontLeg && frontLeg.played) && !frontPay) || ((backLeg && backLeg.played) && !backPay) || (Number(bet.overall) && ((frontLeg && frontLeg.played) || (backLeg && backLeg.played)) && !(legSettled(frontLeg) && legSettled(backLeg)) && !voidAll));
+    const running = dollars ? (dollars > 0 ? b.join('+') : a.join('+')) + ' +' + dollarText(dollars) : (openMoney ? 'in progress' : 'even');
     const hcps = matchIds.map(id => { const p = holePlayers.find(x => x.id === id); return id + ' ' + hcpLabel(p); }).join(' · ');
     const statusHtml = statusLines.length ? '<p>' + statusLines.join('<br>') + '</p>' : '';
-    return '<div class="mstand"><p><b>' + name + '</b> ' + running + '<br>' + hcps + '<br>' + label + (lastThru == null ? '' : ' thru ' + (lastThru + 1)) + (void0 || void1 ? ' · void nine' : '') + '</p>' + nineTable(h0) + nineTable(h1) + statusHtml + junkStandingHtml(a, b, matchIds, bet) + '</div>';
+    return '<div class="mstand"><p><b>' + name + '</b> ' + running + '<br>' + hcps + '<br>' + label + (played ? ' thru ' + thruCount(matchIds) : '') + (void0 || void1 ? ' · void nine' : '') + '</p>' + nineTable(h0) + nineTable(h1) + statusHtml + junkStandingHtml(a, b, matchIds, bet) + '</div>';
   }).join('');
 }
 function splitComp(amount, a, b) {
@@ -3962,6 +4012,7 @@ function splitComp(amount, a, b) {
   return nets;
 }
 function compText(label, n) {
+  if (n == null) return label + ' in progress';
   const v = Math.round((Number(n) || 0) * 100) / 100;
   if (!v) return label + ' AS';
   return label + ' ' + cashText(v);
@@ -4017,23 +4068,24 @@ function settle() {
     const money = (score, amt) => score && amt ? (score < 0 ? amt : -amt) : 0;
     const nineLeg = seg => sim.legs.find(l => l.kind === 'nine' && l.seg === seg);
     const frontLeg = nineLeg(0), backLeg = nineLeg(1);
-    const asIs = !!(roundStop && roundStop.mode === 'asis');
-    const backPlayed = !!(backLeg && backLeg.played);
-    const backOpen = backPlayed || asIs;
+    const asIs = betsAsTheyStand(name, a, b);
     const matchIds = a.concat(b);
     const void0 = segmentVoid(matchIds, 0);
     const void1 = segmentVoid(matchIds, 1);
     const voidAll = void0 || void1;
     const allDay = isAllDayBet(bet);
-    const front = void0 ? 0 : money(frontLeg ? frontLeg.score : 0, bet.first);
-    const back = void1 || !backOpen ? 0 : money(backLeg ? backLeg.score : 0, bet.second);
+    const frontPay = nineCanPay(frontLeg, void0, asIs);
+    const backPay = nineCanPay(backLeg, void1, asIs);
+    const front = !frontPay || void0 ? 0 : money(frontLeg ? frontLeg.score : 0, bet.first);
+    const back = !backPay || void1 ? 0 : money(backLeg ? backLeg.score : 0, bet.second);
     const pressLegs = sim.legs.filter(l => l.kind === 'press').sort((x, y) => x.from - y.from || (x.manual - y.manual));
     const frontPressLegs = pressLegs.filter(p => p.seg === 0);
     const backPressLegs = pressLegs.filter(p => p.seg === 1);
-    const pressPay = (leg, segVoid) => (segVoid || (allDay && voidAll)) ? 0 : money(leg.score, pressAmt(bet, leg.from));
+    const pressPay = (leg, segVoid) => (segVoid || (allDay && voidAll) || !nineCanPay(leg, segVoid, asIs)) ? 0 : money(leg.score, pressAmt(bet, leg.from));
     const frontPress = frontPressLegs.map(p => pressPay(p, void0));
     const backPress = backPressLegs.map(p => pressPay(p, void1));
-    const overall = voidAll || !backOpen ? 0 : money((frontLeg ? frontLeg.score : 0) + (backLeg ? backLeg.score : 0), bet.overall);
+    const overallReady = !voidAll && (asIs || (legSettled(frontLeg) && legSettled(backLeg)));
+    const overall = overallReady ? money((frontLeg && frontLeg.played ? frontLeg.score : 0) + (backLeg && backLeg.played ? backLeg.score : 0), bet.overall) : 0;
     const junkOf = id => {
       const i = holePlayers.findIndex(p => p.id === id);
       if (i < 0) return 0;
@@ -4067,16 +4119,24 @@ function settle() {
       if (items.length) junkItems[id] = items.join(', ');
     });
     const comps = [];
-    if (Number(bet.first)) comps.push({ label: '1st 9', amount: front });
+    const pushLeg = (label, payable, played, amount) => {
+      if (payable) comps.push({ label: label, amount: amount });
+      else if (played) comps.push({ label: label, amount: null });
+    };
+    if (Number(bet.first)) pushLeg('1st 9', frontPay, !!(frontLeg && frontLeg.played), front);
     frontPressLegs.forEach((leg, i) => {
-      if (pressAmt(bet, leg.from)) comps.push({ label: 'Press from ' + leg.from + ' ' + tag(leg), amount: frontPress[i] });
+      if (!pressAmt(bet, leg.from)) return;
+      pushLeg('Press from ' + leg.from + ' ' + tag(leg), nineCanPay(leg, void0, asIs), !!leg.played, frontPress[i]);
     });
-    if (backOpen) {
-      if (Number(bet.second)) comps.push({ label: '2nd 9', amount: back });
-      backPressLegs.forEach((leg, i) => {
-        if (pressAmt(bet, leg.from)) comps.push({ label: 'Press from ' + leg.from + ' ' + tag(leg), amount: backPress[i] });
-      });
-      if (Number(bet.overall)) comps.push({ label: 'Overall', amount: overall });
+    if (Number(bet.second)) pushLeg('2nd 9', backPay, !!(backLeg && backLeg.played), back);
+    backPressLegs.forEach((leg, i) => {
+      if (!pressAmt(bet, leg.from)) return;
+      pushLeg('Press from ' + leg.from + ' ' + tag(leg), nineCanPay(leg, void1, asIs), !!leg.played, backPress[i]);
+    });
+    if (Number(bet.overall)) {
+      const started = !!((frontLeg && frontLeg.played) || (backLeg && backLeg.played));
+      if (voidAll && started) comps.push({ label: 'Overall', amount: 0 });
+      else pushLeg('Overall', overallReady, started, overall);
     }
     if (junk) comps.push({ label: 'Junk', amount: junk });
     let mpPay = 0;
@@ -4103,9 +4163,9 @@ function settle() {
     }
     const byPlayer = {};
     matchIds.forEach(id => {
-      const rows = comps.map(c => '<p class="comp">' + esc(compText(c.label, splitComp(c.amount, a, b)[id] || 0)) + '</p>');
+      const rows = comps.map(c => '<p class="comp">' + esc(c.amount == null ? compText(c.label, null) : compText(c.label, splitComp(c.amount, a, b)[id] || 0)) + '</p>');
       if (junk && junkItems[id]) rows.push('<p class="comp">' + esc(junkItems[id]) + '</p>');
-      const total = comps.reduce((n, c) => n + (splitComp(c.amount, a, b)[id] || 0), 0);
+      const total = comps.reduce((n, c) => n + (c.amount == null ? 0 : (splitComp(c.amount, a, b)[id] || 0)), 0);
       roll[id] = Math.round(((roll[id] || 0) + total) * 100) / 100;
       byPlayer[id] = '<p class="comp"><b>' + esc(shortMatch(name)) + '</b></p>' + rows.join('') + '<p class="settletot"><b>' + cashText(total) + '</b></p>';
     });
@@ -5861,15 +5921,7 @@ function stopPhrase(stop) {
   return where + '. ' + how + '.';
 }
 function scoredThruLabel() {
-  const order = playOrder();
-  let last = null;
-  for (let i = 0; i < order.length; i++) {
-    const h = order[i];
-    const done = holePlayers.length && holePlayers.every((p, pi) => holeScores[pi] && holeScores[pi][h] != null);
-    if (!done) break;
-    last = h;
-  }
-  return last == null ? 0 : cardHoleLabel(last);
+  return thruCount();
 }
 function paintQuit() {
   const panel = document.getElementById('quitPanel');
