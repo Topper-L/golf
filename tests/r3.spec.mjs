@@ -1548,3 +1548,220 @@ test('a pickup loses the hole unless both sides pick up, and counts as net doubl
   });
   expect(team.box).toBeGreaterThan(team.opp);
 });
+
+test('start 5 counts thru in play order and holds the open nine until it finishes', async ({ page }) => {
+  const pars = [4, 5, 3, 4, 4, 5, 3, 4, 4, 4, 4, 4, 3, 4, 5, 4, 3, 5];
+  await page.evaluate((pars) => {
+    currentCourse = 'Wood Ranch';
+    players = [
+      { name: 'Topper Larsen', initials: 'TL', tee: 'Blue', hcp: '0', box: false },
+      { name: 'Ned S', initials: 'NS', tee: 'Blue', hcp: '0', box: false }
+    ];
+    holePlayers = players.map(p => ({ id: p.initials, name: p.name, tee: 'Blue', hcp: '0', box: false }));
+    holeScores = [pars.map(() => null), pars.map(() => null)];
+    for (let h = 4; h <= 17; h++) {
+      holeScores[0][h] = pars[h];
+      holeScores[1][h] = pars[h];
+    }
+    holeScores[0][6] = pars[6] + 1;
+    holeScores[0][7] = pars[7] + 1;
+    holeScores[0][8] = pars[8] + 1;
+    holeScores[0][9] = pars[9] - 1;
+    holeMarks = holePlayers.map(() => freshMarks());
+    amounts = {
+      'TL vs NS': {
+        on: true, first: 10, second: 10, overall: 10, press: 10, pressFront: 10, pressBack: 10,
+        pressDown: 2, autoPress: true, pressMode: 'auto', player: { TL: 0, NS: 0 }, offers: [], mp18: false, mp: 0
+      }
+    };
+    applyJunkTypes(null);
+    ['birdie', 'eagle', 'sandy', 'greenie', 'chip', 'poley', 'sharkie', 'other'].forEach(id => { junkTypes[id].on = false; });
+    roundStop = null;
+    holeNo = 17;
+    startAt = 4;
+    playedThru = 13;
+    ninesPlayed = null;
+    roundId = 'shotgun-5';
+    bannerOpen = {};
+    syncPlayedNines();
+    showScreen('score');
+    drawHole();
+  }, pars);
+  const mid = await page.evaluate(() => {
+    const sim = simulateMatch('TL vs NS', ['TL'], ['NS']);
+    const press = sim.legs.find(l => l.kind === 'press' && l.auto);
+    return {
+      thru: thruNumber(),
+      front: sim.legs.find(l => l.kind === 'nine' && l.seg === 0).score,
+      back: sim.legs.find(l => l.kind === 'nine' && l.seg === 1).score,
+      from: press && press.from,
+      holes: press && press.holes.map(h => h + 1),
+      press: press && press.score,
+      roll: lastSettle.roll
+    };
+  });
+  expect(mid.thru).toBe(14);
+  expect(mid.from).toBe(9);
+  expect(mid.holes).toEqual([9, 1, 2, 3, 4]);
+  expect(mid.front).toBe(-3);
+  expect(mid.press).toBe(-1);
+  expect(mid.back).toBe(1);
+  expect(mid.roll.TL).toBe(10);
+  expect(mid.roll.NS).toBe(-10);
+  await expect(page.locator('.b-primary')).toContainText('thru 14');
+  await expect(page.locator('.b-primary')).not.toContainText('thru 18');
+  await expect(page.locator('.banner')).toContainText('in progress');
+  await expect(page.locator('.banner')).toContainText('1st 9');
+  await page.locator('.banner').scrollIntoViewIfNeeded();
+  await shot(page, 'start5-banner');
+  await page.evaluate(() => { showScreen('settle'); });
+  await page.locator('button[data-player-fold="TL"]').click();
+  await expect(page.locator('#fold-TL')).toContainText('1st 9 in progress');
+  await expect(page.locator('#fold-TL')).toContainText('Press from 9 (A) in progress');
+  await expect(page.locator('#fold-TL')).toContainText('Overall in progress');
+  await expect(page.locator('#fold-TL')).toContainText('2nd 9');
+  await expect(page.locator('#fold-TL')).not.toContainText('1st 9 −');
+  await expect(page.locator('#fold-TL')).not.toContainText('1st 9 +');
+  const standing = await page.evaluate(() => document.getElementById('cardStanding').innerText);
+  expect(standing).toContain('in progress');
+  expect(standing).toContain('+$10');
+  expect(standing).toContain('thru 14');
+  const shared = await page.evaluate(() => shareText());
+  expect(shared).toContain('thru 14');
+  expect(shared).toContain('in progress');
+  expect(shared).not.toContain('thru 18');
+  await shot(page, 'start5-settle-mid');
+  await page.evaluate((pars) => {
+    [0, 1, 2, 3].forEach(h => {
+      holeScores[0][h] = pars[h] - 1;
+      holeScores[1][h] = pars[h];
+    });
+    settleOpen.TL = true;
+    drawHole();
+    showScreen('settle');
+  }, pars);
+  const done = await page.evaluate(() => {
+    const sim = simulateMatch('TL vs NS', ['TL'], ['NS']);
+    const press = sim.legs.find(l => l.kind === 'press' && l.auto);
+    return { thru: thruNumber(), front: sim.legs.find(l => l.kind === 'nine' && l.seg === 0).score, press: press.score, roll: lastSettle.roll };
+  });
+  expect(done.thru).toBe(18);
+  expect(done.front).toBe(1);
+  expect(done.press).toBe(3);
+  const presses = await page.evaluate(() => simulateMatch('TL vs NS', ['TL'], ['NS']).legs.filter(l => l.kind === 'press').map(l => ({ from: l.from, score: l.score })));
+  expect(presses).toEqual([{ from: 9, score: 3 }, { from: 4, score: 1 }]);
+  expect(done.roll.TL).toBe(50);
+  expect(done.roll.NS).toBe(-50);
+  await expect(page.locator('#fold-TL')).not.toContainText('in progress');
+  await expect(page.locator('#fold-TL')).toContainText('1st 9');
+  await expect(page.locator('#fold-TL')).toContainText('Overall');
+  await expect(page.locator('#fold-TL')).toContainText('Press from 9 (A)');
+  await shot(page, 'start5-settle-final');
+});
+
+test('start 13 does not pay Overall while the 1st 9 is still open', async ({ page }) => {
+  await page.evaluate(() => {
+    const pars = [4, 5, 3, 4, 4, 5, 3, 4, 4, 4, 4, 4, 3, 4, 5, 4, 3, 5];
+    currentCourse = 'Wood Ranch';
+    players = [
+      { name: 'Topper Larsen', initials: 'TL', tee: 'Blue', hcp: '0', box: false },
+      { name: 'Ned S', initials: 'NS', tee: 'Blue', hcp: '0', box: false }
+    ];
+    holePlayers = players.map(p => ({ id: p.initials, name: p.name, tee: 'Blue', hcp: '0', box: false }));
+    holeScores = [pars.map(() => null), pars.map(() => null)];
+    for (let h = 0; h <= 8; h++) {
+      holeScores[0][h] = pars[h];
+      holeScores[1][h] = pars[h];
+    }
+    for (let h = 12; h <= 17; h++) {
+      holeScores[0][h] = pars[h];
+      holeScores[1][h] = pars[h];
+    }
+    holeScores[0][0] = pars[0] + 1;
+    holeMarks = holePlayers.map(() => freshMarks());
+    amounts = { 'TL vs NS': { on: true, first: 10, second: 10, overall: 10, press: 0, pressFront: 0, pressBack: 0, pressDown: 2, autoPress: false, player: { TL: 0, NS: 0 }, offers: [], mp18: false, mp: 0 } };
+    applyJunkTypes(null);
+    ['birdie', 'eagle', 'sandy', 'greenie'].forEach(id => { junkTypes[id].on = false; });
+    roundStop = null;
+    holeNo = 8;
+    startAt = 12;
+    playedThru = 14;
+    ninesPlayed = null;
+    roundId = 'shotgun-13';
+    syncPlayedNines();
+    showScreen('settle');
+    drawHole();
+  });
+  const state = await page.evaluate(() => {
+    const holes = holesOfNine(0).map(h => h + 1);
+    return { thru: thruNumber(), first: holes, roll: lastSettle.roll, head: nineHead(0).replace(/<[^>]+>/g, '') };
+  });
+  expect(state.thru).toBe(15);
+  expect(state.first).toEqual([13, 14, 15, 16, 17, 18, 10, 11, 12]);
+  expect(state.head).toContain('1st 9');
+  expect(state.roll.TL).toBe(-10);
+  expect(state.roll.NS).toBe(10);
+  await page.locator('button[data-player-fold="TL"]').click();
+  await expect(page.locator('#fold-TL')).toContainText('1st 9 in progress');
+  await expect(page.locator('#fold-TL')).toContainText('Overall in progress');
+  await expect(page.locator('#fold-TL')).toContainText('2nd 9');
+});
+
+test('start 1 still pays a finished nine and an early closeout', async ({ page }) => {
+  await page.evaluate(() => {
+    const pars = [4, 5, 3, 4, 4, 5, 3, 4, 4, 4, 4, 4, 3, 4, 5, 4, 3, 5];
+    currentCourse = 'Wood Ranch';
+    players = [
+      { name: 'Topper Larsen', initials: 'TL', tee: 'Blue', hcp: '0', box: false },
+      { name: 'Ned S', initials: 'NS', tee: 'Blue', hcp: '0', box: false }
+    ];
+    holePlayers = players.map(p => ({ id: p.initials, name: p.name, tee: 'Blue', hcp: '0', box: false }));
+    holeScores = [pars.slice(), pars.slice()];
+    holeScores[0][0] = 3;
+    holeMarks = holePlayers.map(() => freshMarks());
+    amounts = { 'TL vs NS': { on: true, first: 10, second: 10, overall: 10, press: 0, pressFront: 0, pressBack: 0, pressDown: 2, autoPress: false, player: { TL: 0, NS: 0 }, offers: [], mp18: false, mp: 0 } };
+    applyJunkTypes(null);
+    ['birdie', 'eagle', 'sandy', 'greenie'].forEach(id => { junkTypes[id].on = false; });
+    roundStop = null;
+    holeNo = 17;
+    startAt = 0;
+    playedThru = 17;
+    ninesPlayed = null;
+    roundId = 'start-1';
+    syncPlayedNines();
+    showScreen('score');
+    drawHole();
+  });
+  const full = await page.evaluate(() => ({ thru: thruNumber(), roll: lastSettle.roll }));
+  expect(full.thru).toBe(18);
+  expect(full.roll.TL).toBe(20);
+  expect(full.roll.NS).toBe(-20);
+  await page.evaluate(() => {
+    for (let h = 9; h < 18; h++) { holeScores[0][h] = null; holeScores[1][h] = null; }
+    drawHole();
+  });
+  const nine = await page.evaluate(() => ({ thru: thruNumber(), roll: lastSettle.roll }));
+  expect(nine.thru).toBe(9);
+  expect(nine.roll.TL).toBe(10);
+  expect(nine.roll.NS).toBe(-10);
+  await page.evaluate(() => {
+    const pars = [4, 5, 3, 4, 4, 5, 3, 4, 4, 4, 4, 4, 3, 4, 5, 4, 3, 5];
+    holeScores = [pars.slice(), pars.slice()];
+    for (let h = 15; h < 18; h++) { holeScores[0][h] = null; holeScores[1][h] = null; }
+    [0, 1, 2, 14].forEach(h => { holeScores[0][h] = pars[h] - 1; });
+    amounts['TL vs NS'].mp18 = true;
+    amounts['TL vs NS'].mp = 20;
+    drawHole();
+    showScreen('settle');
+  });
+  const closed = await page.evaluate(() => {
+    const mp = matchPlay('TL vs NS', ['TL'], ['NS']);
+    return { closed: mp.closed && mp.closed.remain, roll: lastSettle.roll.TL };
+  });
+  expect(closed.closed).toBe(3);
+  expect(closed.roll).toBe(50);
+  await page.locator('button[data-player-fold="TL"]').click();
+  await expect(page.locator('#fold-TL')).toContainText('Overall');
+  await expect(page.locator('#fold-TL')).not.toContainText('Overall in progress');
+  await expect(page.locator('#fold-TL')).not.toContainText('2nd 9 in progress');
+});
