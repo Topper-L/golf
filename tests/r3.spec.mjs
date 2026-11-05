@@ -1765,3 +1765,170 @@ test('start 1 still pays a finished nine and an early closeout', async ({ page }
   await expect(page.locator('#fold-TL')).not.toContainText('Overall in progress');
   await expect(page.locator('#fold-TL')).not.toContainText('2nd 9 in progress');
 });
+
+test('a setup handicap change updates the open round without another apply step', async ({ page }) => {
+  await page.evaluate(() => {
+    const pars = [4, 5, 3, 4, 4, 5, 3, 4, 4, 4, 4, 4, 3, 4, 5, 4, 3, 5];
+    currentCourse = 'Wood Ranch';
+    players = [
+      { name: 'Topper Larsen', initials: 'TL', tee: 'Blue', hcp: '4', box: false },
+      { name: 'Ned Green', initials: 'NG', tee: 'White', hcp: '+1', box: false }
+    ];
+    holePlayers = players.map(p => ({ id: p.initials, name: p.name, tee: p.tee, hcp: p.hcp, box: false }));
+    holeScores = [pars.slice(), pars.slice()];
+    holeScores[0][0] = 5;
+    holeMarks = holePlayers.map(() => freshMarks());
+    holeMarks[0][0] = Object.assign(blankMark(), { sandy: 2 });
+    amounts = { 'TL vs NG': { on: true, first: 10, second: 10, overall: 10, press: 0, pressFront: 0, pressBack: 0, pressDown: 2, autoPress: false, player: { TL: 3, NG: 3 }, offers: [], mp18: false, mp: 0 } };
+    applyJunkTypes(null);
+    ['birdie', 'eagle', 'sandy', 'greenie', 'chip', 'poley', 'sharkie', 'other'].forEach(id => { junkTypes[id].on = false; });
+    roundStop = null;
+    holeNo = 15;
+    startAt = 0;
+    playedThru = 17;
+    ninesPlayed = null;
+    roundId = 'hcp-sync';
+    cardPick = 'TL';
+    cardMatchName = 'TL vs NG';
+    const archive = [{ id: 'old-hcp', auto: false, players: [{ id: 'TL', name: 'Topper Larsen', tee: 'Blue', hcp: '4', box: false }], scores: [pars.slice()], marks: [[]], when: '2020-01-01T12:00:00', course: 'Wood Ranch' }];
+    localStorage.setItem('golf-rounds', JSON.stringify(archive));
+    syncPlayedNines();
+    draw();
+    saveCard();
+    persistSetup();
+    showScreen('card');
+    drawHole();
+  });
+  const before = await page.evaluate(() => ({
+    header: document.querySelector('#card th.who').innerText,
+    dot: document.querySelector('#card tr[data-hole="15"] td:nth-child(4) .dots').textContent,
+    up: (function () {
+      let score = 0;
+      for (let h = 0; h < 18; h++) {
+        const a = sideNet(['TL'], h, ['TL', 'NG']);
+        const b = sideNet(['NG'], h, ['TL', 'NG']);
+        score += a < b ? 1 : a > b ? -1 : 0;
+      }
+      return score;
+    })(),
+    gross: holeScores[0][0],
+    sandy: holeMarks[0][0].sandy
+  }));
+  expect(before.header).toContain('HCP 4');
+  expect(before.dot).toBe('');
+  expect(before.up).toBe(4);
+  await page.locator('#card tr[data-hole="15"]').evaluate(el => window.scrollTo(0, Math.max(0, el.getBoundingClientRect().top + window.scrollY - 180)));
+  await shot(page, 'hcp-card-before');
+  await page.getByRole('button', { name: 'Setup', exact: true }).click();
+  await page.locator('button[data-hcp-step="1"]').first().click();
+  await expect(page.locator('.hcpval').first()).toHaveText('5');
+  await page.getByRole('button', { name: 'Card', exact: true }).click();
+  await expect(page.locator('#card th.who').first()).toContainText('HCP 5');
+  const afterStep = await page.evaluate(() => ({
+    dot: document.querySelector('#card tr[data-hole="15"] td:nth-child(4) .dots').textContent,
+    up: (function () {
+      let score = 0;
+      for (let h = 0; h < 18; h++) {
+        const a = sideNet(['TL'], h, ['TL', 'NG']);
+        const b = sideNet(['NG'], h, ['TL', 'NG']);
+        score += a < b ? 1 : a > b ? -1 : 0;
+      }
+      return score;
+    })(),
+    gross: holeScores[0][0],
+    sandy: holeMarks[0][0].sandy,
+    bet: amounts['TL vs NG'].first,
+    roundHcp: holePlayers[0].hcp,
+    setupHcp: players[0].hcp
+  }));
+  expect(afterStep.dot).toBe('•');
+  expect(afterStep.up).toBe(5);
+  expect(afterStep.gross).toBe(5);
+  expect(afterStep.sandy).toBe(2);
+  expect(afterStep.bet).toBe(10);
+  expect(afterStep.roundHcp).toBe('5');
+  expect(afterStep.setupHcp).toBe('5');
+  await page.locator('#card tr[data-hole="15"]').evaluate(el => window.scrollTo(0, Math.max(0, el.getBoundingClientRect().top + window.scrollY - 180)));
+  await shot(page, 'hcp-card-after');
+  await page.getByRole('button', { name: 'Match', exact: true }).click();
+  await expect(page.locator('#cardStanding')).toContainText('5↑');
+  await expect(page.locator('#cardStanding')).not.toContainText('4↑');
+  await shot(page, 'hcp-match-after');
+  await page.reload();
+  await page.waitForSelector('#newRound');
+  const reloaded = await page.evaluate(() => ({ round: holePlayers[0].hcp, setup: players[0].hcp }));
+  expect(reloaded.round).toBe('5');
+  expect(reloaded.setup).toBe('5');
+  await page.locator('#resume').click();
+  await page.getByRole('button', { name: 'Card', exact: true }).click();
+  await expect(page.locator('#card th.who').first()).toContainText('HCP 5');
+  expect(await page.locator('#card tr[data-hole="15"] td:nth-child(4) .dots').innerText()).toBe('•');
+  await page.getByRole('button', { name: 'Setup', exact: true }).click();
+  await page.locator('button[data-hcp-step="-1"]').first().click();
+  await page.getByRole('button', { name: 'Card', exact: true }).click();
+  await expect(page.locator('#card th.who').first()).toContainText('HCP 4');
+  expect(await page.locator('#card tr[data-hole="15"] td:nth-child(4) .dots').innerText()).toBe('');
+  await page.getByRole('button', { name: 'Setup', exact: true }).click();
+  const typed = page.locator('.hcpval').first();
+  await typed.click();
+  await typed.fill('5');
+  await typed.blur();
+  await expect(typed).toHaveText('5');
+  await page.getByRole('button', { name: 'Settle', exact: true }).click();
+  await page.getByRole('button', { name: 'Card', exact: true }).click();
+  await expect(page.locator('#card th.who').first()).toContainText('HCP 5');
+  expect(await page.locator('#card tr[data-hole="15"] td:nth-child(4) .dots').innerText()).toBe('•');
+  await page.getByRole('button', { name: 'Setup', exact: true }).click();
+  await typed.click();
+  await typed.fill('+2');
+  await typed.blur();
+  await expect(typed).toHaveText('+2');
+  await page.getByRole('button', { name: 'Score', exact: true }).click();
+  await expect(page.locator('.sname .meta').first()).toContainText('HCP +2');
+  const kept = await page.evaluate(() => {
+    const old = JSON.parse(localStorage.getItem('golf-rounds')).find(r => r.id === 'old-hcp');
+    return { oldHcp: old.players[0].hcp, gross: holeScores[0][0], sandy: holeMarks[0][0].sandy, order: holePlayers.map(p => p.id).join() };
+  });
+  expect(kept.oldHcp).toBe('4');
+  expect(kept.gross).toBe(5);
+  expect(kept.sandy).toBe(2);
+  expect(kept.order).toBe('TL,NG');
+  await page.evaluate(() => {
+    players = [
+      { name: 'Topper Larsen', initials: 'TL', tee: 'Blue', hcp: '4', box: true },
+      { name: 'Amy Chen', initials: 'AC', tee: 'Blue', hcp: '10', box: true },
+      { name: 'Ned Green', initials: 'NG', tee: 'White', hcp: '+1', box: false },
+      { name: 'Dana Kim', initials: 'DK', tee: 'Red', hcp: '12', box: false }
+    ];
+    holePlayers = players.map(p => ({ id: p.initials, name: p.name, tee: p.tee, hcp: p.hcp, box: !!p.box }));
+    const pars = [4, 5, 3, 4, 4, 5, 3, 4, 4, 4, 4, 4, 3, 4, 5, 4, 3, 5];
+    holeScores = holePlayers.map(() => pars.slice());
+    holeMarks = holePlayers.map(() => freshMarks());
+    const bet = { on: true, first: 10, second: 10, overall: 10, press: 5, pressFront: 5, pressBack: 5, pressDown: 2, autoPress: false, player: { TL: 3, AC: 3, NG: 3, DK: 3 }, offers: [], mp18: false, mp: 0 };
+    amounts = { 'TL vs NG': Object.assign({}, bet, { player: Object.assign({}, bet.player) }), 'Box (TL+AC) vs NG+DK': Object.assign({}, bet, { player: Object.assign({}, bet.player) }) };
+    roundId = 'hcp-box';
+    syncPlayedNines();
+    draw();
+    drawHole();
+  });
+  const boxBefore = await page.evaluate(() => ({
+    indy: strokesReceived(['TL', 'NG'], 'TL'),
+    box: strokesReceived(['TL', 'AC', 'NG', 'DK'], 'TL'),
+    flags: holePlayers.map(p => p.box),
+    press: amounts['Box (TL+AC) vs NG+DK'].pressFront
+  }));
+  await page.getByRole('button', { name: 'Setup', exact: true }).click();
+  await page.locator('.pcard').first().locator('button[data-hcp-step="1"]').click();
+  const boxAfter = await page.evaluate(() => ({
+    indy: strokesReceived(['TL', 'NG'], 'TL'),
+    box: strokesReceived(['TL', 'AC', 'NG', 'DK'], 'TL'),
+    flags: holePlayers.map(p => p.box),
+    press: amounts['Box (TL+AC) vs NG+DK'].pressFront,
+    ids: holePlayers.map(p => p.id).join()
+  }));
+  expect(boxAfter.indy).toBe(boxBefore.indy + 1);
+  expect(boxAfter.box).toBe(boxBefore.box + 1);
+  expect(boxAfter.flags).toEqual(boxBefore.flags);
+  expect(boxAfter.press).toBe(boxBefore.press);
+  expect(boxAfter.ids).toBe('TL,AC,NG,DK');
+});
