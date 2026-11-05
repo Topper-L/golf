@@ -1042,7 +1042,7 @@ function draw() {
   players.forEach(p => { if (p) p.tee = validTee(p.tee); });
   document.getElementById('players').innerHTML = players.map((p, i) => {
     const tee = '<select class="tee" data-i="' + i + '" aria-label="Tee">' + courseData().tees.map(t => '<option' + (t === p.tee ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '</select>';
-    const hcp = '<span class="hcpstep"><button type="button" tabindex="-1" data-hcp-step="-1" data-i="' + i + '" aria-label="Lower handicap">−</button><span class="hcpval' + (String(p.hcp == null ? '' : p.hcp).trim() ? '' : ' need') + '" data-i="' + i + '">' + esc(hcpShown(p.hcp)) + '</span><button type="button" tabindex="-1" data-hcp-step="1" data-i="' + i + '" aria-label="Raise handicap">+</button></span>';
+    const hcp = '<span class="hcpstep"><button type="button" tabindex="-1" data-hcp-step="-1" data-i="' + i + '" aria-label="Lower handicap">−</button><span class="hcpval' + (String(p.hcp == null ? '' : p.hcp).trim() ? '' : ' need') + '" data-i="' + i + '" data-f="hcp" contenteditable="true" role="textbox" aria-label="Course handicap" inputmode="text">' + esc(hcpShown(p.hcp)) + '</span><button type="button" tabindex="-1" data-hcp-step="1" data-i="' + i + '" aria-label="Raise handicap">+</button></span>';
     const junk = '<span class="pjunk"><button type="button" tabindex="-1" data-pjunk-step="-1" data-i="' + i + '" aria-label="Decrease junk">−</button><input data-pjunk="1" data-i="' + i + '" inputmode="decimal" aria-label="Junk override" value="' + playerJunkValue(p) + '"><button type="button" tabindex="-1" data-pjunk-step="1" data-i="' + i + '" aria-label="Increase junk">+</button></span>';
     const initials = '<input class="initials' + (p.initials ? '' : ' need') + '" data-i="' + i + '" data-f="initials" value="' + esc(p.initials) + '" maxlength="3" autocapitalize="characters" aria-label="Initials">';
     return '<div class="pcard"><input class="name' + (p.name ? '' : ' need') + '" data-i="' + i + '" data-f="name" value="' + esc(p.name) + '" autocapitalize="words" aria-label="Name">' + initials + hcp + '<div class="tee-x">' + tee + '<button type="button" tabindex="-1" data-remove="' + i + '" class="remove" aria-label="Remove">✕</button></div><button type="button" tabindex="-1" data-box="' + i + '" class="box' + (p.box ? ' on' : '') + '">' + (p.box ? 'In' : 'Off') + '</button>' + junk + '</div>';
@@ -1095,9 +1095,33 @@ function draw() {
   });
   document.querySelectorAll('#players input, #players select').forEach((el, n) => { el.tabIndex = n + 1; });
   document.querySelectorAll('#players select').forEach(el => el.onchange = () => { players[el.dataset.i].tee = el.value; });
+  document.querySelectorAll('#players .hcpval').forEach(el => {
+    el.onfocus = () => { if (el.textContent === '—') el.textContent = ''; };
+    el.oninput = () => {
+      const text = el.textContent.replace(/\s+/g, '').trim();
+      players[el.dataset.i].hcp = text === '—' ? '' : text;
+      if (syncActiveHandicaps() && holePlayers.length) { try { drawHole(); } catch (err) {} }
+    };
+    el.onblur = () => {
+      const next = normalizeHcp(el.textContent);
+      if (next != null) {
+        players[el.dataset.i].hcp = next;
+        el.textContent = hcpShown(next);
+      } else {
+        players[el.dataset.i].hcp = '';
+        el.textContent = '—';
+        el.classList.add('need');
+      }
+      if (syncActiveHandicaps() && holePlayers.length) { try { drawHole(); } catch (err) {} }
+      rememberPlayers();
+      drawSavedPlayers();
+    };
+    el.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } };
+  });
   drawSavedPlayers();
   syncStartButton();
   drawJunkTypes();
+  if (syncActiveHandicaps() && holePlayers.length) { try { drawHole(); } catch (err) {} }
 }
 function syncPlayers() {
   document.querySelectorAll('#players input[data-f]').forEach(el => { players[el.dataset.i][el.dataset.f] = el.value; });
@@ -1109,6 +1133,32 @@ function hcpShown(raw) {
   const n = hcpNum({ hcp: s });
   if (n < 0) return '+' + Math.abs(n);
   return String(n);
+}
+function normalizeHcp(raw) {
+  const s = String(raw == null ? '' : raw).trim();
+  if (!s || s === '—' || s === '+' || s === '-') return null;
+  const n = hcpNum({ hcp: s });
+  if (!isFinite(n)) return null;
+  let v = n;
+  if (v < -20) v = -20;
+  if (v > 54) v = 54;
+  return v < 0 ? '+' + Math.abs(v) : String(v);
+}
+function syncActiveHandicaps() {
+  if (!holePlayers.length) return false;
+  let changed = false;
+  holePlayers.forEach(hp => {
+    const p = players.find(x => String(x.initials || '').toUpperCase() === hp.id);
+    if (!p) return;
+    const next = normalizeHcp(p.hcp);
+    if (next == null || String(hp.hcp) === next) return;
+    hp.hcp = next;
+    changed = true;
+  });
+  if (!changed) return false;
+  try { saveCard(); } catch (e) {}
+  try { persistSetup(); } catch (e) {}
+  return true;
 }
 function stepPlayerHcp(i, dir) {
   const cur = String(players[i].hcp == null ? '' : players[i].hcp).trim();
@@ -5101,7 +5151,7 @@ function loadSavedSetup() {
       id: p.id,
       name: p.name || (setupP && setupP.name) || '',
       tee: validTee(p.tee),
-      hcp: p.hcp != null && String(p.hcp).trim() !== '' ? p.hcp : '0',
+      hcp: (setupP && normalizeHcp(setupP.hcp)) || (p.hcp != null && String(p.hcp).trim() !== '' ? p.hcp : '0'),
       box: !!p.box
     };
   });
@@ -6130,6 +6180,11 @@ function registerGolfWorker() {
   } catch (e) {}
 }
 function showScreen(name) {
+  if (name === 'score' || name === 'standing' || name === 'junk' || name === 'card' || name === 'settle') {
+    try { syncPlayers(); } catch (e) {}
+    const moved = syncActiveHandicaps();
+    if (moved && holePlayers.length) { try { drawHole(); } catch (e) {} }
+  }
   if (name === 'gate') refreshGate();
   if (name === 'setup') { paintNinePick(); drawSavedPlayers(); }
   const map = { gate: 'screen-gate', setup: 'screen-setup', score: 'holeView', standing: 'screen-standing', junk: 'screen-junk', card: 'screen-card', settle: 'screen-settle' };
@@ -6216,7 +6271,7 @@ document.getElementById('tabbar').onclick = e => {
   if (!btn) return;
   const name = btn.dataset.screen;
   if ((name === 'score' || name === 'standing' || name === 'junk' || name === 'card' || name === 'settle') && holePlayers.length) {
-    try { drawHole(); } catch (err) {}
+    try { syncPlayers(); syncActiveHandicaps(); drawHole(); } catch (err) {}
   }
   showScreen(name);
 };
