@@ -1,4 +1,5 @@
 /* Network-first while online. Offline reads the versioned cache and never calls fetch. Bump CACHE to drop old copies. */
+/* Republish golf-v29. The Pages deploy for 5f18607 timed out in updating_pages. */
 const CACHE = 'golf-v29';
 const FILES = ['index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
