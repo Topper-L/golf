@@ -433,8 +433,11 @@ test('press rows use P1 and P2', async ({ page }) => {
   expect(headers).toContain('P1');
   expect(headers).toContain('P2');
   expect(headers.some(t => /^P\d{2}$/.test(t.trim()) || /^P[3-9]$/.test(t.trim()))).toBeFalsy();
-  await expect(page.locator('#cardStanding .pstart').nth(0)).toHaveText('P1');
-  await expect(page.locator('#cardStanding .pstart').nth(1)).toHaveText('P2');
+  const pressStarts = await page.locator('#cardStanding .pstart').allInnerTexts();
+  expect(pressStarts[0]).not.toMatch(/^P\d+$/);
+  expect(pressStarts[1]).not.toMatch(/^P\d+$/);
+  expect(pressStarts[0]).toMatch(/↑|↓|AS/);
+  expect(pressStarts[1]).toMatch(/↑|↓|AS/);
   await shot(page, 'press-rows');
   await page.getByRole('button', { name: 'Score', exact: true }).click();
   await expect(page.locator('.banner.dn, .banner.up, .banner.as').first()).toBeVisible();
@@ -1931,4 +1934,251 @@ test('a setup handicap change updates the open round without another apply step'
   expect(boxAfter.flags).toEqual(boxBefore.flags);
   expect(boxAfter.press).toBe(boxBefore.press);
   expect(boxAfter.ids).toBe('TL,AC,NG,DK');
+});
+
+test('press start cells show status, including all square and not yet scored', async ({ page }) => {
+  await page.evaluate(() => {
+    const pars = [4, 5, 3, 4, 4, 5, 3, 4, 4, 4, 4, 4, 3, 4, 5, 4, 3, 5];
+    currentCourse = 'Wood Ranch';
+    players = [
+      { name: 'Topper Larsen', initials: 'TL', tee: 'Blue', hcp: '0', box: false },
+      { name: 'Ned S', initials: 'NS', tee: 'Blue', hcp: '0', box: false }
+    ];
+    holePlayers = players.map(p => ({ id: p.initials, name: p.name, tee: 'Blue', hcp: '0', box: false }));
+    holeScores = [pars.slice(), pars.slice()];
+    holeMarks = holePlayers.map(() => freshMarks());
+    amounts = {
+      'TL vs NS': { on: true, first: 10, second: 0, overall: 0, press: 5, pressFront: 5, pressBack: 0, pressDown: 2, autoPress: false, manual: [1], player: { TL: 0, NS: 0 }, offers: [], mp18: false, mp: 0 }
+    };
+    roundStop = null;
+    holeNo = 0;
+    startAt = 0;
+    playedThru = 8;
+    ninesPlayed = null;
+    roundId = 'press-status';
+    syncPlayedNines();
+    showScreen('standing');
+    drawHole();
+  });
+  const scored = await page.evaluate(() => {
+    const sim = simulateMatch('TL vs NS', ['TL'], ['NS']);
+    const leg = sim.legs.find(l => l.kind === 'press');
+    const holes = holesOfNine(0);
+    const boards = matchBoards();
+    const text = html => {
+      const m = String(html).match(/pstart[^>]*>(.*?)<\/td>/);
+      return m ? m[1].replace(/<[^>]+>/g, '') : 'missing';
+    };
+    return {
+      cell: leg.cells[leg.from - 1],
+      grid: text(pressGridHtml(holes, sim, sim.bet)),
+      table: text(matchTable(holes, boards)),
+      paper: text(paperMatchRows(boards, holes, holesOfNine(1)))
+    };
+  });
+  expect(scored.cell).toBe(0);
+  expect(scored.grid).toBe('AS');
+  expect(scored.table).toBe('AS');
+  expect(scored.paper).toBe('AS');
+  await expect(page.locator('#cardStanding .pressrow th').first()).toHaveText('P1');
+  await expect(page.locator('#cardStanding .pstart').first()).toHaveText('AS');
+  await shot(page, 'press-start-status');
+  await page.evaluate(() => {
+    holeScores[0][0] = null;
+    holeScores[1][0] = null;
+    drawHole();
+  });
+  const open = await page.evaluate(() => {
+    const sim = simulateMatch('TL vs NS', ['TL'], ['NS']);
+    const html = pressGridHtml(holesOfNine(0), sim, sim.bet);
+    const m = html.match(/class="pstart"[^>]*>(.*?)<\/td>/);
+    return m ? m[1] : 'missing';
+  });
+  expect(open).toBe('');
+  await expect(page.locator('#cardStanding .pstart').first()).toHaveText('');
+});
+
+test('Tot numbers match the nine subtotals and the row fits four and five players', async ({ page }) => {
+  const setup = (n) => page.evaluate((n) => {
+    const pars = [4, 5, 3, 4, 4, 5, 3, 4, 4, 4, 4, 4, 3, 4, 5, 4, 3, 5];
+    const names = ['TL', 'NG', 'AC', 'DK', 'JL'];
+    currentCourse = 'Wood Ranch';
+    players = names.slice(0, n).map(id => ({ name: id, initials: id, tee: 'Blue', hcp: '0', box: false }));
+    holePlayers = players.map(p => ({ id: p.initials, name: p.name, tee: 'Blue', hcp: '0', box: false }));
+    holeScores = holePlayers.map(() => pars.slice());
+    holeMarks = holePlayers.map(() => freshMarks());
+    amounts = { 'TL vs NG': { on: true, first: 10, second: 10, overall: 10, press: 0, pressFront: 0, pressBack: 0, pressDown: 2, autoPress: false, player: {}, offers: [], mp18: false, mp: 0 } };
+    roundStop = null;
+    holeNo = 0;
+    startAt = 0;
+    playedThru = 17;
+    ninesPlayed = null;
+    roundId = 'tot-' + n;
+    cardPick = 'all';
+    syncPlayedNines();
+    showScreen('card');
+    drawHole();
+  }, n);
+  const measure = () => page.evaluate(() => {
+    const size = el => el ? parseFloat(getComputedStyle(el).fontSize) : 0;
+    const subNum = document.querySelector('#card tr.totrow:not(.grand) td.tot:last-child');
+    const totNum = document.querySelector('#card tr.totrow.grand td.tot:last-child');
+    const subLab = document.querySelector('#card tr.totrow:not(.grand) td.nine-lab');
+    const totLab = document.querySelector('#card tr.totrow.grand td.nine-lab');
+    const card = document.getElementById('card');
+    const row = document.querySelector('#card tr.totrow.grand');
+    return {
+      sub: size(subNum),
+      tot: size(totNum),
+      subLab: size(subLab),
+      totLab: size(totLab),
+      overflow: card.scrollWidth > card.clientWidth + 1 || row.scrollWidth > card.clientWidth + 1,
+      wrap: row.getBoundingClientRect().height > subNum.parentElement.getBoundingClientRect().height + 8
+    };
+  });
+  await setup(4);
+  let read = await measure();
+  expect(read.tot).toBe(read.sub);
+  expect(read.totLab).toBeLessThan(read.tot);
+  expect(read.totLab).toBe(read.subLab);
+  expect(read.overflow).toBeFalsy();
+  await setup(5);
+  read = await measure();
+  expect(read.tot).toBe(read.sub);
+  expect(read.overflow).toBeFalsy();
+  await page.locator('#card tr.totrow.grand').scrollIntoViewIfNeeded();
+  await shot(page, 'card-tot-rows');
+});
+
+test('Card shows the 1st 9, 2nd 9, and Tot rows with the right totals', async ({ page }) => {
+  for (const n of [3, 4, 5]) {
+    await page.evaluate((n) => {
+      const pars = [4, 5, 3, 4, 4, 5, 3, 4, 4, 4, 4, 4, 3, 4, 5, 4, 3, 5];
+      const names = ['TL', 'NG', 'AC', 'DK', 'JL'];
+      currentCourse = 'Wood Ranch';
+      players = names.slice(0, n).map(id => ({ name: id, initials: id, tee: 'Blue', hcp: '0', box: false }));
+      holePlayers = players.map(p => ({ id: p.initials, name: p.name, tee: 'Blue', hcp: '0', box: false }));
+      holeScores = holePlayers.map(() => pars.slice());
+      holeMarks = holePlayers.map(() => freshMarks());
+      amounts = { 'TL vs NG': { on: true, first: 10, second: 10, overall: 10, press: 0, pressFront: 0, pressBack: 0, pressDown: 2, autoPress: false, player: {}, offers: [], mp18: false, mp: 0 } };
+      roundStop = null;
+      holeNo = 0;
+      startAt = 0;
+      playedThru = 17;
+      ninesPlayed = null;
+      roundId = 'nines-' + n;
+      cardPick = 'all';
+      syncPlayedNines();
+      showScreen('card');
+      drawHole();
+    }, n);
+    await page.locator('#card tr.totrow.grand').scrollIntoViewIfNeeded();
+    const read = await page.evaluate(() => {
+      const size = el => parseFloat(getComputedStyle(el).fontSize);
+      return [...document.querySelectorAll('#card tr.totrow')].map(row => {
+        const r = row.getBoundingClientRect();
+        const hit = document.elementFromPoint(Math.min(window.innerWidth - 8, r.left + r.width / 2), r.top + r.height / 2);
+        const nums = [...row.querySelectorAll('td.tot')].filter(td => !td.classList.contains('nine-lab') && !td.classList.contains('hgap'));
+        return {
+          label: row.querySelector('.nine-lab').innerText.replace(/\s+/g, ' ').trim(),
+          nums: nums.map(td => td.innerText.trim()),
+          size: size(nums[nums.length - 1]),
+          labSize: size(row.querySelector('.nine-lab')),
+          shown: r.top >= 0 && r.bottom <= window.innerHeight && hit && hit.closest('tr') === row
+        };
+      });
+    });
+    expect(read.map(row => row.label)).toEqual(['1st 9', '2nd 9', 'Tot']);
+    expect(read[0].nums).toEqual(Array(n + 1).fill('36'));
+    expect(read[1].nums).toEqual(Array(n + 1).fill('36'));
+    expect(read[2].nums).toEqual(Array(n + 1).fill('72'));
+    expect(read[0].size).toBe(read[1].size);
+    expect(read[2].size).toBe(read[0].size);
+    expect(read[0].labSize).toBeLessThan(read[0].size);
+    expect(read[2].labSize).toBe(read[0].labSize);
+    expect(read.every(row => row.shown)).toBe(true);
+    if (n === 5) await shot(page, 'card-nines-tot');
+  }
+});
+
+test('All Pars fills only blank scores, including a different tee par', async ({ page }) => {
+  await page.evaluate(() => {
+    const pars = [4, 5, 3, 4, 4, 5, 3, 4, 4, 4, 4, 4, 3, 4, 5, 4, 3, 5];
+    courses['Wood Ranch'].parByTee = {
+      Blue: pars.slice(),
+      Red: pars.map((p, i) => i === 4 ? 5 : p)
+    };
+    currentCourse = 'Wood Ranch';
+    players = [
+      { name: 'Topper Larsen', initials: 'TL', tee: 'Blue', hcp: '0', box: false },
+      { name: 'Ned S', initials: 'NS', tee: 'Red', hcp: '0', box: false },
+      { name: 'Amy Chen', initials: 'AC', tee: 'Blue', hcp: '0', box: false }
+    ];
+    holePlayers = players.map(p => ({ id: p.initials, name: p.name, tee: p.tee, hcp: '0', box: false }));
+    holeScores = holePlayers.map(() => pars.map(() => null));
+    holeScores[0][4] = 6;
+    holeMarks = holePlayers.map(() => freshMarks());
+    amounts = { 'TL vs NS': { on: true, first: 0, second: 0, overall: 0, press: 0, pressFront: 0, pressBack: 0, pressDown: 2, autoPress: false, player: { TL: 0, NS: 0, AC: 0 }, offers: [], mp18: false, mp: 0 } };
+    roundStop = null;
+    holeNo = 4;
+    startAt = 4;
+    playedThru = 0;
+    ninesPlayed = null;
+    roundId = 'par-rest';
+    syncPlayedNines();
+    showScreen('score');
+    drawHole();
+  });
+  await expect(page.locator('#parRest')).toHaveText('All Pars');
+  await expect(page.locator('#holeTitle')).toContainText('Hole 5');
+  await shot(page, 'score-all-pars');
+  await page.locator('#parRest').click();
+  const filled = await page.evaluate(() => holeScores.map(row => row[4]));
+  expect(filled).toEqual([6, 5, 4]);
+  await page.locator('#undoScore').click();
+  const undone = await page.evaluate(() => holeScores.map(row => row[4]));
+  expect(undone).toEqual([6, null, null]);
+  await page.evaluate(() => { delete courses['Wood Ranch'].parByTee; });
+});
+
+test('a new round dates itself today and a saved round keeps its date', async ({ page }) => {
+  await page.evaluate(() => {
+    bettingSetups = [normalizeSetup({ id: 'day', name: 'Day', first: 7, second: 7, overall: 7, junk: 3 })];
+    lastUsedSetupId = 'day';
+    selectedSetupId = 'day';
+    saveBettingSetups();
+    roundDate = '2019-01-01';
+    const input = document.getElementById('roundDate');
+    if (input) input.value = '2019-01-01';
+    persistSetup();
+  });
+  await page.getByRole('button', { name: 'New Round' }).click();
+  const today = await page.evaluate(() => localDateStr());
+  await expect(page.locator('#roundDate')).toHaveValue(today);
+  await expect(page.locator('#dFirst')).toHaveValue('7');
+  await page.locator('#roundDate').fill('2024-07-04');
+  await page.locator('#roundDate').blur();
+  expect(await page.evaluate(() => roundDate)).toBe('2024-07-04');
+  await page.evaluate(() => {
+    players = [
+      { name: 'Topper Larsen', initials: 'TL', tee: 'Blue', hcp: '0', box: false },
+      { name: 'Ned S', initials: 'NS', tee: 'Blue', hcp: '0', box: false }
+    ];
+    holePlayers = players.map(p => ({ id: p.initials, name: p.name, tee: 'Blue', hcp: '0', box: false }));
+    holeScores = holePlayers.map(() => Array(18).fill(null));
+    holeMarks = holePlayers.map(() => freshMarks());
+    roundDate = '2024-06-01';
+    document.getElementById('roundDate').value = '2024-06-01';
+    roundId = 'dated';
+    startAt = 0;
+    syncPlayedNines();
+    saveCard();
+    persistSetup();
+  });
+  await page.reload();
+  await page.waitForSelector('#resume');
+  expect(await page.evaluate(() => roundDate)).toBe('2024-06-01');
+  await page.locator('#resume').click();
+  await page.getByRole('button', { name: 'Setup', exact: true }).click();
+  await expect(page.locator('#roundDate')).toHaveValue('2024-06-01');
 });
