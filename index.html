@@ -61,7 +61,7 @@ try {
   #card td:first-child, #card th:first-child, #junkSummary td:first-child, #junkSummary th:first-child { text-align:left; }
   #card tr:nth-child(even) td { background:#f4f7f5; }
   #card tr.current td { background:#f3f5f3; }
-  #card tr.totrow td, #card .tot { font-weight:750; background:#e7efe6; color:#1c2b22; border-top:2px solid #c5d4c8; }
+  #card tr.totrow td, #card .tot { position:relative; z-index:6; font-weight:750; background:#e7efe6; color:#1c2b22; border-top:2px solid #c5d4c8; }
   #card td.par { color:#6b7c72; font-weight:500; }
   #screen-card #card.hscroll { overflow:visible; }
   #card table.scorecard { table-layout:fixed; }
@@ -6062,7 +6062,7 @@ function paintHoleJump() {
   const el = document.getElementById('holeJump');
   if (!el) return;
   const order = playOrder();
-  el.innerHTML = '<button type="button" id="parRest" class="par-rest">Par for rest</button>' + order.map(h => {
+  el.innerHTML = '<button type="button" id="parRest" class="par-rest">All Pars</button>' + order.map(h => {
     const on = h === holeNo ? ' on' : '';
     const done = holePlayers.length && holePlayers.every((p, i) => holeScores[i] && holeScores[i][h] != null);
     return '<button type="button" class="hjump' + on + (done ? ' done' : '') + '" data-jump="' + h + '">' + cardHoleLabel(h) + '</button>';

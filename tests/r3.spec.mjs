@@ -2050,7 +2050,58 @@ test('Tot numbers match the nine subtotals and the row fits four and five player
   await shot(page, 'card-tot-rows');
 });
 
-test('Par for rest fills only blank scores, including a different tee par', async ({ page }) => {
+test('Card shows the 1st 9, 2nd 9, and Tot rows with the right totals', async ({ page }) => {
+  for (const n of [3, 4, 5]) {
+    await page.evaluate((n) => {
+      const pars = [4, 5, 3, 4, 4, 5, 3, 4, 4, 4, 4, 4, 3, 4, 5, 4, 3, 5];
+      const names = ['TL', 'NG', 'AC', 'DK', 'JL'];
+      currentCourse = 'Wood Ranch';
+      players = names.slice(0, n).map(id => ({ name: id, initials: id, tee: 'Blue', hcp: '0', box: false }));
+      holePlayers = players.map(p => ({ id: p.initials, name: p.name, tee: 'Blue', hcp: '0', box: false }));
+      holeScores = holePlayers.map(() => pars.slice());
+      holeMarks = holePlayers.map(() => freshMarks());
+      amounts = { 'TL vs NG': { on: true, first: 10, second: 10, overall: 10, press: 0, pressFront: 0, pressBack: 0, pressDown: 2, autoPress: false, player: {}, offers: [], mp18: false, mp: 0 } };
+      roundStop = null;
+      holeNo = 0;
+      startAt = 0;
+      playedThru = 17;
+      ninesPlayed = null;
+      roundId = 'nines-' + n;
+      cardPick = 'all';
+      syncPlayedNines();
+      showScreen('card');
+      drawHole();
+    }, n);
+    await page.locator('#card tr.totrow.grand').scrollIntoViewIfNeeded();
+    const read = await page.evaluate(() => {
+      const size = el => parseFloat(getComputedStyle(el).fontSize);
+      return [...document.querySelectorAll('#card tr.totrow')].map(row => {
+        const r = row.getBoundingClientRect();
+        const hit = document.elementFromPoint(Math.min(window.innerWidth - 8, r.left + r.width / 2), r.top + r.height / 2);
+        const nums = [...row.querySelectorAll('td.tot')].filter(td => !td.classList.contains('nine-lab') && !td.classList.contains('hgap'));
+        return {
+          label: row.querySelector('.nine-lab').innerText.replace(/\s+/g, ' ').trim(),
+          nums: nums.map(td => td.innerText.trim()),
+          size: size(nums[nums.length - 1]),
+          labSize: size(row.querySelector('.nine-lab')),
+          shown: r.top >= 0 && r.bottom <= window.innerHeight && hit && hit.closest('tr') === row
+        };
+      });
+    });
+    expect(read.map(row => row.label)).toEqual(['1st 9', '2nd 9', 'Tot']);
+    expect(read[0].nums).toEqual(Array(n + 1).fill('36'));
+    expect(read[1].nums).toEqual(Array(n + 1).fill('36'));
+    expect(read[2].nums).toEqual(Array(n + 1).fill('72'));
+    expect(read[0].size).toBe(read[1].size);
+    expect(read[2].size).toBe(read[0].size);
+    expect(read[0].labSize).toBeLessThan(read[0].size);
+    expect(read[2].labSize).toBe(read[0].labSize);
+    expect(read.every(row => row.shown)).toBe(true);
+    if (n === 5) await shot(page, 'card-nines-tot');
+  }
+});
+
+test('All Pars fills only blank scores, including a different tee par', async ({ page }) => {
   await page.evaluate(() => {
     const pars = [4, 5, 3, 4, 4, 5, 3, 4, 4, 4, 4, 4, 3, 4, 5, 4, 3, 5];
     courses['Wood Ranch'].parByTee = {
@@ -2078,9 +2129,9 @@ test('Par for rest fills only blank scores, including a different tee par', asyn
     showScreen('score');
     drawHole();
   });
-  await expect(page.locator('#parRest')).toHaveText('Par for rest');
+  await expect(page.locator('#parRest')).toHaveText('All Pars');
   await expect(page.locator('#holeTitle')).toContainText('Hole 5');
-  await shot(page, 'score-par-rest');
+  await shot(page, 'score-all-pars');
   await page.locator('#parRest').click();
   const filled = await page.evaluate(() => holeScores.map(row => row[4]));
   expect(filled).toEqual([6, 5, 4]);
