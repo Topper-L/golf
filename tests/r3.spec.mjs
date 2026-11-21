@@ -2182,3 +2182,150 @@ test('a new round dates itself today and a saved round keeps its date', async ({
   await page.getByRole('button', { name: 'Setup', exact: true }).click();
   await expect(page.locator('#roundDate')).toHaveValue('2024-06-01');
 });
+
+test('a fresh round leaves every match Off, and All Matches is an explicit tap', async ({ page }) => {
+  await page.getByRole('button', { name: 'New Round' }).click();
+  await page.evaluate(() => {
+    players = [
+      { name: 'Topper Larsen', initials: 'TL', tee: 'Blue', hcp: '5', box: false },
+      { name: 'Wes T', initials: 'WT', tee: 'Blue', hcp: '5', box: false }
+    ];
+    amounts = {};
+    draw();
+  });
+  expect(await page.evaluate(() => amounts['TL vs WT'].on)).toBe(false);
+  await expect(page.locator('.matchcard button[data-bet]')).toHaveText('Off');
+  await page.evaluate(() => {
+    players.push(
+      { name: 'Gina Smith', initials: 'GS', tee: 'Blue', hcp: '8', box: false },
+      { name: 'Lee Brown', initials: 'LB', tee: 'Blue', hcp: '10', box: false }
+    );
+    players[0].box = true;
+    players[1].box = true;
+    draw();
+  });
+  const flags = await page.evaluate(() => {
+    const m = matchNames();
+    return m.team.concat(m.side).map(name => !!(amounts[name] && amounts[name].on));
+  });
+  expect(flags.length).toBeGreaterThan(1);
+  expect(flags.every(on => on === false)).toBe(true);
+  await page.evaluate(() => startHole());
+  expect(await page.evaluate(() => Object.keys(amounts).some(name => amounts[name] && amounts[name].on))).toBe(false);
+  await page.evaluate(() => showScreen('setup'));
+  await page.locator('#apply').click();
+  const after = await page.evaluate(() => {
+    const m = matchNames();
+    return m.team.concat(m.side).every(name => amounts[name] && amounts[name].on === true);
+  });
+  expect(after).toBe(true);
+});
+
+test('only a tapped team match is charged after a Goldberg setup', async ({ page }) => {
+  await page.evaluate(() => {
+    showScreen('setup');
+    ['dFirst', 'dSecond', 'dOverall', 'dPressF', 'dPressB'].forEach(id => { document.getElementById(id).value = '5'; });
+    document.getElementById('dJunk').value = '2';
+    addSetupFromForm('Goldberg 5', '');
+    players = [
+      { name: 'Topper Larsen', initials: 'TL', tee: 'Blue', hcp: '5', box: false },
+      { name: 'Wes T', initials: 'WT', tee: 'Blue', hcp: '5', box: false }
+    ];
+    amounts = {};
+    draw();
+  });
+  expect(await page.evaluate(() => amounts['TL vs WT'].on)).toBe(false);
+  await page.evaluate(() => {
+    players.push(
+      { name: 'Gina Smith', initials: 'GS', tee: 'Blue', hcp: '8', box: false },
+      { name: 'Lee Brown', initials: 'LB', tee: 'Blue', hcp: '10', box: false }
+    );
+    players[0].box = true;
+    players[1].box = true;
+    draw();
+    pickSetup(bettingSetups.find(s => s.name === 'Goldberg 5').id);
+  });
+  const ons = await page.evaluate(() => {
+    const m = matchNames();
+    return m.team.concat(m.side).filter(name => amounts[name] && amounts[name].on);
+  });
+  expect(ons).toEqual([]);
+  await expect(page.locator('.matchcard[data-match="TL vs WT"] button[data-bet]')).toHaveText('Off');
+  await expect(page.locator('.matchcard[data-match="TL vs WT"] .hint')).toHaveText('');
+  const team = 'Box (TL+WT) vs GS+LB';
+  await page.locator('.matchcard').filter({ hasText: team }).locator('button[data-bet]').click();
+  await expect(page.locator('.matchcard[data-match="TL vs WT"] button[data-bet]')).toHaveText('Off');
+  await page.locator('.matchcard').first().evaluate(el => {
+    const y = el.getBoundingClientRect().top + window.scrollY - 64;
+    window.scrollTo(0, Math.max(0, y));
+  });
+  await shot(page, 'setup-matches-off');
+  await page.evaluate(() => {
+    const pars = [4, 5, 3, 4, 4, 5, 3, 4, 4, 4, 4, 4, 3, 4, 5, 4, 3, 5];
+    holePlayers = players.map(p => ({ id: p.initials, name: p.name, tee: 'Blue', hcp: p.hcp, box: !!p.box }));
+    holeScores = [pars.slice(), pars.map(p => p + 1), pars.slice(), pars.slice()];
+    holeMarks = holePlayers.map(() => freshMarks());
+    holeNo = 0;
+    startAt = 0;
+    playedThru = 17;
+    ninesPlayed = null;
+    roundStop = null;
+    roundId = 'goldberg';
+    syncPlayedNines();
+    showScreen('settle');
+    settle();
+  });
+  await expect(page.locator('.settle-match')).toHaveCount(1);
+  await expect(page.locator('.settle-match')).toContainText(team);
+  await expect(page.locator('#settle')).not.toContainText('TL vs WT');
+  await expect(page.locator('.whyline')).not.toContainText('TL pay WT');
+  await expect(page.locator('.whyline')).not.toContainText('WT pay TL');
+  await page.locator('button[data-settle-view="match"]').click();
+  await expect(page.locator('.settle-pot')).toBeHidden();
+  await expect(page.locator('.settle-match')).toBeVisible();
+  await page.locator('button[data-settle-view="both"]').click();
+  await expect(page.locator('.settle-pot')).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await shot(page, 'settle-match-sections');
+});
+
+test('a round with nothing On is scores only', async ({ page }) => {
+  await page.evaluate(() => {
+    const pars = [4, 5, 3, 4, 4, 5, 3, 4, 4, 4, 4, 4, 3, 4, 5, 4, 3, 5];
+    currentCourse = 'Wood Ranch';
+    players = [
+      { name: 'Topper Larsen', initials: 'TL', tee: 'Blue', hcp: '0', box: false },
+      { name: 'Ned S', initials: 'NS', tee: 'Blue', hcp: '0', box: false }
+    ];
+    amounts = {};
+    holePlayers = players.map(p => ({ id: p.initials, name: p.name, tee: 'Blue', hcp: '0', box: false }));
+    holeScores = [pars.map(p => p - 1), pars.slice()];
+    holeMarks = holePlayers.map(() => freshMarks());
+    roundStop = null;
+    holeNo = 0;
+    startAt = 0;
+    playedThru = 17;
+    ninesPlayed = null;
+    roundId = 'scores-only';
+    syncPlayedNines();
+    draw();
+    startHole();
+  });
+  expect(await page.evaluate(() => amounts['TL vs NS'].on)).toBe(false);
+  await expect(page.locator('#scores .score').first()).toBeVisible();
+  await page.evaluate(() => { showScreen('card'); drawHole(); });
+  await expect(page.locator('#card')).toContainText('TL');
+  await expect(page.locator('#card .mcell')).toHaveCount(0);
+  await page.evaluate(() => { showScreen('standing'); drawHole(); });
+  await expect(page.locator('#standing')).toContainText('No matches on');
+  await page.evaluate(() => { showScreen('settle'); settle(); });
+  await expect(page.locator('.settle-math')).toContainText('No money owed');
+  await expect(page.locator('.settle-why')).toContainText('No matches on');
+  await expect(page.locator('.settle-match')).toHaveCount(0);
+  await expect(page.locator('.settle-pot')).toContainText('Even');
+  const sum = await page.evaluate(() => {
+    const roll = lastSettle.roll;
+    return Math.round(Object.keys(roll).reduce((n, id) => n + roll[id], 0) * 100) / 100;
+  });
+  expect(sum).toBe(0);
+});
