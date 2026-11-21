@@ -375,6 +375,7 @@ try {
   .gnotes { display:block; margin-top:2px; font-size:12px; font-style:italic; color:#5e6f64; }
   .tag { display:inline-block; margin-left:6px; padding:2px 7px; border-radius:6px; background:#e7f3ec; color:#146b34; font-size:11px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; vertical-align:middle; }
   .tag.muted { background:#eef1ef; color:#5e6f64; }
+  .tag[hidden], .hint[hidden], .povline[hidden] { display:none !important; }
   #amountsFrom { text-transform:none; letter-spacing:0; font-size:12px; }
   .setup-flags { display:flex; gap:8px; margin-top:8px; }
   .setup-flags button { flex:1; min-height:44px; font-weight:750; }
@@ -469,6 +470,8 @@ try {
   table.pressgrid th:first-child { text-align:left; width:38px; }
   table.pressgrid td.pstart, #card td.pstart, #paperCard td.pstart { background:#e7f6ee; color:#1f6b45; font-weight:800; border-radius:6px; }
   .settle-views { display:flex; gap:6px; margin:0 0 10px; }
+  .settle-match { margin:0 0 12px; padding:8px 0 2px; border-top:1px solid #d5e0d4; }
+  .settle-match .msec-title { margin:0 0 4px; }
   .settle-views button { flex:1; min-height:44px; font-weight:750; }
   .settle-views button.on { background:#e7f3ec; color:#1f6b45; border-color:#1f6b45; box-shadow:inset 0 0 0 1px #1f6b45; }
   .potline { display:flex; justify-content:space-between; gap:8px; margin:0; padding:8px 0; border-bottom:1px solid #e4ece6; font-weight:750; }
@@ -574,7 +577,7 @@ try {
       <button type="button" id="dPressMode">Auto presses</button>
       <button type="button" id="dBox">Box off</button>
     </div>
-    <p class="setup-actions"><button type="button" id="apply" tabindex="-1" onclick="copyBets()">All Matches</button> <button type="button" id="noMoney" tabindex="-1">Set to $0</button></p>
+    <p class="setup-actions"><button type="button" id="apply" tabindex="-1">All Matches</button> <button type="button" id="noMoney" tabindex="-1">Set to $0</button></p>
     <p class="setup-actions" id="setupDiverge" hidden><button type="button" id="setupUpdate">Update</button> <button type="button" id="setupSaveAs2" class="primary">Save as…</button></p>
   </div>
   <div class="card" id="junkSetup">
@@ -959,7 +962,7 @@ function drawBets() {
   const betsEl = document.getElementById('bets');
   if (!betsEl) return;
   betsEl.innerHTML = names.map(name => {
-    if (!amounts[name]) amounts[name] = { on: m.team.includes(name) || (names.length === 1 && !m.team.length), first:0, second:0, overall:0, press:0, pressFront:0, pressBack:0, pressDown:2, autoPress:true, player:{}, offers:[], mp18:false, mp:0 };
+    if (!amounts[name]) amounts[name] = seedMatch(false);
     const a = amounts[name];
     if (a.mp18 == null) a.mp18 = false;
     if (a.mp == null) a.mp = 0;
@@ -1587,6 +1590,36 @@ document.getElementById('bets').onclick = e => {
   btn.className = bet.on ? 'on' : '';
   btn.textContent = bet.on ? 'On' : 'Off';
 };
+function blankBet(on) {
+  return { on: !!on, first: 0, second: 0, overall: 0, press: 0, pressFront: 0, pressBack: 0, pressDown: 2, autoPress: true, pressMode: 'auto', player: {}, offers: [], mp18: false, mp: 0 };
+}
+function seedMatch(on) {
+  const bet = blankBet(on);
+  let money = null;
+  try { money = readFormMoney(); } catch (e) { money = null; }
+  if (money) {
+    bet.first = money.first;
+    bet.second = money.second;
+    bet.overall = money.overall;
+    bet.press = money.pressFront;
+    bet.pressFront = money.pressFront;
+    bet.pressBack = money.pressBack;
+    bet.pressDown = money.pressDown || 2;
+    bet.pressMode = money.pressMode || 'auto';
+    bet.autoPress = bet.pressMode === 'auto';
+    try {
+      const cols = pressFields();
+      if (cols[0]) bet[cols[0]] = money.pressFront;
+      if (cols[1] && cols[1] !== cols[0]) bet[cols[1]] = money.pressBack;
+    } catch (e) {}
+  }
+  try {
+    players.filter(p => p.initials).forEach(p => {
+      bet.player[String(p.initials).toUpperCase()] = playerJunkForId(p.initials);
+    });
+  } catch (e) {}
+  return bet;
+}
 function readDefaults() {
   const front = document.getElementById('dPressF').value;
   return {
@@ -1915,17 +1948,19 @@ function paintMatchCards() {
     const changed = amtChanged || ovs.length > 0;
     card.classList.toggle('changed', changed);
     if (tag) {
-      tag.hidden = !(changed || selected);
+      const label = changed ? 'Changed' : (selected ? setupTag(selected.name) : '');
+      tag.hidden = !label;
       tag.className = 'tag' + (changed ? '' : ' muted');
-      tag.textContent = changed ? 'Changed' : (selected ? setupTag(selected.name) : '');
+      tag.textContent = label;
     }
     if (hint) {
-      hint.hidden = !amtChanged;
-      hint.textContent = amtChanged ? 'Changed from ' + selected.name : '';
+      const text = amtChanged && selected ? 'Changed from ' + selected.name : '';
+      hint.hidden = !text;
+      hint.textContent = text;
     }
     if (line) {
       line.hidden = !ovs.length;
-      line.innerHTML = ovs.map(id => '<span class="povchip">' + esc(id) + ' ' + dollarText(Number(a.player[id]) || 0) + '</span>').join('');
+      line.innerHTML = ovs.length ? ovs.map(id => '<span class="povchip">' + esc(id) + ' ' + dollarText(Number(a.player[id]) || 0) + '</span>').join('') : '';
     }
     const cols = pressFields();
     card.querySelectorAll('input[data-f]').forEach(input => {
@@ -2236,7 +2271,7 @@ document.getElementById('newRound').onclick = () => {
   document.getElementById('status').textContent = 'New round. Add the players.';
 };
 document.getElementById('save').onclick = startHole;
-function copyBets() {
+function copyBets(opts) {
   syncPlayers();
   const values = {
     first: Number(document.getElementById('dFirst').value) || 0,
@@ -2256,9 +2291,10 @@ function copyBets() {
     document.getElementById('status').textContent = 'No matches yet. Add initials, then All Matches.';
     return;
   }
+  const turnOn = !!(opts && opts.turnOn);
   list.forEach(name => {
-    if (!amounts[name]) amounts[name] = { on: names.team.includes(name) || (list.length === 1 && !names.team.length), first:0, second:0, overall:0, press:0, pressFront:0, pressBack:0, pressDown:2, autoPress:true, player:{}, offers:[] };
-    amounts[name].on = names.team.includes(name) || (list.length === 1 && !names.team.length) || amounts[name].on;
+    if (!amounts[name]) amounts[name] = seedMatch(false);
+    if (turnOn) amounts[name].on = true;
     amounts[name].first = values.first;
     amounts[name].second = values.second;
     amounts[name].overall = values.overall;
@@ -2272,9 +2308,9 @@ function copyBets() {
     players.filter(p => p.initials).forEach(p => { p.junk = junk; amounts[name].player[String(p.initials).toUpperCase()] = junk; });
   });
   draw();
-  document.getElementById('status').textContent = 'Copied ' + values.first + ' / ' + values.second + ' / ' + values.overall + ', press ' + values.pressFirst + ' on the 1st 9 and ' + values.pressSecond + ' on the 2nd 9, at ' + values.pressDown + ' down, junk ' + junk + ' into ' + list.length + ' matches.';
+  document.getElementById('status').textContent = 'Copied ' + values.first + ' / ' + values.second + ' / ' + values.overall + ', press ' + values.pressFirst + ' on the 1st 9 and ' + values.pressSecond + ' on the 2nd 9, at ' + values.pressDown + ' down, junk ' + junk + ' into ' + list.length + ' matches.' + (turnOn ? ' All of them are On.' : ' Each match stays Off until you tap it On.');
 }
-document.getElementById('apply').onclick = copyBets;
+document.getElementById('apply').onclick = () => copyBets({ turnOn: true });
 function noMoneyRound() {
   ['dFirst', 'dSecond', 'dOverall', 'dPressF', 'dPressB', 'dJunk'].forEach(id => {
     const el = document.getElementById(id);
@@ -2559,13 +2595,6 @@ function startHole() {
   padCard();
   if (!roundId) roundId = newRoundId();
   rememberPlayers();
-  const m = matchNames();
-  const names = m.team.concat(m.side);
-  const anyOn = names.some(n => amounts[n] && amounts[n].on);
-  if (!anyOn && names.length) {
-    if (!amounts[names[0]]) amounts[names[0]] = { on: true, first:0, second:0, overall:0, press:0, pressFront:0, pressBack:0, pressDown:2, autoPress:true, player:{}, offers:[] };
-    else amounts[names[0]].on = true;
-  }
   const dateEl = document.getElementById('roundDate');
   if (dateEl && dateEl.value) roundDate = dateEl.value;
   else if (dateEl && roundDate) dateEl.value = roundDate;
@@ -3200,7 +3229,7 @@ function cardMatchLabel(name) {
 }
 function matchIsOn(name) {
   const saved = amountFor(name);
-  return !saved || saved.on !== false;
+  return !!(saved && saved.on === true);
 }
 function activeTeamNames() {
   try { return matchNames().team.filter(matchIsOn); } catch (e) { return []; }
@@ -3277,10 +3306,7 @@ function activeMatchNames() {
     const m = matchNames();
     names = m.side.concat(m.team);
   } catch (e) { return []; }
-  return names.filter(name => {
-    const saved = amountFor(name);
-    return !saved || saved.on !== false;
-  });
+  return names.filter(matchIsOn);
 }
 function matchBoards() {
   return activeMatchNames().map(name => {
@@ -3847,8 +3873,9 @@ function configuredJunkRate(id) {
   try { const m = matchNames(); names = m.team.concat(m.side); } catch (e) {}
   const vals = [];
   names.forEach(name => {
+    if (!matchIsOn(name)) return;
     const bet = amountFor(name);
-    if (!bet || bet.on === false || !bet.player || bet.player[id] == null) return;
+    if (!bet.player || bet.player[id] == null) return;
     vals.push(Number(bet.player[id]));
   });
   if (!vals.length) return 3;
@@ -3966,11 +3993,9 @@ function nineCanPay(leg, segVoid, asStand) {
 }
 function holeStanding() {
   let names = [];
-  try { const m = matchNames(); names = m.team.concat(m.side); } catch (e) { return '<p>' + e.message + '</p>'; }
-  if (!names.length) return '<p>No matches yet.</p>';
+  try { const m = matchNames(); names = m.team.concat(m.side).filter(matchIsOn); } catch (e) { return '<p>' + e.message + '</p>'; }
+  if (!names.length) return '<p>No matches on.</p>';
   return names.map(name => {
-    const saved = amountFor(name);
-    if (saved && saved.on === false) return '';
     const box = holePlayers.filter(p => p.box).map(p => p.id);
     const isBox = name.indexOf('Box') === 0;
     const parts = name.split(' vs ');
@@ -4104,7 +4129,7 @@ function settle() {
   const el = document.getElementById('settle');
   if (!el) return;
   const m = matchNames();
-  const names = m.team.concat(m.side).filter(name => { const s = amountFor(name); return !s || s.on !== false; });
+  const names = m.team.concat(m.side).filter(matchIsOn);
   const roll = {};
   holePlayers.forEach(p => { roll[p.id] = 0; });
   const lines = names.map(name => {
@@ -4252,13 +4277,19 @@ function settle() {
   const creditors = holePlayers.filter(p => (roll[p.id] || 0) > 0).sort((x, y) => roll[y.id] - roll[x.id]);
   const potRows = debtors.map(p => '<p class="potline dn" data-id="' + esc(p.id) + '" data-net="' + roll[p.id] + '"><span>' + esc(p.id) + ' puts in</span><span>' + dollarText(roll[p.id]) + '</span></p>').concat(creditors.map(p => '<p class="potline up" data-id="' + esc(p.id) + '" data-net="' + roll[p.id] + '"><span>' + esc(p.id) + ' takes</span><span>' + dollarText(roll[p.id]) + '</span></p>')).join('');
   const pot = '<div class="settle-pot"' + (settleView === 'match' ? ' hidden' : '') + '><p><b>Cash pot</b></p>' + (potRows || '<p>Even</p>') + '<p class="potbal" data-pot-in="' + potIn + '" data-pot-out="' + potOut + '">In ' + dollarText(potIn) + ' = Out ' + dollarText(potOut) + '</p></div>';
-  const whyLines = [];
-  lines.forEach(line => {
-    if (!line || !line.owed) return;
-    const said = paySentence(line.a, line.b, line.owed);
-    if (said) whyLines.push(said);
-  });
-  const why = '<div class="settle-why"' + (settleView === 'pot' ? ' hidden' : '') + '><p><b>Why · by match</b></p>' + (whyLines.length ? whyLines.map((t, i) => '<p class="whyline teamline">' + (i + 1) + ' · ' + esc(t) + '</p>').join('') : '<p>No match money.</p>') + '<p class="note">Pot for the cash handoff. Team lines explain how the nets formed. No pairwise teammate payments.</p></div>';
+  const sections = lines.map(line => {
+    const bits = [];
+    if (line.byPlayer) line.a.concat(line.b).forEach(id => {
+      const chunk = line.byPlayer[id];
+      if (!chunk) return;
+      const head = '<p class="comp"><b>' + esc(shortMatch(line.name)) + '</b></p>';
+      bits.push(chunk.split(head).join('<p class="comp"><b>' + esc(id) + '</b></p>'));
+    });
+    else if (line.html) bits.push(line.html);
+    const said = line.owed ? paySentence(line.a, line.b, line.owed) : '';
+    return '<section class="settle-match" data-match="' + esc(line.name) + '"><p class="msec-title"><b>' + esc(line.name) + '</b></p>' + bits.join('') + (said ? '<p class="whyline teamline">' + esc(said) + '</p>' : '') + '</section>';
+  }).join('');
+  const why = '<div class="settle-why"' + (settleView === 'pot' ? ' hidden' : '') + '><p><b>By match</b></p>' + (sections || '<p>No matches on.</p>') + '</div>';
   const folds = holePlayers.map(p => {
     const open = !!settleOpen[p.id];
     const chunks = lines.map(line => line.byPlayer && line.byPlayer[p.id]).filter(Boolean).join('');
@@ -4268,7 +4299,7 @@ function settle() {
   }).join('');
   const warn = warnings.length ? '<p class="miss-warn">' + esc(warnings.join('. ')) + '</p>' : '';
   const stopped = roundStop ? '<p class="stop-note">' + esc(stopPhrase(roundStop)) + '</p>' : '';
-  el.innerHTML = math + stopped + warn + views + pot + why + '<p><b>Players</b></p>' + folds;
+  el.innerHTML = math + stopped + warn + views + why + pot + '<p><b>Net</b></p>' + folds;
   el.querySelectorAll('button[data-settle-view]').forEach(btn => {
     btn.onclick = () => { settleView = btn.dataset.settleView || 'both'; settle(); };
   });
@@ -4310,7 +4341,7 @@ function drawPresses() {
   const el = document.getElementById('presses');
   if (!el) return;
   const m = matchNames();
-  const names = m.team.concat(m.side).filter(name => { const s = amountFor(name); return s && s.on !== false; });
+  const names = m.team.concat(m.side).filter(matchIsOn);
   const hole = holeNo + 1;
   if (!names.length) { el.innerHTML = '<p>No matches on.</p>'; return; }
   el.innerHTML = names.map(name => {
@@ -4346,7 +4377,7 @@ function drawPresses() {
   }).join('');
 }
 function ensureOfferList(name) {
-  if (!amounts[name]) amounts[name] = { on: true, first:0, second:0, overall:0, press:0, pressFront:0, pressBack:0, pressDown:2, autoPress:true, player:{}, offers:[] };
+  if (!amounts[name]) amounts[name] = seedMatch(false);
   if (!amounts[name].offers) amounts[name].offers = [];
   return amounts[name];
 }
@@ -4470,8 +4501,7 @@ function holeBirdieLabel() {
     if (!holeScores[i] || typeof holeScores[i][holeNo] !== 'number') return;
     const labels = {};
     names.forEach(name => {
-      const saved = amountFor(name);
-      if (saved && saved.on === false) return;
+      if (!matchIsOn(name)) return;
       const sides = sidesOf(name);
       const ids = sides.a.concat(sides.b);
       if (ids.indexOf(p.id) < 0) return;
@@ -4487,8 +4517,7 @@ function sideJunkRows(p, i, h, rows) {
   let side = [];
   try { side = matchNames().side; } catch (e) { return; }
   const mine = side.filter(name => {
-    const bet = amountFor(name);
-    if (bet && bet.on === false) return false;
+    if (!matchIsOn(name)) return false;
     const sides = sidesOf(name);
     return sides.a.concat(sides.b).indexOf(p.id) >= 0;
   });
