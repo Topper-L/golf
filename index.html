@@ -375,6 +375,7 @@ try {
   .gnotes { display:block; margin-top:2px; font-size:12px; font-style:italic; color:#5e6f64; }
   .tag { display:inline-block; margin-left:6px; padding:2px 7px; border-radius:6px; background:#e7f3ec; color:#146b34; font-size:11px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; vertical-align:middle; }
   .tag.muted { background:#eef1ef; color:#5e6f64; }
+  .tag[hidden], .hint[hidden], .povline[hidden] { display:none !important; }
   #amountsFrom { text-transform:none; letter-spacing:0; font-size:12px; }
   .setup-flags { display:flex; gap:8px; margin-top:8px; }
   .setup-flags button { flex:1; min-height:44px; font-weight:750; }
@@ -1947,17 +1948,19 @@ function paintMatchCards() {
     const changed = amtChanged || ovs.length > 0;
     card.classList.toggle('changed', changed);
     if (tag) {
-      tag.hidden = !(changed || selected);
+      const label = changed ? 'Changed' : (selected ? setupTag(selected.name) : '');
+      tag.hidden = !label;
       tag.className = 'tag' + (changed ? '' : ' muted');
-      tag.textContent = changed ? 'Changed' : (selected ? setupTag(selected.name) : '');
+      tag.textContent = label;
     }
     if (hint) {
-      hint.hidden = !amtChanged;
-      hint.textContent = amtChanged ? 'Changed from ' + selected.name : '';
+      const text = amtChanged && selected ? 'Changed from ' + selected.name : '';
+      hint.hidden = !text;
+      hint.textContent = text;
     }
     if (line) {
       line.hidden = !ovs.length;
-      line.innerHTML = ovs.map(id => '<span class="povchip">' + esc(id) + ' ' + dollarText(Number(a.player[id]) || 0) + '</span>').join('');
+      line.innerHTML = ovs.length ? ovs.map(id => '<span class="povchip">' + esc(id) + ' ' + dollarText(Number(a.player[id]) || 0) + '</span>').join('') : '';
     }
     const cols = pressFields();
     card.querySelectorAll('input[data-f]').forEach(input => {

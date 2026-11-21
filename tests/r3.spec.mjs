@@ -2252,6 +2252,9 @@ test('only a tapped team match is charged after a Goldberg setup', async ({ page
   expect(ons).toEqual([]);
   await expect(page.locator('.matchcard[data-match="TL vs WT"] button[data-bet]')).toHaveText('Off');
   await expect(page.locator('.matchcard[data-match="TL vs WT"] .hint')).toHaveText('');
+  const emptyPills = await page.locator('#bets .hint, #bets .povline, #bets [data-match-tag]').evaluateAll(els => els.filter(el => !el.textContent.trim()).map(el => el.getClientRects().length));
+  expect(emptyPills.length).toBeGreaterThan(0);
+  expect(emptyPills.every(n => n === 0)).toBe(true);
   const team = 'Box (TL+WT) vs GS+LB';
   await page.locator('.matchcard').filter({ hasText: team }).locator('button[data-bet]').click();
   await expect(page.locator('.matchcard[data-match="TL vs WT"] button[data-bet]')).toHaveText('Off');
