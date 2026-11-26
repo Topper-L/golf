@@ -2396,3 +2396,78 @@ test('Junk grid counts carried Greenie/KP the same way Settle does', async ({ pa
   expect(died.gs).toBe('+$3');
   expect(died.detail).not.toContain('Greenie/KP');
 });
+
+test('All Matches is green only while every match is On', async ({ page }) => {
+  await page.evaluate(() => {
+    showScreen('setup');
+    players = [
+      { name: 'Topper Larsen', initials: 'TL', tee: 'Blue', hcp: '0', box: false },
+      { name: 'Ned S', initials: 'NS', tee: 'Blue', hcp: '0', box: false }
+    ];
+    amounts = {};
+    draw();
+  });
+  const apply = page.locator('#apply');
+  await expect(apply).not.toHaveClass(/\bon\b/);
+  await expect(page.locator('.matchcard button[data-bet]')).toHaveText('Off');
+  await apply.click();
+  await expect(apply).toHaveClass(/\bon\b/);
+  expect(await apply.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(231, 243, 236)');
+  await apply.scrollIntoViewIfNeeded();
+  await shot(page, 'all-matches-on');
+  await page.locator('.matchcard button[data-bet]').click();
+  await expect(page.locator('.matchcard button[data-bet]')).toHaveText('Off');
+  await expect(apply).not.toHaveClass(/\bon\b/);
+  expect(await apply.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe('rgb(231, 243, 236)');
+  await apply.scrollIntoViewIfNeeded();
+  await shot(page, 'all-matches-off');
+});
+
+test('Next hole on the last hole opens the Card', async ({ page }) => {
+  await page.evaluate(() => {
+    const pars = courses['Wood Ranch'].par.slice();
+    currentCourse = 'Wood Ranch';
+    players = [
+      { name: 'Topper Larsen', initials: 'TL', tee: 'Blue', hcp: '0', box: false },
+      { name: 'Ned S', initials: 'NS', tee: 'Blue', hcp: '0', box: false }
+    ];
+    holePlayers = players.map(p => ({ id: p.initials, name: p.name, tee: 'Blue', hcp: '0', box: false }));
+    holeScores = holePlayers.map(() => pars.slice());
+    holeMarks = holePlayers.map(() => freshMarks());
+    amounts = { 'TL vs NS': { on: true, first: 0, second: 0, overall: 0, press: 0, pressFront: 0, pressBack: 0, pressDown: 2, autoPress: false, player: { TL: 0, NS: 0 }, offers: [] } };
+    roundStop = null;
+    startAt = 0;
+    holeNo = 16;
+    playedThru = 17;
+    ninesPlayed = null;
+    roundId = 'next-card';
+    syncPlayedNines();
+    showScreen('score');
+    drawHole();
+  });
+  await page.locator('#post').click();
+  await expect(page.locator('#screenTitle')).toHaveText('Score');
+  await expect(page.locator('#holeTitle')).toContainText('Hole 18');
+  await page.locator('#scores .score').first().click();
+  await expect(page.locator('#screenTitle')).toHaveText('Score');
+  await page.locator('#post').click();
+  await expect(page.locator('#screenTitle')).toHaveText('Card');
+  await expect(page.locator('#card')).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await shot(page, 'next-hole-card');
+  await page.evaluate(() => {
+    startAt = 4;
+    holeNo = 4;
+    syncPlayedNines();
+    showScreen('score');
+    drawHole();
+  });
+  await expect(page.locator('#holeTitle')).toContainText('Hole 5');
+  await page.locator('#post').click();
+  await expect(page.locator('#screenTitle')).toHaveText('Score');
+  await expect(page.locator('#holeTitle')).toContainText('Hole 6');
+  await page.evaluate(() => { holeNo = 3; drawHole(); });
+  await expect(page.locator('#holeTitle')).toContainText('Hole 4');
+  await page.locator('#post').click();
+  await expect(page.locator('#screenTitle')).toHaveText('Card');
+});

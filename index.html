@@ -285,6 +285,7 @@ try {
   #screen-setup .defaults .ctrl input { width:3em; max-width:3.6em; flex:0 0 auto; padding:2px 0; text-align:center; }
   .setup-actions { display:flex; flex-wrap:wrap; gap:8px; }
   .setup-actions button { flex:1 1 auto; min-width:max-content; max-width:100%; }
+  #apply.on { background:#e7f3ec; color:#1f6b45; border-color:#1f6b45; box-shadow:inset 0 0 0 1px #1f6b45; }
   .amt { display:inline-flex; align-items:center; gap:1px; vertical-align:middle; }
   .amt button { min-height:28px; min-width:22px; padding:0 4px; }
   .amt input { width:3em; text-align:center; padding:2px 0; }
@@ -1000,6 +1001,7 @@ function drawBets() {
   });
   armAmountFields(betsEl);
   refreshSetupChrome();
+  paintAllMatches();
 }
 function capWords(value) {
   return String(value).replace(/(^|\s)(\S)/g, (all, lead, ch) => {
@@ -1592,7 +1594,21 @@ document.getElementById('bets').onclick = e => {
   bet.on = !bet.on;
   btn.className = bet.on ? 'on' : '';
   btn.textContent = bet.on ? 'On' : 'Off';
+  paintAllMatches();
 };
+function allMatchesOn() {
+  let names = [];
+  try {
+    const m = matchNames();
+    names = m.team.concat(m.side);
+  } catch (e) { return false; }
+  if (!names.length) return false;
+  return names.every(name => amounts[name] && amounts[name].on === true);
+}
+function paintAllMatches() {
+  const btn = document.getElementById('apply');
+  if (btn) btn.classList.toggle('on', allMatchesOn());
+}
 function blankBet(on) {
   return { on: !!on, first: 0, second: 0, overall: 0, press: 0, pressFront: 0, pressBack: 0, pressDown: 2, autoPress: true, pressMode: 'auto', player: {}, offers: [], mp18: false, mp: 0 };
 }
@@ -5059,6 +5075,13 @@ function goNextHole() {
   const names = missingNames(holeNo);
   const note = document.getElementById('postNote');
   if (note) note.textContent = names.length ? names.join(', ') + ': no score on ' + (holeNo + 1) : '';
+  const order = playOrder();
+  const i = order.indexOf(holeNo);
+  if (i >= 0 && i === order.length - 1) {
+    try { drawHole(); } catch (e) {}
+    showScreen('card');
+    return;
+  }
   stepHole(1);
 }
 document.getElementById('post').onclick = () => goNextHole();
