@@ -2216,9 +2216,14 @@ test('a fresh round leaves every match Off, and All Matches is an explicit tap',
   await page.locator('#apply').click();
   const after = await page.evaluate(() => {
     const m = matchNames();
-    return m.team.concat(m.side).every(name => amounts[name] && amounts[name].on === true);
+    const names = m.team.concat(m.side);
+    return {
+      anyOn: names.some(name => amounts[name] && amounts[name].on),
+      first: names.every(name => amounts[name] && amounts[name].first === Number(document.getElementById('dFirst').value))
+    };
   });
-  expect(after).toBe(true);
+  expect(after.anyOn).toBe(false);
+  expect(after.first).toBe(true);
 });
 
 test('only a tapped team match is charged after a Goldberg setup', async ({ page }) => {
@@ -2331,4 +2336,335 @@ test('a round with nothing On is scores only', async ({ page }) => {
     return Math.round(Object.keys(roll).reduce((n, id) => n + roll[id], 0) * 100) / 100;
   });
   expect(sum).toBe(0);
+});
+
+test('Junk grid counts carried Greenie/KP the same way Settle does', async ({ page }) => {
+  const setup = (tlWinsLast) => page.evaluate((tlWinsLast) => {
+    const pars = courses['Wood Ranch'].par.slice();
+    const ids = ['TL', 'GS', 'SC', 'LB', 'AM'];
+    const names = ['Topper Larsen', 'Gina Smith', 'Sam Chen', 'Lee Brown', 'Amy Moore'];
+    currentCourse = 'Wood Ranch';
+    players = ids.map((id, i) => ({ name: names[i], initials: id, tee: 'Blue', hcp: '0', box: id === 'TL' || id === 'GS' }));
+    holePlayers = players.map(p => ({ id: p.initials, name: p.name, tee: 'Blue', hcp: '0', box: !!p.box }));
+    holeScores = holePlayers.map(() => pars.slice());
+    holeMarks = holePlayers.map(() => freshMarks());
+    holeMarks[1][2].KP = 1;
+    if (tlWinsLast) holeMarks[0][16].KP = 1;
+    const player = {};
+    ids.forEach(id => { player[id] = 3; });
+    amounts = {
+      'Box (TL+GS) vs SC+LB': { on: true, first: 0, second: 0, overall: 0, press: 0, pressFront: 0, pressBack: 0, pressDown: 2, autoPress: false, player: player, offers: [], mp18: false, mp: 0 }
+    };
+    junkTypes.greenie.on = true;
+    roundStop = null;
+    holeNo = 0;
+    startAt = 0;
+    playedThru = 17;
+    ninesPlayed = null;
+    roundId = 'kp-carry';
+    syncPlayedNines();
+    showScreen('junk');
+    drawHole();
+    const box = ['TL', 'GS', 'SC', 'LB'];
+    const counts = kpForMatch(box);
+    const heads = [...document.querySelectorAll('#junkSummary th')].map(th => th.textContent);
+    const col = heads.indexOf('Greenie / KP');
+    const cell = id => {
+      const row = [...document.querySelectorAll('#junkSummary tr')].find(tr => tr.querySelector('td') && tr.querySelector('td').textContent === id);
+      return row ? row.querySelectorAll('td')[col].textContent : '';
+    };
+    const bet = amountFor('Box (TL+GS) vs SC+LB');
+    return {
+      tl: cell('TL'),
+      gs: cell('GS'),
+      counts: counts,
+      settleTl: (counts.TL || 0) * typeStake('greenie', bet, 'TL'),
+      detail: junkHoleItems(0, box).join(', ')
+    };
+  }, tlWinsLast);
+
+  const carried = await setup(true);
+  expect(carried.counts.TL).toBe(3);
+  expect(carried.counts.GS).toBe(1);
+  expect(carried.settleTl).toBe(9);
+  expect(carried.tl).toBe('+$9');
+  expect(carried.gs).toBe('+$3');
+  expect(carried.detail).toContain('17 Greenie/KP ×3');
+  await page.locator('#junkSummary').scrollIntoViewIfNeeded();
+  await shot(page, 'junk-kp-after');
+
+  const died = await setup(false);
+  expect(died.counts.TL).toBe(0);
+  expect(died.counts.GS).toBe(1);
+  expect(died.settleTl).toBe(0);
+  expect(died.tl).toBe('$0');
+  expect(died.gs).toBe('+$3');
+  expect(died.detail).not.toContain('Greenie/KP');
+});
+
+test('All Matches copies setup values, stays Off, and is green only while they match', async ({ page }) => {
+  await page.evaluate(() => {
+    showScreen('setup');
+    document.getElementById('dFirst').value = '5';
+    document.getElementById('dSecond').value = '5';
+    document.getElementById('dOverall').value = '5';
+    document.getElementById('dPressF').value = '4';
+    document.getElementById('dPressB').value = '4';
+    document.getElementById('dDown').value = '2';
+    document.getElementById('dJunk').value = '3';
+    players = [
+      { name: 'Topper Larsen', initials: 'TL', tee: 'Blue', hcp: '0', box: false },
+      { name: 'Ned S', initials: 'NS', tee: 'Blue', hcp: '0', box: false }
+    ];
+    amounts = { 'TL vs NS': { on: false, first: 0, second: 0, overall: 0, press: 0, pressFront: 0, pressBack: 0, pressDown: 1, pressMode: 'auto', autoPress: true, player: { TL: 0, NS: 0 }, offers: [] } };
+    draw();
+  });
+  const apply = page.locator('#apply');
+  await expect(apply).not.toHaveClass(/\bon\b/);
+  await apply.click();
+  await expect(page.locator('.matchcard button[data-bet]')).toHaveText('Off');
+  await expect(page.locator('#status')).toContainText('Matches stay as they are');
+  await expect(page.locator('#bets input[data-f="first"]')).toHaveValue('5');
+  await expect(page.locator('#bets input[data-f="pressDown"]')).toHaveValue('2');
+  await expect(apply).toHaveClass(/\bon\b/);
+  expect(await apply.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(231, 243, 236)');
+  await apply.scrollIntoViewIfNeeded();
+  await shot(page, 'all-matches-copied');
+  await page.locator('#bets input[data-f="first"]').fill('9');
+  await page.locator('#bets input[data-f="first"]').dispatchEvent('input');
+  await expect(apply).not.toHaveClass(/\bon\b/);
+});
+
+test('every box match gets the setup Down of 2', async ({ page }) => {
+  await page.evaluate(() => {
+    showScreen('setup');
+    currentCourse = 'Wood Ranch';
+    ['dFirst', 'dSecond', 'dOverall', 'dPressF', 'dPressB'].forEach(id => { document.getElementById(id).value = '5'; });
+    document.getElementById('dDown').value = '2';
+    document.getElementById('dJunk').value = '3';
+    const s = addSetupFromForm('Five down', '');
+    players = ['TL', 'NG', 'AC', 'DK'].map(id => ({ name: id, initials: id, tee: 'Blue', hcp: '0', box: id === 'TL' || id === 'NG' }));
+    amounts = {};
+    draw();
+    pickSetup(s.id);
+    amounts[matchNames().team[0]].pressDown = 1;
+    players.forEach(p => { p.box = false; });
+    draw();
+  });
+  await page.locator('#apply').click();
+  await page.evaluate(() => {
+    players.push({ name: 'JL', initials: 'JL', tee: 'Blue', hcp: '0', box: false });
+    players[0].box = true;
+    players[1].box = true;
+    draw();
+  });
+  let downs = await page.evaluate(() => matchNames().team.map(n => amounts[n].pressDown));
+  expect(downs.length).toBe(3);
+  expect(downs.every(n => n === 2)).toBe(true);
+  await page.evaluate(() => {
+    players.forEach(p => { p.box = false; });
+    players[2].box = true;
+    players[3].box = true;
+    draw();
+  });
+  downs = await page.evaluate(() => matchNames().team.map(n => amounts[n].pressDown));
+  expect(downs.length).toBeGreaterThan(0);
+  expect(downs.every(n => n === 2)).toBe(true);
+  await page.evaluate(() => { amounts[matchNames().team[1]].pressDown = 1; draw(); });
+  await page.locator('#apply').click();
+  downs = await page.evaluate(() => matchNames().team.map(n => amounts[n].pressDown));
+  expect(downs.every(n => n === 2)).toBe(true);
+  const ons = await page.evaluate(() => matchNames().team.some(n => amounts[n].on));
+  expect(ons).toBe(false);
+  const card = page.locator('#bets .matchcard').nth(1);
+  await card.scrollIntoViewIfNeeded();
+  await expect(card.locator('input[data-f="pressDown"]')).toHaveValue('2');
+  await shot(page, 'box-down-two');
+});
+
+test('Next hole on the last hole opens the Card', async ({ page }) => {
+  await page.evaluate(() => {
+    const pars = courses['Wood Ranch'].par.slice();
+    currentCourse = 'Wood Ranch';
+    players = [
+      { name: 'Topper Larsen', initials: 'TL', tee: 'Blue', hcp: '0', box: false },
+      { name: 'Ned S', initials: 'NS', tee: 'Blue', hcp: '0', box: false }
+    ];
+    holePlayers = players.map(p => ({ id: p.initials, name: p.name, tee: 'Blue', hcp: '0', box: false }));
+    holeScores = holePlayers.map(() => pars.slice());
+    holeMarks = holePlayers.map(() => freshMarks());
+    amounts = { 'TL vs NS': { on: true, first: 0, second: 0, overall: 0, press: 0, pressFront: 0, pressBack: 0, pressDown: 2, autoPress: false, player: { TL: 0, NS: 0 }, offers: [] } };
+    roundStop = null;
+    startAt = 0;
+    holeNo = 16;
+    playedThru = 17;
+    ninesPlayed = null;
+    roundId = 'next-card';
+    syncPlayedNines();
+    showScreen('score');
+    drawHole();
+  });
+  await page.locator('#post').click();
+  await expect(page.locator('#screenTitle')).toHaveText('Score');
+  await expect(page.locator('#holeTitle')).toContainText('Hole 18');
+  await page.locator('#scores .score').first().click();
+  await expect(page.locator('#screenTitle')).toHaveText('Score');
+  await page.locator('#post').click();
+  await expect(page.locator('#screenTitle')).toHaveText('Card');
+  await expect(page.locator('#card')).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await shot(page, 'next-hole-card');
+  await page.evaluate(() => {
+    startAt = 4;
+    holeNo = 4;
+    syncPlayedNines();
+    showScreen('score');
+    drawHole();
+  });
+  await expect(page.locator('#holeTitle')).toContainText('Hole 5');
+  await page.locator('#post').click();
+  await expect(page.locator('#screenTitle')).toHaveText('Score');
+  await expect(page.locator('#holeTitle')).toContainText('Hole 6');
+  await page.evaluate(() => { holeNo = 3; drawHole(); });
+  await expect(page.locator('#holeTitle')).toContainText('Hole 4');
+  await page.locator('#post').click();
+  await expect(page.locator('#screenTitle')).toHaveText('Card');
+});
+
+test('clear money history keeps scores and a later round counts', async ({ page }) => {
+  await page.evaluate(() => {
+    const pars = courses['Wood Ranch'].par.slice();
+    localStorage.setItem('golf-players', JSON.stringify([
+      { name: 'Topper Larsen', initials: 'TL', hcp: '6', tee: 'Blue', used: Date.now(), uses: 4, net: -50 }
+    ]));
+    localStorage.setItem('golf-setups', JSON.stringify({
+      list: [normalizeSetup({ id: 'g', name: 'Goldberg 5', first: 5, second: 5, overall: 5, junk: 2 })],
+      lastUsedId: 'g',
+      selectedId: 'g'
+    }));
+    localStorage.setItem('golf-rounds', JSON.stringify([{
+      id: 'old-money',
+      auto: false,
+      course: 'Wood Ranch',
+      when: '2026-06-01T12:00:00',
+      savedAt: '2026-06-01T18:00:00.000Z',
+      name: 'June money',
+      players: [
+        { id: 'TL', name: 'Topper Larsen', tee: 'Blue', hcp: '6', box: false },
+        { id: 'WT', name: 'Wes T', tee: 'Blue', hcp: '8', box: false }
+      ],
+      scores: [pars.slice(), pars.map(p => p + 1)],
+      marks: [[], []],
+      amounts: { 'TL vs WT': { on: true, first: 5, second: 5, overall: 5, press: 0, pressFront: 0, pressBack: 0, pressDown: 2, autoPress: false, player: { TL: 0, WT: 0 }, offers: [] } },
+      nets: { 'Topper Larsen': -122, 'Wes T': 122 },
+      ownerNet: '−$122',
+      hole: 0,
+      startAt: 0,
+      playedThru: 17
+    }]));
+    loadBettingSetups();
+    drawSaved();
+    showScreen('setup');
+    drawSavedPlayers();
+  });
+  await expect(page.locator('#playerList .phcp').first()).toContainText('−$122');
+  await page.evaluate(() => showScreen('gate'));
+  await expect(page.locator('#runningMoney')).toContainText('−$122');
+  await expect(page.locator('.rnet')).toContainText('−$122');
+  await page.locator('#clearMoney').click();
+  await expect(page.locator('#clearMoneyAsk')).toBeVisible();
+  await page.locator('#clearMoneyAsk').scrollIntoViewIfNeeded();
+  await shot(page, 'clear-money-confirm');
+  await page.locator('#clearMoneyYes').click();
+  await expect(page.locator('#runningMoney')).toBeEmpty();
+  const kept = await page.evaluate(() => {
+    const round = JSON.parse(localStorage.getItem('golf-rounds'))[0];
+    const book = JSON.parse(localStorage.getItem('golf-players'))[0];
+    const setups = JSON.parse(localStorage.getItem('golf-setups'));
+    return {
+      score: round.scores[0][0],
+      other: round.scores[1][0],
+      nets: round.nets,
+      owner: round.ownerNet,
+      bookNet: book.net,
+      setup: setups.list[0].name,
+      start: localStorage.getItem('golf-money-start')
+    };
+  });
+  expect(kept.score).toBe(4);
+  expect(kept.other).toBe(5);
+  expect(kept.nets).toBeUndefined();
+  expect(kept.owner).toBeUndefined();
+  expect(kept.bookNet).toBeUndefined();
+  expect(kept.setup).toBe('Goldberg 5');
+  expect(kept.start).toBeTruthy();
+  await page.evaluate(() => { showScreen('setup'); drawSavedPlayers(); });
+  await expect(page.locator('#playerList .phcp').first()).toContainText('6');
+  await expect(page.locator('#playerList .phcp').first()).not.toContainText('$');
+  await page.locator('#playerList').scrollIntoViewIfNeeded();
+  await shot(page, 'recent-after-clear');
+  await page.evaluate(() => {
+    const round = {
+      id: 'after-clear',
+      auto: false,
+      course: 'Wood Ranch',
+      when: localDateStr() + 'T12:00:00',
+      savedAt: new Date().toISOString(),
+      players: [{ id: 'TL', name: 'Topper Larsen', tee: 'Blue', hcp: '6', box: false }],
+      scores: [courses['Wood Ranch'].par.slice()],
+      nets: { 'Topper Larsen': 15 },
+      ownerNet: '+$15'
+    };
+    const list = roundArchive();
+    list.unshift(round);
+    saveRoundArchive(list);
+    rememberYearRound(round);
+    showScreen('gate');
+    drawSaved();
+  });
+  await expect(page.locator('#runningMoney')).toContainText('+$15');
+  await expect(page.locator('#runningMoney')).not.toContainText('122');
+  const reopened = await page.evaluate(() => roundArchive().find(r => r.id === 'old-money').scores[1][0]);
+  expect(reopened).toBe(5);
+});
+
+test('yearly totals keep a past year after rollover and after the archive drops a round', async ({ page }) => {
+  await page.evaluate(() => {
+    golfClock = '2026-11-21T15:00:00';
+    const rounds = [{
+      id: 'y2026',
+      auto: false,
+      when: '2026-08-01T12:00:00',
+      savedAt: '2026-08-01T18:00:00.000Z',
+      course: 'Wood Ranch',
+      players: [{ id: 'TL', name: 'Topper Larsen' }],
+      scores: [[4]],
+      nets: { 'Topper Larsen': 40 }
+    }];
+    for (let i = 0; i < 20; i++) {
+      rounds.push({
+        id: 'y2025-' + i,
+        auto: false,
+        when: '2025-05-02T12:00:00',
+        savedAt: '2025-05-02T18:00:00.000Z',
+        course: 'Wood Ranch',
+        players: [{ id: 'TL', name: 'Topper Larsen' }],
+        scores: [[4]],
+        nets: { 'Topper Larsen': -1 }
+      });
+    }
+    localStorage.setItem('golf-rounds', JSON.stringify(rounds));
+    syncYearTotalsFromArchive();
+    saveRoundArchive(rounds.slice(0, 20));
+    drawSaved();
+  });
+  await expect(page.locator('#runningMoney')).toContainText('+$40');
+  await expect(page.locator('#yearTotals [data-year="2025"]')).toContainText('−$20');
+  await page.evaluate(() => { golfClock = '2027-01-02T15:00:00'; drawSaved(); });
+  await expect(page.locator('#runningMoney')).toBeEmpty();
+  await expect(page.locator('#yearTotals [data-year="2026"]')).toContainText('+$40');
+  await expect(page.locator('#yearTotals [data-year="2025"]')).toContainText('−$20');
+  expect(await page.evaluate(() => roundArchive().filter(r => String(r.id).indexOf('y2025-') === 0).length)).toBe(19);
+  await page.locator('#yearTotals').scrollIntoViewIfNeeded();
+  await shot(page, 'yearly-totals');
 });

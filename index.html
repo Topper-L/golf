@@ -176,7 +176,11 @@ try {
   #holeJump { display:flex; gap:4px; margin:0 0 8px; }
   #holeJump button { flex:0 0 auto; box-sizing:border-box; min-width:36px; min-height:36px; padding:0 6px; font-weight:750; }
   #holeJump button.par-rest { min-width:0; padding:0 8px; font-size:12px; font-weight:800; }
-  #runningMoney:empty { display:none; }
+  #runningMoney:empty, #yearTotals:empty { display:none; }
+  .yearhead { margin:8px 0 2px; font-weight:800; color:#1c2b22; }
+  #clearMoneyAsk { background:#fff4e5; border:1px solid #e0a84a; border-radius:10px; padding:8px 10px; margin:8px 0; }
+  #clearMoneyAsk[hidden] { display:none; }
+  #clearMoneyAsk p { margin:0 0 8px; color:#1c2b22; }
   .runline { display:flex; justify-content:space-between; gap:8px; margin:0 0 4px; color:#1c2b22; font-weight:650; }
   .runline span:first-child { min-width:0; overflow:hidden; text-overflow:ellipsis; }
   .match-strip[hidden] { display:none; }
@@ -285,6 +289,7 @@ try {
   #screen-setup .defaults .ctrl input { width:3em; max-width:3.6em; flex:0 0 auto; padding:2px 0; text-align:center; }
   .setup-actions { display:flex; flex-wrap:wrap; gap:8px; }
   .setup-actions button { flex:1 1 auto; min-width:max-content; max-width:100%; }
+  #apply.on { background:#e7f3ec; color:#1f6b45; border-color:#1f6b45; box-shadow:inset 0 0 0 1px #1f6b45; }
   .amt { display:inline-flex; align-items:center; gap:1px; vertical-align:middle; }
   .amt button { min-height:28px; min-width:22px; padding:0 4px; }
   .amt input { width:3em; text-align:center; padding:2px 0; }
@@ -509,9 +514,15 @@ try {
     <div class="card">
       <h2>Saved rounds</h2>
       <div id="runningMoney"></div>
+      <div id="yearTotals"></div>
       <input id="roundSearch" type="search" placeholder="Search rounds" autocomplete="off" hidden>
       <div id="savedList"></div>
       <p id="savedNote"></p>
+      <p><button type="button" id="clearMoney">Clear money history</button></p>
+      <div id="clearMoneyAsk" hidden>
+        <p>Clear money history? Scores, players, courses, and Betting Setups stay. Running totals start over.</p>
+        <p><button type="button" id="clearMoneyYes">Clear money</button> <button type="button" id="clearMoneyNo">Cancel</button></p>
+      </div>
       <p><button type="button" id="exportRound" tabindex="-1">Export current</button> <label class="file"><input type="file" id="importRound" accept="application/json"> Import file</label></p>
     </div>
   </section>
@@ -992,6 +1003,7 @@ function drawBets() {
     if (el.dataset.p) amounts[el.dataset.bet].player[el.dataset.p] = Number(el.value);
     else amounts[el.dataset.bet][el.dataset.f] = Number(el.value);
     refreshSetupChrome();
+    paintAllMatches();
   });
   document.querySelectorAll('#bets select[data-cap]').forEach(el => el.onchange = () => {
     const bet = amounts[el.dataset.bet];
@@ -1000,6 +1012,7 @@ function drawBets() {
   });
   armAmountFields(betsEl);
   refreshSetupChrome();
+  paintAllMatches();
 }
 function capWords(value) {
   return String(value).replace(/(^|\s)(\S)/g, (all, lead, ch) => {
@@ -1242,8 +1255,11 @@ function junkGridHtml() {
         cells[i][t] += amt;
         if (amt) any = true;
       });
-      if (typeOn('greenie') && kpPays(i, h)) {
-        const amt = typeStake('greenie', bet, p.id);
+    }
+    if (typeOn('greenie')) {
+      const units = kpUnitsForPlayer(p.id);
+      if (units) {
+        const amt = units * typeStake('greenie', bet, p.id);
         cells[i].greenie += amt;
         if (amt) any = true;
       }
@@ -1589,7 +1605,27 @@ document.getElementById('bets').onclick = e => {
   bet.on = !bet.on;
   btn.className = bet.on ? 'on' : '';
   btn.textContent = bet.on ? 'On' : 'Off';
+  paintAllMatches();
 };
+function matchCarriesSetup(a, form) {
+  if (!a || !form || matchDiffers(a, form)) return false;
+  const junk = Number(form.junk) || 0;
+  const ids = players.filter(p => p.initials).map(p => String(p.initials).toUpperCase());
+  return ids.every(id => a.player && a.player[id] != null && sameNum(a.player[id], junk));
+}
+function paintAllMatches() {
+  const btn = document.getElementById('apply');
+  if (!btn) return;
+  let names = [];
+  try {
+    const m = matchNames();
+    names = m.team.concat(m.side);
+  } catch (e) { names = []; }
+  let form = null;
+  try { form = readFormMoney(); } catch (e) { form = null; }
+  const ready = names.length > 0 && !!form && names.every(name => matchCarriesSetup(amounts[name], form));
+  btn.classList.toggle('on', ready);
+}
 function blankBet(on) {
   return { on: !!on, first: 0, second: 0, overall: 0, press: 0, pressFront: 0, pressBack: 0, pressDown: 2, autoPress: true, pressMode: 'auto', player: {}, offers: [], mp18: false, mp: 0 };
 }
@@ -1984,6 +2020,7 @@ function refreshSetupChrome() {
     paintDiverge();
     paintBetPanel();
     paintMatchCards();
+    paintAllMatches();
   } finally { chromeLock = false; }
 }
 function updateSelectedSetup() {
@@ -2271,7 +2308,7 @@ document.getElementById('newRound').onclick = () => {
   document.getElementById('status').textContent = 'New round. Add the players.';
 };
 document.getElementById('save').onclick = startHole;
-function copyBets(opts) {
+function copyBets() {
   syncPlayers();
   const values = {
     first: Number(document.getElementById('dFirst').value) || 0,
@@ -2287,30 +2324,37 @@ function copyBets(opts) {
   if (!(strokePct >= 0)) strokePct = 100;
   const names = matchNames();
   const list = names.team.concat(names.side);
-  if (!list.length) {
+  if (!list.length && !Object.keys(amounts).length) {
     document.getElementById('status').textContent = 'No matches yet. Add initials, then All Matches.';
     return;
   }
-  const turnOn = !!(opts && opts.turnOn);
-  list.forEach(name => {
+  const downRaw = document.getElementById('dDown').value;
+  const downNum = Number(downRaw);
+  values.pressDown = downRaw === '' || !isFinite(downNum) ? 2 : downNum;
+  const targets = list.slice();
+  Object.keys(amounts).forEach(name => { if (targets.indexOf(name) < 0) targets.push(name); });
+  targets.forEach(name => {
     if (!amounts[name]) amounts[name] = seedMatch(false);
-    if (turnOn) amounts[name].on = true;
-    amounts[name].first = values.first;
-    amounts[name].second = values.second;
-    amounts[name].overall = values.overall;
+    const bet = amounts[name];
+    const stayOn = !!bet.on;
+    bet.first = values.first;
+    bet.second = values.second;
+    bet.overall = values.overall;
     const cols = pressFields();
-    amounts[name].press = values.press;
-    amounts[name][cols[0]] = values.pressFirst;
-    if (cols[1] !== cols[0]) amounts[name][cols[1]] = values.pressSecond;
-    amounts[name].pressDown = values.pressDown;
-    amounts[name].pressMode = setupPressMode || 'auto';
-    amounts[name].autoPress = (setupPressMode || 'auto') === 'auto';
-    players.filter(p => p.initials).forEach(p => { p.junk = junk; amounts[name].player[String(p.initials).toUpperCase()] = junk; });
+    bet.press = values.press;
+    if (cols[0]) bet[cols[0]] = values.pressFirst;
+    if (cols[1] && cols[1] !== cols[0]) bet[cols[1]] = values.pressSecond;
+    bet.pressDown = values.pressDown;
+    bet.pressMode = setupPressMode || 'auto';
+    bet.autoPress = (setupPressMode || 'auto') === 'auto';
+    bet.on = stayOn;
+    if (!bet.player) bet.player = {};
+    players.filter(p => p.initials).forEach(p => { p.junk = junk; bet.player[String(p.initials).toUpperCase()] = junk; });
   });
   draw();
-  document.getElementById('status').textContent = 'Copied ' + values.first + ' / ' + values.second + ' / ' + values.overall + ', press ' + values.pressFirst + ' on the 1st 9 and ' + values.pressSecond + ' on the 2nd 9, at ' + values.pressDown + ' down, junk ' + junk + ' into ' + list.length + ' matches.' + (turnOn ? ' All of them are On.' : ' Each match stays Off until you tap it On.');
+  document.getElementById('status').textContent = 'Copied ' + values.first + ' / ' + values.second + ' / ' + values.overall + ', press ' + values.pressFirst + ' on the 1st 9 and ' + values.pressSecond + ' on the 2nd 9, at ' + values.pressDown + ' down, junk ' + junk + ' into ' + list.length + ' matches. Values were copied. Matches stay as they are.';
 }
-document.getElementById('apply').onclick = () => copyBets({ turnOn: true });
+document.getElementById('apply').onclick = () => copyBets();
 function noMoneyRound() {
   ['dFirst', 'dSecond', 'dOverall', 'dPressF', 'dPressB', 'dJunk'].forEach(id => {
     const el = document.getElementById(id);
@@ -3116,6 +3160,8 @@ function junkPersonNets(a, b, junkOf) {
 }
 function junkHoleItems(i, matchIds) {
   const mk = holeMarks[i] || [];
+  const awards = kpAwards(matchIds);
+  const who = holePlayers[i] && holePlayers[i].id;
   const items = [];
   for (const h of playedHoles()) {
     if (!holeReady(matchIds, h)) continue;
@@ -3123,7 +3169,8 @@ function junkHoleItems(i, matchIds) {
     const units = grossBirdieUnits(i, h);
     const bits = [];
     if (units) bits.push(birdieName(units));
-    if (kpPays(i, h)) bits.push('KP');
+    const award = awards.find(a => a.h === h && a.id === who);
+    if (award) bits.push(award.units > 1 ? 'Greenie/KP ×' + award.units : 'Greenie/KP');
     MANUAL_JUNK.forEach(t => {
       const n = payingJunkCount(i, h, t, m[t]);
       if (!n) return;
@@ -3834,10 +3881,9 @@ function kpPays(i, h) {
   const gross = holeScores[i] && holeScores[i][h];
   return typeof gross === 'number' && gross <= par;
 }
-function kpForMatch(matchIds) {
-  const par3 = courseData().par.map((p,i) => p === 3 ? i : -1).filter(i => i >= 0);
-  const counts = {};
-  matchIds.forEach(id => counts[id] = 0);
+function kpAwards(matchIds) {
+  const par3 = courseData().par.map((p, i) => p === 3 ? i : -1).filter(i => i >= 0);
+  const awards = [];
   let carry = 0;
   par3.forEach(h => {
     if (segmentVoid(matchIds, segmentIndex(h))) return;
@@ -3857,11 +3903,40 @@ function kpForMatch(matchIds) {
         const yb = holePlayers[iy] && holePlayers[iy].box;
         return xb && !yb ? y : x;
       });
-      counts[best] += 1 + carry;
+      awards.push({ h: h, id: best, units: 1 + carry });
       carry = 0;
     } else carry += 1;
   });
+  return awards;
+}
+function kpForMatch(matchIds) {
+  const counts = {};
+  matchIds.forEach(id => { counts[id] = 0; });
+  kpAwards(matchIds).forEach(a => { counts[a.id] = (counts[a.id] || 0) + a.units; });
   return counts;
+}
+function kpMatchIds(playerId) {
+  let names = [];
+  try {
+    const m = matchNames();
+    names = m.team.concat(m.side);
+  } catch (e) { return null; }
+  for (let n = 0; n < names.length; n++) {
+    if (!matchIsOn(names[n])) continue;
+    const sides = sidesOf(names[n]);
+    const ids = sides.a.concat(sides.b);
+    if (ids.indexOf(playerId) >= 0) return ids;
+  }
+  return null;
+}
+function kpUnitsForPlayer(playerId) {
+  const ids = kpMatchIds(playerId);
+  if (ids) return kpForMatch(ids)[playerId] || 0;
+  let n = 0;
+  const i = holePlayers.findIndex(p => p.id === playerId);
+  if (i < 0) return 0;
+  playedHoles().forEach(h => { if (kpPays(i, h)) n += 1; });
+  return n;
 }
 function amountFor(name) {
   if (amounts[name]) return amounts[name];
@@ -5025,6 +5100,13 @@ function goNextHole() {
   const names = missingNames(holeNo);
   const note = document.getElementById('postNote');
   if (note) note.textContent = names.length ? names.join(', ') + ': no score on ' + (holeNo + 1) : '';
+  const order = playOrder();
+  const i = order.indexOf(holeNo);
+  if (i >= 0 && i === order.length - 1) {
+    try { drawHole(); } catch (e) {}
+    showScreen('card');
+    return;
+  }
   stepHole(1);
 }
 document.getElementById('post').onclick = () => goNextHole();
@@ -5312,7 +5394,9 @@ function autoSaveRound() {
   const list = roundArchive();
   const snap = snapshot(true);
   const i = findAutoSlot(list, snap);
+  applyMoneyStamp(snap, i >= 0 ? list[i] : null);
   if (i >= 0) list[i] = snap; else list.unshift(snap);
+  rememberYearRound(snap);
   saveRoundArchive(list.slice(0, 20));
   const note = document.getElementById('saveNote');
   if (note && document.getElementById('holeView') && document.getElementById('holeView').classList.contains('on')) note.textContent = '';
@@ -5389,6 +5473,7 @@ function drawSaved() {
   const el = document.getElementById('savedList');
   const search = document.getElementById('roundSearch');
   paintRunning();
+  paintYearTotals();
   if (!el) return;
   const list = roundArchive();
   const liveId = roundId || '';
@@ -5541,7 +5626,7 @@ document.getElementById('deleteRound').onclick = () => {
   const list = roundArchive();
   let i = list.findIndex(item => item && roundId && item.id === roundId);
   if (i < 0) i = list.findIndex(item => item && roundTitle(item) === label);
-  if (i >= 0) { list.splice(i, 1); saveRoundArchive(list); }
+  if (i >= 0) { forgetYearRound(list[i]); list.splice(i, 1); saveRoundArchive(list); }
   suppressAutoSave = true;
   holePlayers = [];
   holeScores = [];
@@ -5569,7 +5654,9 @@ document.getElementById('importRound').onchange = e => {
       const r = JSON.parse(reader.result);
       if (!r.players || !r.scores) throw new Error('Not a round file');
       const list = roundArchive();
+      applyMoneyStamp(r, null);
       list.unshift(r);
+      rememberYearRound(r);
       saveRoundArchive(list.slice(0, 20));
       drawSaved();
       const note = document.getElementById('savedNote');
@@ -6148,29 +6235,121 @@ function ownerMoneyKey(r) {
   if (bookTl && bookTl.name) return bookTl.name;
   return 'Topper Larsen';
 }
-function runningBalances() {
+function appNow() {
+  try {
+    if (typeof golfClock === 'string' && golfClock) {
+      const d = new Date(golfClock);
+      if (!isNaN(d.getTime())) return d;
+    }
+  } catch (e) {}
+  return new Date();
+}
+function moneyStart() {
+  try { return localStorage.getItem('golf-money-start') || ''; } catch (e) { return ''; }
+}
+function roundYear(r) {
+  const day = roundDayOf(r);
+  return /^\d{4}/.test(day) ? day.slice(0, 4) : '';
+}
+function roundMoneyId(r) {
+  if (r && r.id) return 'id:' + r.id;
+  return 'day:' + roundDayOf(r) + ':' + playerKeyOf(r && r.players) + ':' + (r && r.auto ? 'a' : String((r && r.when) || ''));
+}
+function roundCountsForMoney(r) {
+  if (!r) return false;
+  const start = moneyStart();
+  if (start && (!r.savedAt || r.savedAt < start)) return false;
+  return !!roundYear(r);
+}
+function applyMoneyStamp(snap, previous) {
+  if (!snap) return snap;
+  const start = moneyStart();
+  if (previous && Object.prototype.hasOwnProperty.call(previous, 'savedAt')) snap.savedAt = previous.savedAt || '';
+  else if (start && previous) snap.savedAt = '';
+  else if (!snap.savedAt) snap.savedAt = appNow().toISOString();
+  return snap;
+}
+function netsOfRound(r) {
   const totals = {};
-  const seen = {};
-  roundArchive().forEach(r => {
-    if (!r) return;
-    const key = r.id ? ('id:' + r.id) : ('day:' + roundDayOf(r) + ':' + playerKeyOf(r.players) + ':' + (r.auto ? 'a' : String(r.when || '')));
-    if (seen[key]) return;
-    seen[key] = true;
-    const nets = r.nets;
-    if (nets && typeof nets === 'object' && Object.keys(nets).length) {
-      Object.keys(nets).forEach(name => {
-        const n = Number(nets[name]);
-        if (!isFinite(n)) return;
-        totals[name] = Math.round(((totals[name] || 0) + n) * 100) / 100;
-      });
-      return;
-    }
-    if (r.ownerNet) {
-      const who = ownerMoneyKey(r);
-      totals[who] = Math.round(((totals[who] || 0) + parseCash(r.ownerNet)) * 100) / 100;
-    }
+  const nets = r && r.nets;
+  if (nets && typeof nets === 'object' && Object.keys(nets).length) {
+    Object.keys(nets).forEach(name => {
+      const n = Number(nets[name]);
+      if (!isFinite(n) || !n) return;
+      totals[name] = Math.round(((totals[name] || 0) + n) * 100) / 100;
+    });
+    return totals;
+  }
+  if (r && r.ownerNet) {
+    const n = parseCash(r.ownerNet);
+    if (n) totals[ownerMoneyKey(r)] = n;
+  }
+  return totals;
+}
+function sumNamed(parts) {
+  const totals = {};
+  (parts || []).forEach(nets => {
+    Object.keys(nets || {}).forEach(name => {
+      const n = Number(nets[name]);
+      if (!isFinite(n) || !n) return;
+      totals[name] = Math.round(((totals[name] || 0) + n) * 100) / 100;
+    });
   });
   return totals;
+}
+function yearBuckets() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('golf-year-totals') || '{}');
+    return raw && typeof raw === 'object' ? raw : {};
+  } catch (e) { return {}; }
+}
+function saveYearBuckets(all) {
+  try { localStorage.setItem('golf-year-totals', JSON.stringify(all)); } catch (e) {}
+}
+function rememberYearRound(r) {
+  const year = roundYear(r);
+  if (!year) return;
+  const all = yearBuckets();
+  const bucket = all[year] && typeof all[year] === 'object' ? all[year] : { rounds: {} };
+  if (!bucket.rounds || typeof bucket.rounds !== 'object') bucket.rounds = {};
+  const id = roundMoneyId(r);
+  if (!roundCountsForMoney(r)) delete bucket.rounds[id];
+  else bucket.rounds[id] = { nets: netsOfRound(r), when: r.when || '' };
+  bucket.totals = sumNamed(Object.keys(bucket.rounds).map(key => bucket.rounds[key].nets));
+  all[year] = bucket;
+  saveYearBuckets(all);
+}
+function forgetYearRound(r) {
+  if (!r) return;
+  const year = roundYear(r);
+  const all = yearBuckets();
+  const bucket = all[year];
+  if (!bucket || !bucket.rounds) return;
+  delete bucket.rounds[roundMoneyId(r)];
+  bucket.totals = sumNamed(Object.keys(bucket.rounds).map(key => bucket.rounds[key].nets));
+  saveYearBuckets(all);
+}
+function syncYearTotalsFromArchive() {
+  roundArchive().forEach(r => { if (r) rememberYearRound(r); });
+}
+function yearTotals(year) {
+  syncYearTotalsFromArchive();
+  const bucket = yearBuckets()[year];
+  const fromStore = bucket && bucket.totals ? bucket.totals : {};
+  const seen = {};
+  if (bucket && bucket.rounds) Object.keys(bucket.rounds).forEach(id => { seen[id] = true; });
+  const extra = [];
+  roundArchive().forEach(r => {
+    if (!roundCountsForMoney(r) || roundYear(r) !== year) return;
+    const id = roundMoneyId(r);
+    if (seen[id]) return;
+    seen[id] = true;
+    extra.push(netsOfRound(r));
+  });
+  return sumNamed([fromStore].concat(extra));
+}
+function runningBalances() {
+  return yearTotals(String(appNow().getFullYear()));
 }
 function paintRunning() {
   const el = document.getElementById('runningMoney');
@@ -6178,12 +6357,60 @@ function paintRunning() {
   const totals = runningBalances();
   const names = Object.keys(totals).sort((a, b) => a.localeCompare(b));
   if (!names.length) { el.innerHTML = ''; return; }
-  el.innerHTML = '<p class="psec">Running</p>' + names.map(name => {
+  el.innerHTML = '<p class="psec">Running ' + esc(String(appNow().getFullYear())) + '</p>' + names.map(name => {
     const v = totals[name];
     const cls = v > 0 ? 'up' : v < 0 ? 'dn' : '';
     return '<p class="runline"><span>' + esc(name) + '</span><span class="' + cls + '">' + cashText(v) + '</span></p>';
   }).join('');
 }
+function paintYearTotals() {
+  const el = document.getElementById('yearTotals');
+  if (!el) return;
+  syncYearTotalsFromArchive();
+  const all = yearBuckets();
+  const years = Object.keys(all).filter(year => all[year] && all[year].totals && Object.keys(all[year].totals).some(name => all[year].totals[name])).sort((a, b) => b.localeCompare(a));
+  if (!years.length) { el.innerHTML = ''; return; }
+  el.innerHTML = '<p class="psec">Yearly totals</p>' + years.map(year => {
+    const names = Object.keys(all[year].totals).filter(name => all[year].totals[name]).sort((a, b) => a.localeCompare(b));
+    return '<p class="yearhead">' + esc(year) + '</p>' + names.map(name => {
+      const v = all[year].totals[name];
+      const cls = v > 0 ? 'up' : v < 0 ? 'dn' : '';
+      return '<p class="runline" data-year="' + esc(year) + '" data-player="' + esc(name) + '"><span>' + esc(name) + '</span><span class="' + cls + '">' + cashText(v) + '</span></p>';
+    }).join('');
+  }).join('');
+}
+function clearMoneyHistory() {
+  const now = appNow().toISOString();
+  try { localStorage.setItem('golf-money-start', now); } catch (e) {}
+  const list = roundArchive().map(r => {
+    if (!r || typeof r !== 'object') return r;
+    const copy = Object.assign({}, r);
+    delete copy.nets;
+    delete copy.ownerNet;
+    delete copy.balance;
+    return copy;
+  });
+  saveRoundArchive(list);
+  const book = playerBook().map(b => {
+    if (!b || typeof b !== 'object') return b;
+    const copy = Object.assign({}, b);
+    ['nets', 'ownerNet', 'net', 'balance', 'total'].forEach(key => { delete copy[key]; });
+    return copy;
+  });
+  savePlayerBook(book);
+  try { localStorage.removeItem('golf-year-totals'); } catch (e) {}
+  drawSaved();
+  try { drawSavedPlayers(); } catch (e) {}
+  const note = document.getElementById('savedNote');
+  if (note) note.textContent = 'Money history cleared. Scores are still here.';
+}
+const clearMoneyBtn = document.getElementById('clearMoney');
+const clearMoneyAsk = document.getElementById('clearMoneyAsk');
+if (clearMoneyBtn && clearMoneyAsk) clearMoneyBtn.onclick = () => { clearMoneyAsk.hidden = false; };
+const clearMoneyNo = document.getElementById('clearMoneyNo');
+if (clearMoneyNo && clearMoneyAsk) clearMoneyNo.onclick = () => { clearMoneyAsk.hidden = true; };
+const clearMoneyYes = document.getElementById('clearMoneyYes');
+if (clearMoneyYes && clearMoneyAsk) clearMoneyYes.onclick = () => { clearMoneyAsk.hidden = true; clearMoneyHistory(); };
 let wakeWanted = false;
 let wakePending = false;
 function holdWake() {
