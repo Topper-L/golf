@@ -2913,3 +2913,17 @@ test('The score name uses a short date and the autosave line is a chip', async (
   await note.scrollIntoViewIfNeeded();
   await shot(page, 'autosave-chip');
 });
+
+test('Home shows the app version from the same string as the cache', async ({ page }) => {
+  const sw = fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const cache = (sw.match(/const CACHE = '([^']+)'/) || [])[1];
+  const app = (html.match(/const APP_VERSION = '([^']+)'/) || [])[1];
+  expect(cache).toBe('golf-v38');
+  expect(app).toBe(cache);
+  await page.evaluate(() => showScreen('gate'));
+  const line = page.locator('#appVersion');
+  await expect(line).toHaveText('Version ' + app.replace(/^golf-/, ''));
+  await line.scrollIntoViewIfNeeded();
+  await shot(page, 'home-version');
+});

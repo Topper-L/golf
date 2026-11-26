@@ -177,6 +177,7 @@ try {
   #holeJump button { flex:0 0 auto; box-sizing:border-box; min-width:36px; min-height:36px; padding:0 6px; font-weight:750; }
   #holeJump button.par-rest { min-width:0; padding:0 8px; font-size:12px; font-weight:800; }
   #runningMoney:empty, #yearTotals:empty { display:none; }
+  .app-version { margin:4px 0 8px; text-align:center; color:#9aa89e; font-size:12px; font-weight:500; }
   .yearhead { margin:8px 0 2px; font-weight:800; color:#1c2b22; }
   #clearMoneyAsk { background:#fff4e5; border:1px solid #e0a84a; border-radius:10px; padding:8px 10px; margin:8px 0; }
   #clearMoneyAsk[hidden] { display:none; }
@@ -561,6 +562,7 @@ try {
       </div>
       <p><button type="button" id="exportRound" tabindex="-1">Export current</button> <label class="file"><input type="file" id="importRound" accept="application/json"> Import file</label></p>
     </div>
+    <p id="appVersion" class="app-version"></p>
   </section>
   <section id="screen-setup" class="screen">
   <div class="card" id="courseCard">
@@ -723,6 +725,7 @@ try {
   </div>
 </div>
 <script>
+const APP_VERSION = 'golf-v38';
 const courses = {
   'Wood Ranch': {
     abbr: 'WRGC',
@@ -6785,6 +6788,8 @@ syncStartButton();
 drawSaved();
 setFont(currentFont());
 showScreen('gate');
+const appVersionEl = document.getElementById('appVersion');
+if (appVersionEl) appVersionEl.textContent = 'Version ' + String(APP_VERSION).replace(/^golf-/, '');
 offerSetupImport();
 openScoreLink();
 window.addEventListener('hashchange', openScoreLink);
