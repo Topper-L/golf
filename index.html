@@ -137,7 +137,7 @@ try {
   .card-tools h2 { margin:0; flex:1; }
   .card-tools button { min-height:32px; font-size:var(--text); padding:2px 8px; }
   .view-note { margin:0 0 8px; font-size:var(--text); }
-  #matchPick { display:flex; flex-direction:column; align-items:flex-start; gap:6px; margin:0 0 8px; max-width:100%; }
+  #matchPick { position:relative; z-index:8; display:flex; flex-direction:column; align-items:flex-start; gap:6px; margin:0 0 8px; max-width:100%; }
   #matchPick[hidden] { display:none; }
   #matchPick .pickrow { display:flex; flex-wrap:wrap; gap:6px; max-width:100%; }
   #matchPick button { box-sizing:border-box; flex:0 1 auto; max-width:100%; min-height:36px; padding:4px 8px; font-size:var(--text); font-weight:700; line-height:1.15; white-space:normal; text-align:center; }
@@ -177,6 +177,7 @@ try {
   #holeJump button { flex:0 0 auto; box-sizing:border-box; min-width:36px; min-height:36px; padding:0 6px; font-weight:750; }
   #holeJump button.par-rest { min-width:0; padding:0 8px; font-size:12px; font-weight:800; }
   #runningMoney:empty, #yearTotals:empty { display:none; }
+  .app-version { margin:4px 0 8px; text-align:center; color:#9aa89e; font-size:12px; font-weight:500; }
   .yearhead { margin:8px 0 2px; font-weight:800; color:#1c2b22; }
   #clearMoneyAsk { background:#fff4e5; border:1px solid #e0a84a; border-radius:10px; padding:8px 10px; margin:8px 0; }
   #clearMoneyAsk[hidden] { display:none; }
@@ -561,6 +562,7 @@ try {
       </div>
       <p><button type="button" id="exportRound" tabindex="-1">Export current</button> <label class="file"><input type="file" id="importRound" accept="application/json"> Import file</label></p>
     </div>
+    <p id="appVersion" class="app-version"></p>
   </section>
   <section id="screen-setup" class="screen">
   <div class="card" id="courseCard">
@@ -723,6 +725,7 @@ try {
   </div>
 </div>
 <script>
+const APP_VERSION = 'golf-v38';
 const courses = {
   'Wood Ranch': {
     abbr: 'WRGC',
@@ -3377,6 +3380,15 @@ function playerSideMatches(id) {
     return sides.a.indexOf(id) >= 0 || sides.b.indexOf(id) >= 0;
   });
 }
+function playerInMatch(name, id) {
+  const sides = sidesOf(name);
+  return sides.a.indexOf(id) >= 0 || sides.b.indexOf(id) >= 0;
+}
+function playerMatches(id) {
+  const sides = playerSideMatches(id);
+  if (sides.length) return sides;
+  return activeTeamNames().filter(name => playerInMatch(name, id));
+}
 function row2Label(name, pick) {
   const sides = sidesOf(name);
   if (pick === 'box') return 'v ' + teamTag(sides.b);
@@ -3407,7 +3419,7 @@ function resolveCardPick() {
   if (!live.length) { cardPick = 'all'; cardMatchName = ''; return; }
   if (cardPick === 'all') return;
   const pickOk = cardPick === 'box' ? teams.length > 0 : holePlayers.some(p => p.id === cardPick);
-  const group = cardPick === 'box' ? teams : (pickOk ? playerSideMatches(cardPick) : []);
+  const group = cardPick === 'box' ? teams : (pickOk ? playerMatches(cardPick) : []);
   if (pickOk && group.indexOf(cardMatchName) >= 0) return;
   if (pickOk && !group.length) { fallbackCardPick(); return; }
   if (cardMatchName && live.indexOf(cardMatchName) < 0) { fallbackCardPick(); return; }
@@ -3428,7 +3440,7 @@ function paintMatchPick() {
   const row1 = [pickButton('data-pick="all"', 'All', cardPick === 'all')];
   if (teams.length) row1.push(pickButton('data-pick="box"', 'Box', cardPick === 'box'));
   holePlayers.forEach(p => row1.push(pickButton('data-pick="' + esc(p.id) + '"', p.id, cardPick === p.id)));
-  const group = cardPick === 'box' ? teams : (cardPick === 'all' ? [] : playerSideMatches(cardPick));
+  const group = cardPick === 'box' ? teams : (cardPick === 'all' ? [] : playerMatches(cardPick));
   const row2 = group.length
     ? '<div class="pickrow pick-opponents">' + group.map(name => pickButton('data-match="' + esc(name) + '"', row2Label(name, cardPick), name === cardMatchName)).join('') + '</div>'
     : '';
@@ -6763,7 +6775,7 @@ if (matchPickEl) matchPickEl.onclick = e => {
       const teams = activeTeamNames();
       if (teams.length) cardMatchName = teams[0];
     } else {
-      const group = playerSideMatches(cardPick);
+      const group = playerMatches(cardPick);
       if (group.length) cardMatchName = group[0];
     }
     try { drawHole(); } catch (err) {}
@@ -6785,6 +6797,8 @@ syncStartButton();
 drawSaved();
 setFont(currentFont());
 showScreen('gate');
+const appVersionEl = document.getElementById('appVersion');
+if (appVersionEl) appVersionEl.textContent = 'Version ' + String(APP_VERSION).replace(/^golf-/, '');
 offerSetupImport();
 openScoreLink();
 window.addEventListener('hashchange', openScoreLink);

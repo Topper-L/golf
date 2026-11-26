@@ -2913,3 +2913,82 @@ test('The score name uses a short date and the autosave line is a chip', async (
   await note.scrollIntoViewIfNeeded();
   await shot(page, 'autosave-chip');
 });
+
+test('Home shows the app version from the same string as the cache', async ({ page }) => {
+  const sw = fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const cache = (sw.match(/const CACHE = '([^']+)'/) || [])[1];
+  const app = (html.match(/const APP_VERSION = '([^']+)'/) || [])[1];
+  expect(cache).toBe('golf-v38');
+  expect(app).toBe(cache);
+  await page.evaluate(() => showScreen('gate'));
+  const line = page.locator('#appVersion');
+  await expect(line).toHaveText('Version ' + app.replace(/^golf-/, ''));
+  await line.scrollIntoViewIfNeeded();
+  await shot(page, 'home-version');
+});
+
+test('tapping each player initials button selects that card view', async ({ page }) => {
+  async function round(ids) {
+    await page.evaluate((ids) => {
+      const pars = courses['Wood Ranch'].par.slice();
+      currentCourse = 'Wood Ranch';
+      players = ids.map(id => ({ name: id, initials: id, tee: 'Blue', hcp: '0', box: id === 'TL' || id === 'GS' }));
+      holePlayers = players.map(p => ({ id: p.initials, name: p.name, tee: 'Blue', hcp: '0', box: !!p.box }));
+      holeScores = holePlayers.map(() => pars.slice());
+      holeMarks = holePlayers.map(() => freshMarks());
+      const stake = {};
+      ids.forEach(id => { stake[id] = 0; });
+      amounts = {};
+      const m = matchNames();
+      m.team.forEach(name => {
+        amounts[name] = { on: true, first: 5, second: 5, overall: 5, press: 0, pressFront: 0, pressBack: 0, pressDown: 2, autoPress: false, player: stake, offers: [] };
+      });
+      m.side.forEach(name => {
+        amounts[name] = { on: false, first: 5, second: 5, overall: 5, press: 0, pressFront: 0, pressBack: 0, pressDown: 2, autoPress: false, player: stake, offers: [] };
+      });
+      roundStop = null;
+      holeNo = 0;
+      startAt = 0;
+      playedThru = 8;
+      ninesPlayed = null;
+      cardPick = 'box';
+      cardMatchName = '';
+      syncPlayedNines();
+      showScreen('card');
+      drawHole();
+    }, ids);
+  }
+  async function columns() {
+    return page.locator('#card table.scorecard').first().locator('th.who').evaluateAll(els => els.map(el => ({
+      id: (el.textContent || '').trim().slice(0, 2),
+      side: el.classList.contains('side'),
+      dim: el.classList.contains('dim')
+    })));
+  }
+  for (const ids of [['TL', 'GS', 'LB', 'AM'], ['TL', 'GS', 'LB', 'AM', 'SC']]) {
+    await round(ids);
+    const buttons = page.locator('#matchPick .pickrow').first().locator('button[data-pick]');
+    const labels = await buttons.evaluateAll(els => els.map(el => el.dataset.pick).filter(id => id !== 'all' && id !== 'box'));
+    expect(labels).toEqual(ids);
+    for (let i = 0; i < labels.length; i++) {
+      const id = labels[i];
+      const btn = page.locator('#matchPick button[data-pick="' + id + '"]');
+      await btn.scrollIntoViewIfNeeded();
+      await btn.tap();
+      await expect(btn).toHaveClass(/\bon\b/);
+      expect(await btn.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(31, 107, 69)');
+      expect(await page.evaluate(() => cardPick)).toBe(id);
+      const cols = await columns();
+      const mine = cols.filter(c => c.id === id)[0];
+      expect(mine.side).toBeTruthy();
+      expect(mine.dim).toBeFalsy();
+      expect(cols.some(c => c.side)).toBeTruthy();
+      if (ids.length === 5) expect(cols.some(c => c.dim)).toBeTruthy();
+      if (ids.length === 5 && i === 3) {
+        await page.locator('#matchPick').scrollIntoViewIfNeeded();
+        await shot(page, 'card-fourth-initials');
+      }
+    }
+  }
+});
