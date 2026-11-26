@@ -176,7 +176,11 @@ try {
   #holeJump { display:flex; gap:4px; margin:0 0 8px; }
   #holeJump button { flex:0 0 auto; box-sizing:border-box; min-width:36px; min-height:36px; padding:0 6px; font-weight:750; }
   #holeJump button.par-rest { min-width:0; padding:0 8px; font-size:12px; font-weight:800; }
-  #runningMoney:empty { display:none; }
+  #runningMoney:empty, #yearTotals:empty { display:none; }
+  .yearhead { margin:8px 0 2px; font-weight:800; color:#1c2b22; }
+  #clearMoneyAsk { background:#fff4e5; border:1px solid #e0a84a; border-radius:10px; padding:8px 10px; margin:8px 0; }
+  #clearMoneyAsk[hidden] { display:none; }
+  #clearMoneyAsk p { margin:0 0 8px; color:#1c2b22; }
   .runline { display:flex; justify-content:space-between; gap:8px; margin:0 0 4px; color:#1c2b22; font-weight:650; }
   .runline span:first-child { min-width:0; overflow:hidden; text-overflow:ellipsis; }
   .match-strip[hidden] { display:none; }
@@ -510,9 +514,15 @@ try {
     <div class="card">
       <h2>Saved rounds</h2>
       <div id="runningMoney"></div>
+      <div id="yearTotals"></div>
       <input id="roundSearch" type="search" placeholder="Search rounds" autocomplete="off" hidden>
       <div id="savedList"></div>
       <p id="savedNote"></p>
+      <p><button type="button" id="clearMoney">Clear money history</button></p>
+      <div id="clearMoneyAsk" hidden>
+        <p>Clear money history? Scores, players, courses, and Betting Setups stay. Running totals start over.</p>
+        <p><button type="button" id="clearMoneyYes">Clear money</button> <button type="button" id="clearMoneyNo">Cancel</button></p>
+      </div>
       <p><button type="button" id="exportRound" tabindex="-1">Export current</button> <label class="file"><input type="file" id="importRound" accept="application/json"> Import file</label></p>
     </div>
   </section>
@@ -5384,7 +5394,9 @@ function autoSaveRound() {
   const list = roundArchive();
   const snap = snapshot(true);
   const i = findAutoSlot(list, snap);
+  applyMoneyStamp(snap, i >= 0 ? list[i] : null);
   if (i >= 0) list[i] = snap; else list.unshift(snap);
+  rememberYearRound(snap);
   saveRoundArchive(list.slice(0, 20));
   const note = document.getElementById('saveNote');
   if (note && document.getElementById('holeView') && document.getElementById('holeView').classList.contains('on')) note.textContent = '';
@@ -5461,6 +5473,7 @@ function drawSaved() {
   const el = document.getElementById('savedList');
   const search = document.getElementById('roundSearch');
   paintRunning();
+  paintYearTotals();
   if (!el) return;
   const list = roundArchive();
   const liveId = roundId || '';
@@ -5613,7 +5626,7 @@ document.getElementById('deleteRound').onclick = () => {
   const list = roundArchive();
   let i = list.findIndex(item => item && roundId && item.id === roundId);
   if (i < 0) i = list.findIndex(item => item && roundTitle(item) === label);
-  if (i >= 0) { list.splice(i, 1); saveRoundArchive(list); }
+  if (i >= 0) { forgetYearRound(list[i]); list.splice(i, 1); saveRoundArchive(list); }
   suppressAutoSave = true;
   holePlayers = [];
   holeScores = [];
@@ -5641,7 +5654,9 @@ document.getElementById('importRound').onchange = e => {
       const r = JSON.parse(reader.result);
       if (!r.players || !r.scores) throw new Error('Not a round file');
       const list = roundArchive();
+      applyMoneyStamp(r, null);
       list.unshift(r);
+      rememberYearRound(r);
       saveRoundArchive(list.slice(0, 20));
       drawSaved();
       const note = document.getElementById('savedNote');
@@ -6220,29 +6235,121 @@ function ownerMoneyKey(r) {
   if (bookTl && bookTl.name) return bookTl.name;
   return 'Topper Larsen';
 }
-function runningBalances() {
+function appNow() {
+  try {
+    if (typeof golfClock === 'string' && golfClock) {
+      const d = new Date(golfClock);
+      if (!isNaN(d.getTime())) return d;
+    }
+  } catch (e) {}
+  return new Date();
+}
+function moneyStart() {
+  try { return localStorage.getItem('golf-money-start') || ''; } catch (e) { return ''; }
+}
+function roundYear(r) {
+  const day = roundDayOf(r);
+  return /^\d{4}/.test(day) ? day.slice(0, 4) : '';
+}
+function roundMoneyId(r) {
+  if (r && r.id) return 'id:' + r.id;
+  return 'day:' + roundDayOf(r) + ':' + playerKeyOf(r && r.players) + ':' + (r && r.auto ? 'a' : String((r && r.when) || ''));
+}
+function roundCountsForMoney(r) {
+  if (!r) return false;
+  const start = moneyStart();
+  if (start && (!r.savedAt || r.savedAt < start)) return false;
+  return !!roundYear(r);
+}
+function applyMoneyStamp(snap, previous) {
+  if (!snap) return snap;
+  const start = moneyStart();
+  if (previous && Object.prototype.hasOwnProperty.call(previous, 'savedAt')) snap.savedAt = previous.savedAt || '';
+  else if (start && previous) snap.savedAt = '';
+  else if (!snap.savedAt) snap.savedAt = appNow().toISOString();
+  return snap;
+}
+function netsOfRound(r) {
   const totals = {};
-  const seen = {};
-  roundArchive().forEach(r => {
-    if (!r) return;
-    const key = r.id ? ('id:' + r.id) : ('day:' + roundDayOf(r) + ':' + playerKeyOf(r.players) + ':' + (r.auto ? 'a' : String(r.when || '')));
-    if (seen[key]) return;
-    seen[key] = true;
-    const nets = r.nets;
-    if (nets && typeof nets === 'object' && Object.keys(nets).length) {
-      Object.keys(nets).forEach(name => {
-        const n = Number(nets[name]);
-        if (!isFinite(n)) return;
-        totals[name] = Math.round(((totals[name] || 0) + n) * 100) / 100;
-      });
-      return;
-    }
-    if (r.ownerNet) {
-      const who = ownerMoneyKey(r);
-      totals[who] = Math.round(((totals[who] || 0) + parseCash(r.ownerNet)) * 100) / 100;
-    }
+  const nets = r && r.nets;
+  if (nets && typeof nets === 'object' && Object.keys(nets).length) {
+    Object.keys(nets).forEach(name => {
+      const n = Number(nets[name]);
+      if (!isFinite(n) || !n) return;
+      totals[name] = Math.round(((totals[name] || 0) + n) * 100) / 100;
+    });
+    return totals;
+  }
+  if (r && r.ownerNet) {
+    const n = parseCash(r.ownerNet);
+    if (n) totals[ownerMoneyKey(r)] = n;
+  }
+  return totals;
+}
+function sumNamed(parts) {
+  const totals = {};
+  (parts || []).forEach(nets => {
+    Object.keys(nets || {}).forEach(name => {
+      const n = Number(nets[name]);
+      if (!isFinite(n) || !n) return;
+      totals[name] = Math.round(((totals[name] || 0) + n) * 100) / 100;
+    });
   });
   return totals;
+}
+function yearBuckets() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('golf-year-totals') || '{}');
+    return raw && typeof raw === 'object' ? raw : {};
+  } catch (e) { return {}; }
+}
+function saveYearBuckets(all) {
+  try { localStorage.setItem('golf-year-totals', JSON.stringify(all)); } catch (e) {}
+}
+function rememberYearRound(r) {
+  const year = roundYear(r);
+  if (!year) return;
+  const all = yearBuckets();
+  const bucket = all[year] && typeof all[year] === 'object' ? all[year] : { rounds: {} };
+  if (!bucket.rounds || typeof bucket.rounds !== 'object') bucket.rounds = {};
+  const id = roundMoneyId(r);
+  if (!roundCountsForMoney(r)) delete bucket.rounds[id];
+  else bucket.rounds[id] = { nets: netsOfRound(r), when: r.when || '' };
+  bucket.totals = sumNamed(Object.keys(bucket.rounds).map(key => bucket.rounds[key].nets));
+  all[year] = bucket;
+  saveYearBuckets(all);
+}
+function forgetYearRound(r) {
+  if (!r) return;
+  const year = roundYear(r);
+  const all = yearBuckets();
+  const bucket = all[year];
+  if (!bucket || !bucket.rounds) return;
+  delete bucket.rounds[roundMoneyId(r)];
+  bucket.totals = sumNamed(Object.keys(bucket.rounds).map(key => bucket.rounds[key].nets));
+  saveYearBuckets(all);
+}
+function syncYearTotalsFromArchive() {
+  roundArchive().forEach(r => { if (r) rememberYearRound(r); });
+}
+function yearTotals(year) {
+  syncYearTotalsFromArchive();
+  const bucket = yearBuckets()[year];
+  const fromStore = bucket && bucket.totals ? bucket.totals : {};
+  const seen = {};
+  if (bucket && bucket.rounds) Object.keys(bucket.rounds).forEach(id => { seen[id] = true; });
+  const extra = [];
+  roundArchive().forEach(r => {
+    if (!roundCountsForMoney(r) || roundYear(r) !== year) return;
+    const id = roundMoneyId(r);
+    if (seen[id]) return;
+    seen[id] = true;
+    extra.push(netsOfRound(r));
+  });
+  return sumNamed([fromStore].concat(extra));
+}
+function runningBalances() {
+  return yearTotals(String(appNow().getFullYear()));
 }
 function paintRunning() {
   const el = document.getElementById('runningMoney');
@@ -6250,12 +6357,60 @@ function paintRunning() {
   const totals = runningBalances();
   const names = Object.keys(totals).sort((a, b) => a.localeCompare(b));
   if (!names.length) { el.innerHTML = ''; return; }
-  el.innerHTML = '<p class="psec">Running</p>' + names.map(name => {
+  el.innerHTML = '<p class="psec">Running ' + esc(String(appNow().getFullYear())) + '</p>' + names.map(name => {
     const v = totals[name];
     const cls = v > 0 ? 'up' : v < 0 ? 'dn' : '';
     return '<p class="runline"><span>' + esc(name) + '</span><span class="' + cls + '">' + cashText(v) + '</span></p>';
   }).join('');
 }
+function paintYearTotals() {
+  const el = document.getElementById('yearTotals');
+  if (!el) return;
+  syncYearTotalsFromArchive();
+  const all = yearBuckets();
+  const years = Object.keys(all).filter(year => all[year] && all[year].totals && Object.keys(all[year].totals).some(name => all[year].totals[name])).sort((a, b) => b.localeCompare(a));
+  if (!years.length) { el.innerHTML = ''; return; }
+  el.innerHTML = '<p class="psec">Yearly totals</p>' + years.map(year => {
+    const names = Object.keys(all[year].totals).filter(name => all[year].totals[name]).sort((a, b) => a.localeCompare(b));
+    return '<p class="yearhead">' + esc(year) + '</p>' + names.map(name => {
+      const v = all[year].totals[name];
+      const cls = v > 0 ? 'up' : v < 0 ? 'dn' : '';
+      return '<p class="runline" data-year="' + esc(year) + '" data-player="' + esc(name) + '"><span>' + esc(name) + '</span><span class="' + cls + '">' + cashText(v) + '</span></p>';
+    }).join('');
+  }).join('');
+}
+function clearMoneyHistory() {
+  const now = appNow().toISOString();
+  try { localStorage.setItem('golf-money-start', now); } catch (e) {}
+  const list = roundArchive().map(r => {
+    if (!r || typeof r !== 'object') return r;
+    const copy = Object.assign({}, r);
+    delete copy.nets;
+    delete copy.ownerNet;
+    delete copy.balance;
+    return copy;
+  });
+  saveRoundArchive(list);
+  const book = playerBook().map(b => {
+    if (!b || typeof b !== 'object') return b;
+    const copy = Object.assign({}, b);
+    ['nets', 'ownerNet', 'net', 'balance', 'total'].forEach(key => { delete copy[key]; });
+    return copy;
+  });
+  savePlayerBook(book);
+  try { localStorage.removeItem('golf-year-totals'); } catch (e) {}
+  drawSaved();
+  try { drawSavedPlayers(); } catch (e) {}
+  const note = document.getElementById('savedNote');
+  if (note) note.textContent = 'Money history cleared. Scores are still here.';
+}
+const clearMoneyBtn = document.getElementById('clearMoney');
+const clearMoneyAsk = document.getElementById('clearMoneyAsk');
+if (clearMoneyBtn && clearMoneyAsk) clearMoneyBtn.onclick = () => { clearMoneyAsk.hidden = false; };
+const clearMoneyNo = document.getElementById('clearMoneyNo');
+if (clearMoneyNo && clearMoneyAsk) clearMoneyNo.onclick = () => { clearMoneyAsk.hidden = true; };
+const clearMoneyYes = document.getElementById('clearMoneyYes');
+if (clearMoneyYes && clearMoneyAsk) clearMoneyYes.onclick = () => { clearMoneyAsk.hidden = true; clearMoneyHistory(); };
 let wakeWanted = false;
 let wakePending = false;
 function holdWake() {
