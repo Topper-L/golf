@@ -165,8 +165,8 @@ try {
   .banner .b-tap { margin-top:6px; font-weight:650; }
   .banner .b-full { border-top:1px solid currentColor; margin-top:8px; padding-top:8px; }
   .banner .b-full[hidden] { display:none; }
-  .banner .up { color:#1f6b45; }
-  .banner .dn { color:#b42318; }
+  .banner .up, .banner b.up { color:#0d7a32; }
+  .banner .dn, .banner b.dn { color:#c42318; }
   .banner-dots { display:flex; justify-content:center; gap:6px; margin:0 0 8px; min-height:10px; }
   .banner-dots[hidden] { display:none; }
   .banner-dots .bdot { width:7px; height:7px; border-radius:50%; background:#c5d1c8; }
@@ -279,6 +279,11 @@ try {
   input.need { background:#fff4e5; border:1px solid #e0a84a; }
   .up { color:#1f6b45; font-weight:700; }
   .dn { color:#b42318; font-weight:700; }
+  b.up { color:#0d7a32; }
+  b.dn { color:#c42318; }
+  .tri { display:inline-block; width:0; height:0; margin:0 0 1px 3px; vertical-align:middle; border-style:solid; }
+  .tri.up { border-width:0 5.5px 9px 5.5px; border-color:transparent transparent #0d7a32 transparent; }
+  .tri.dn { border-width:9px 5.5px 0 5.5px; border-color:#c42318 transparent transparent transparent; }
   input.hcp { width:42px; text-align:center; }
   input.hcp.plus { background:#1f6b45; color:white; font-weight:700; }
   .defaults { display:flex; flex-wrap:wrap; gap:8px 10px; align-items:flex-end; }
@@ -313,7 +318,7 @@ try {
   button.round-open .r2 { display:block; margin-top:2px; color:#5e6f64; font-weight:600; }
   button.round-name { display:block; width:100%; text-align:left; font-weight:750; font-size:var(--lead); background:transparent; border-color:transparent; padding:2px 0; white-space:normal; }
   .round-name-input { width:100%; box-sizing:border-box; font:inherit; font-weight:750; }
-  .autosave-note { font-size:12px; margin:0 0 8px; }
+  .autosave-note { display:inline-block; margin:0 0 8px; padding:4px 10px; border-radius:8px; background:#e7f3ec; color:#3d4f44; font-size:var(--lead); font-weight:650; line-height:1.3; }
   #saveNote:empty { display:none; }
   #saveNote.banner { display:block; background:#fff4e5; color:#8a5a00; border:1px solid #e0a84a; border-radius:8px; padding:8px 10px; font-weight:700; }
   .grid .tee { display:block; font-size:8px; font-weight:800; letter-spacing:-0.08em; line-height:1; text-align:center; overflow:hidden; }
@@ -382,8 +387,39 @@ try {
   .tag.muted { background:#eef1ef; color:#5e6f64; }
   .tag[hidden], .hint[hidden], .povline[hidden] { display:none !important; }
   #amountsFrom { text-transform:none; letter-spacing:0; font-size:12px; }
-  .setup-flags { display:flex; gap:8px; margin-top:8px; }
-  .setup-flags button { flex:1; min-height:44px; font-weight:750; }
+  .amt-actions { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; margin-top:8px; }
+  .amt-actions button { box-sizing:border-box; width:100%; min-width:0; height:44px; min-height:44px; margin:0; padding:4px 6px; font-weight:750; line-height:1.15; white-space:normal; }
+  .amt-actions button[hidden] { display:none !important; }
+  .start-row, .date-row { display:flex; align-items:center; gap:8px; margin:8px 0; }
+  .start-lab { flex:none; font-weight:750; color:#1c2b22; }
+  .start-ctrl { display:inline-flex; align-items:center; gap:6px; }
+  .start-ctrl button { box-sizing:border-box; width:52px; min-width:52px; height:52px; min-height:52px; padding:0; font-size:22px; font-weight:750; }
+  #startHole { border:2px solid #1f6b45; color:#1f6b45; font-weight:800; background:#fff; }
+  .date-row input[type="date"] { flex:1; min-width:0; min-height:48px; font-size:var(--lead); }
+  .setup-go { display:flex; align-items:stretch; gap:8px; margin:8px 0 0; }
+  .setup-go button { box-sizing:border-box; min-height:44px; margin:0; }
+  .setup-go #save { flex:1.45 1 0; }
+  .setup-go #clearAll, .setup-go #toGate { flex:1 1 0; }
+  .setup-go #clearAll { color:#b42318; border-color:#b42318; background:#fff; font-size:12px; line-height:1.15; padding:4px 6px; }
+  .setup-go #clearAll.armed { background:#b42318; color:#fff; border-color:#b42318; }
+  .round-name-row { display:flex; align-items:flex-start; gap:8px; }
+  .round-name-row button.round-name { flex:1; width:auto; }
+  .round-pencil { flex:none; width:44px; min-width:44px; height:44px; padding:0; font-size:18px; }
+  .round-item { margin:0 0 10px; }
+  .round-tools { display:flex; gap:6px; margin-top:4px; }
+  .round-tools button { flex:1 1 0; min-width:0; min-height:36px; padding:4px 4px; font-size:13px; font-weight:700; }
+  .jplayers { display:flex; flex-direction:column; gap:6px; margin:8px 0; }
+  .jplayer > button { display:flex; align-items:center; justify-content:space-between; width:100%; min-height:44px; text-align:left; font-weight:750; }
+  .jplayer.open > button { border-color:#1f6b45; }
+  .jplayer .jtot { font-weight:800; font-variant-numeric:tabular-nums; }
+  .jdetail { padding:4px 8px 8px; }
+  .jtype { display:flex; align-items:baseline; gap:8px; padding:4px 0; border-top:1px solid #e4ece6; }
+  .jtype .jtname { flex:none; font-weight:750; }
+  .jtype .jtholes { flex:1; min-width:0; color:#3d4f44; }
+  .jtype .jtamt { flex:none; font-weight:800; font-variant-numeric:tabular-nums; }
+  #matchPick button.on { background:#1f6b45; color:#fff; border-color:#1f6b45; }
+  #card th.dim, #card td.dim, #card td.dim .shape, #card td.dim .shape.birdie, #card td.dim .shape.eagle, #card td.dim .shape.bogey, #card td.dim .shape.dblbogey, #card td.dim .shape.par { color:#b7c3bb; border-color:#d5e0d4; }
+  #card td.dim .dots { color:#c5d1c8; }
   .autosum { background:#e7f3ec; border-radius:8px; padding:8px 10px; font-size:var(--text); font-weight:700; color:#146b34; line-height:1.35; margin:8px 0; }
   .sec { font-weight:800; margin:12px 0 6px; color:#1c2b22; }
   .brow input.chg { color:#1f6b45; }
@@ -584,12 +620,14 @@ try {
       <div class="col"><div class="lab">Junk</div><div class="ctrl"><button type="button" data-step="-1" data-id="dJunk" aria-label="Decrease junk">−</button><input id="dJunk" type="text" inputmode="decimal" value="3"><button type="button" data-step="1" data-id="dJunk" aria-label="Increase junk">+</button></div></div>
       <div class="col"><div class="lab">Strokes %</div><div class="ctrl"><button type="button" data-step="-1" data-id="dPct" aria-label="Decrease strokes percent">−</button><input id="dPct" type="text" inputmode="decimal" value="100"><button type="button" data-step="1" data-id="dPct" aria-label="Increase strokes percent">+</button></div></div>
     </div>
-    <div class="setup-flags">
+    <div class="amt-actions" id="amtActions">
       <button type="button" id="dPressMode">Auto presses</button>
       <button type="button" id="dBox">Box off</button>
+      <button type="button" id="apply" tabindex="-1">All Matches</button>
+      <button type="button" id="noMoney" tabindex="-1">Set to $0</button>
+      <button type="button" id="setupUpdate" hidden>Update</button>
+      <button type="button" id="setupSaveAs2" class="primary" hidden>Save as…</button>
     </div>
-    <p class="setup-actions"><button type="button" id="apply" tabindex="-1">All Matches</button> <button type="button" id="noMoney" tabindex="-1">Set to $0</button></p>
-    <p class="setup-actions" id="setupDiverge" hidden><button type="button" id="setupUpdate">Update</button> <button type="button" id="setupSaveAs2" class="primary">Save as…</button></p>
   </div>
   <div class="card" id="junkSetup">
     <h2>Junk types</h2>
@@ -602,10 +640,10 @@ try {
     <p id="status"></p>
     <div id="betSetupPanel"></div>
     <div id="bets"></div>
-    <p>Start on <button type="button" id="startPrev" tabindex="-1">−</button> <button type="button" id="startHole" tabindex="-1">1</button> <button type="button" id="startNext" tabindex="-1">+</button> <span class="note">Any hole. The nine you start in is the 1st 9.</span> Date <input type="date" id="roundDate"></p>
-    <p><button type="button" id="save" class="primary" tabindex="-1">Start scoring</button> <button type="button" id="clearAll" tabindex="-1">Clear all scores</button></p>
+    <div class="start-row"><span class="start-lab">Start on</span><span class="start-ctrl"><button type="button" id="startPrev" tabindex="-1" aria-label="Previous start hole">−</button> <button type="button" id="startHole" tabindex="-1">1</button> <button type="button" id="startNext" tabindex="-1" aria-label="Next start hole">+</button></span></div>
+    <div class="date-row"><span class="start-lab">Date</span><input type="date" id="roundDate"></div>
+    <div class="setup-go"><button type="button" id="save" class="primary" tabindex="-1">Start scoring</button> <button type="button" id="clearAll" tabindex="-1">Clear all scores</button> <button type="button" id="toGate" tabindex="-1">Saved rounds</button></div>
     <p id="saveNote"></p>
-    <p><button type="button" id="toGate" tabindex="-1">Saved rounds</button></p>
   </div>
   </section>
   <section id="holeView" class="screen">
@@ -629,7 +667,7 @@ try {
     <p class="autosave-note">Rounds save automatically.</p>
     <div class="card"><h2>Standing</h2><div id="standing"></div></div>
     <div class="card" id="roundDetail">
-      <button type="button" id="roundName" class="round-name"></button>
+      <div class="round-name-row"><button type="button" id="roundName" class="round-name"></button><button type="button" id="roundRename" class="round-pencil" aria-label="Rename round">✎</button></div>
       <p id="roundSub" class="round-sub"></p>
       <p><button type="button" id="deleteRound">Delete</button> <button type="button" id="exportThis">Export</button></p>
     </div>
@@ -861,6 +899,7 @@ let settleView = 'both';
 let bannerOpen = {};
 let settleOpen = {};
 let junkSheetPlayer = -1;
+let junkOpenPlayer = '';
 let lastSettle = null;
 const JUNK_DEFS = [
   { id: 'birdie', name: 'Birdie', sub: 'Auto · gross', auto: true },
@@ -1224,58 +1263,77 @@ function drawJunkTypes() {
   const q = document.getElementById('quickScores');
   if (q) q.checked = !!quickScores;
 }
+function junkPlayerLines(i) {
+  const p = holePlayers[i];
+  const bet = { player: {} };
+  bet.player[p.id] = configuredJunkRate(p.id);
+  const types = [];
+  const addType = (id, holes) => {
+    const kept = holes.filter(h => h.amt);
+    if (!kept.length) return;
+    types.push({ id: id, name: junkDef(id).name, holes: kept, total: kept.reduce((n, h) => n + h.amt, 0) });
+  };
+  const eagles = [];
+  const birdies = [];
+  for (const h of playedHoles()) {
+    if (!scoreEntered(i, h)) continue;
+    const under = grossBirdieUnits(i, h);
+    if (under >= 2 && typeOn('eagle')) {
+      const amt = autoGrossValue(i, h, bet, p.id);
+      if (amt) eagles.push({ label: String(h + 1), amt: amt });
+    } else if (under >= 1 && typeOn('birdie')) {
+      const amt = typeStake('birdie', bet, p.id);
+      if (amt) birdies.push({ label: String(h + 1), amt: amt });
+    }
+  }
+  if (typeOn('eagle')) addType('eagle', eagles);
+  if (typeOn('birdie')) addType('birdie', birdies);
+  MANUAL_JUNK.forEach(t => {
+    if (!typeOn(t)) return;
+    const holes = [];
+    for (const h of playedHoles()) {
+      const n = payingJunkCount(i, h, t, holeMarks[i] && holeMarks[i][h] && holeMarks[i][h][t]);
+      if (!n) continue;
+      const amt = n * typeStake(t, bet, p.id);
+      if (!amt) continue;
+      holes.push({ label: n > 1 ? (h + 1) + ' ×' + n : String(h + 1), amt: amt });
+    }
+    addType(t, holes);
+  });
+  if (typeOn('greenie')) {
+    const ids = kpMatchIds(p.id);
+    const holes = [];
+    if (ids) {
+      kpAwards(ids).filter(a => a.id === p.id).forEach(a => {
+        const amt = a.units * typeStake('greenie', bet, p.id);
+        if (!amt) return;
+        holes.push({ label: a.units > 1 ? (a.h + 1) + ' ×' + a.units : String(a.h + 1), amt: amt });
+      });
+    } else {
+      playedHoles().forEach(h => {
+        if (!kpPays(i, h)) return;
+        const amt = typeStake('greenie', bet, p.id);
+        if (!amt) return;
+        holes.push({ label: String(h + 1), amt: amt });
+      });
+    }
+    addType('greenie', holes);
+  }
+  return { types: types, total: types.reduce((n, t) => n + t.total, 0) };
+}
 function junkGridHtml() {
   const cols = JUNK_DEFS.filter(d => typeOn(d.id));
   const guide = '<p>Nothing marked yet. Birdie and Eagle come from the gross score. Tap Junk on a score row to mark Sandy, Greenie/KP, and any other type turned on in Setup.</p>';
   if (!holePlayers.length) return guide;
   if (!cols.length) return '<p>Turn on a junk type in Setup. Birdie and Eagle come from the gross score.</p>';
-  const cells = holePlayers.map(() => ({}));
-  let any = false;
-  holePlayers.forEach((p, i) => {
-    cols.forEach(d => { cells[i][d.id] = 0; });
-    const bet = { player: {} };
-    bet.player[p.id] = configuredJunkRate(p.id);
-    for (const h of playedHoles()) {
-      if (!scoreEntered(i, h)) continue;
-      const under = grossBirdieUnits(i, h);
-      if (under >= 2 && typeOn('eagle')) {
-        const amt = autoGrossValue(i, h, bet, p.id);
-        cells[i].eagle += amt;
-        if (amt) any = true;
-      } else if (under >= 1 && typeOn('birdie')) {
-        const amt = typeStake('birdie', bet, p.id);
-        cells[i].birdie += amt;
-        if (amt) any = true;
-      }
-      MANUAL_JUNK.forEach(t => {
-        if (!typeOn(t)) return;
-        const n = payingJunkCount(i, h, t, holeMarks[i] && holeMarks[i][h] && holeMarks[i][h][t]);
-        if (!n) return;
-        const amt = n * typeStake(t, bet, p.id);
-        cells[i][t] += amt;
-        if (amt) any = true;
-      });
-    }
-    if (typeOn('greenie')) {
-      const units = kpUnitsForPlayer(p.id);
-      if (units) {
-        const amt = units * typeStake('greenie', bet, p.id);
-        cells[i].greenie += amt;
-        if (amt) any = true;
-      }
-    }
-  });
-  const head = '<tr><th>Player</th>' + cols.map(d => '<th>' + esc(d.name) + '</th>').join('') + '<th>Total</th></tr>';
-  const body = holePlayers.map((p, i) => {
-    let tot = 0;
-    const tds = cols.map(d => {
-      const v = cells[i][d.id] || 0;
-      tot += v;
-      return '<td>' + cashText(v) + '</td>';
-    }).join('');
-    return '<tr><td>' + esc(p.id) + '</td>' + tds + '<td>' + cashText(tot) + '</td></tr>';
+  const lines = holePlayers.map((p, i) => ({ p: p, lines: junkPlayerLines(i) }));
+  const any = lines.some(row => row.lines.total);
+  const body = lines.map(row => {
+    const open = junkOpenPlayer === row.p.id;
+    const detail = open ? '<div class="jdetail">' + row.lines.types.map(t => '<div class="jtype"><span class="jtname">' + esc(t.name) + '</span><span class="jtholes">' + esc(t.holes.map(h => h.label).join(', ')) + '</span><span class="jtamt">' + cashText(t.total) + '</span></div>').join('') + '</div>' : '';
+    return '<div class="jplayer' + (open ? ' open' : '') + '"><button type="button" data-junk-player="' + esc(row.p.id) + '" aria-expanded="' + (open ? 'true' : 'false') + '"><span class="jwho">' + esc(row.p.id) + '</span><span class="jtot">' + cashText(row.lines.total) + '</span></button>' + detail + '</div>';
   }).join('');
-  return (any ? '' : guide) + '<table>' + head + body + '</table>';
+  return (any ? '' : guide) + '<div class="jplayers">' + body + '</div>';
 }
 function paintMissWarning() {
   const lines = missedEntryWarnings();
@@ -1938,12 +1996,16 @@ function paintAmountsFrom() {
   el.textContent = 'from ' + s.name;
 }
 function paintDiverge() {
-  const el = document.getElementById('setupDiverge');
   const btn = document.getElementById('setupUpdate');
+  const save = document.getElementById('setupSaveAs2');
   const s = selectedSetup();
   const show = !!(s && (formDiverges() || anyChangedMatch()));
-  if (el) el.hidden = !show;
-  if (btn && s) btn.textContent = 'Update “' + s.name + '”';
+  if (btn) {
+    btn.hidden = !show;
+    btn.textContent = 'Update';
+    btn.title = s ? 'Update “' + s.name + '”' : '';
+  }
+  if (save) save.hidden = !show;
 }
 function paintBetPanel() {
   const el = document.getElementById('betSetupPanel');
@@ -3095,9 +3157,34 @@ function cardFirstName(p) {
   if (!first || first.toUpperCase() === String(p.id || '').toUpperCase()) return '';
   return first.slice(0, 8);
 }
-function cardWhoHtml(p) {
+function cardWhoHtml(p, extra, style) {
   const hcp = hcpLabel(p);
-  return '<th class="who">' + esc(p.id) + (hcp ? '<span class="short">HCP ' + esc(hcp) + '</span>' : '') + '</th>';
+  return '<th class="who' + (extra ? ' ' + extra : '') + '"' + (style || '') + '>' + esc(p.id) + (hcp ? '<span class="short">HCP ' + esc(hcp) + '</span>' : '') + '</th>';
+}
+function matchSideMarks(board) {
+  if (!board) return holePlayers.map(() => '');
+  const kind = holePlayers.map(p => {
+    if (board.sides.a.indexOf(p.id) >= 0) return 'sa';
+    if (board.sides.b.indexOf(p.id) >= 0) return 'sb';
+    return 'dim';
+  });
+  return kind.map((k, i) => {
+    if (k === 'dim') return 'dim';
+    let cls = 'side ' + k;
+    if (kind[i - 1] !== k) cls += ' edge-l';
+    if (kind[i + 1] !== k) cls += ' edge-r';
+    return cls;
+  });
+}
+function sideBox(cls, edge) {
+  if (!cls || cls.indexOf('side') < 0) return { cls: cls || '', style: '' };
+  const bits = cls.split(' ');
+  const shadows = [];
+  if (bits.indexOf('edge-l') >= 0) shadows.push('inset 1.5px 0 0 #1c2b22');
+  if (bits.indexOf('edge-r') >= 0) shadows.push('inset -1.5px 0 0 #1c2b22');
+  if (edge === 't' || edge === 'tb') shadows.push('inset 0 1.5px 0 #1c2b22');
+  if (edge === 'b' || edge === 'tb') shadows.push('inset 0 -1.5px 0 #1c2b22');
+  return { cls: cls, style: shadows.length ? ' style="box-shadow:' + shadows.join(',') + '"' : '' };
 }
 function cardLabHtml(p) {
   const hcp = hcpLabel(p);
@@ -3342,8 +3429,8 @@ function paintMatchPick() {
   if (teams.length) row1.push(pickButton('data-pick="box"', 'Box', cardPick === 'box'));
   holePlayers.forEach(p => row1.push(pickButton('data-pick="' + esc(p.id) + '"', p.id, cardPick === p.id)));
   const group = cardPick === 'box' ? teams : (cardPick === 'all' ? [] : playerSideMatches(cardPick));
-  const row2 = group.length >= 2
-    ? '<div class="pickrow">' + group.map(name => pickButton('data-match="' + esc(name) + '"', row2Label(name, cardPick), name === cardMatchName)).join('') + '</div>'
+  const row2 = group.length
+    ? '<div class="pickrow pick-opponents">' + group.map(name => pickButton('data-match="' + esc(name) + '"', row2Label(name, cardPick), name === cardMatchName)).join('') + '</div>'
     : '';
   el.innerHTML = '<div class="pickrow">' + row1.join('') + '</div>' + row2;
 }
@@ -3371,13 +3458,13 @@ function arrowPlain(n) {
 }
 function holeMark(n) {
   if (n == null || n === '') return '';
-  return arrowPlain(n);
+  return arrowMark(n);
 }
 function arrowMark(n) {
   n = Number(n) || 0;
   if (!n) return '<b>AS</b>';
-  if (n > 0) return '<b class="up">' + n + '↑</b>';
-  return '<b class="dn">' + Math.abs(n) + '↓</b>';
+  if (n > 0) return '<b class="up">' + n + '<i class="tri up" aria-hidden="true"></i></b>';
+  return '<b class="dn">' + Math.abs(n) + '<i class="tri dn" aria-hidden="true"></i></b>';
 }
 function upMark(n) {
   return arrowPlain(n);
@@ -3786,7 +3873,7 @@ function shareText() {
       const run = runningScore(board);
       if (!run.played) { lines.push(board.label); return; }
       const presses = board.sim.legs.filter(l => l.kind === 'press' && pressAmt(board.sim.bet, l.from));
-      const extra = presses.map(l => l.played ? 'P' + l.from + ' ' + holeMark(l.score) : 'P' + l.from).join(' · ');
+      const extra = presses.map(l => l.played ? 'P' + l.from + ' ' + arrowPlain(l.score) : 'P' + l.from).join(' · ');
       const shareIds = board.sides.a.concat(board.sides.b);
       const shareVoid0 = segmentVoid(shareIds, 0);
       const shareVoid1 = segmentVoid(shareIds, 1);
@@ -4004,7 +4091,7 @@ function pressNum(sim, leg) {
 }
 function cellWords(n) {
   if (n == null || n === '') return '';
-  return arrowPlain(n);
+  return arrowMark(n);
 }
 function pressGridHtml(holes, sim, bet) {
   if (!holes || !holes.length || !sim) return '';
@@ -4029,7 +4116,7 @@ function pressGridHtml(holes, sim, bet) {
   return '<table class="pressgrid">' + head + body + '</table>';
 }
 function statusWords(n) {
-  return arrowPlain(n);
+  return arrowMark(n);
 }
 function statusKind(n) {
   n = Number(n) || 0;
@@ -4718,7 +4805,7 @@ function drawHole() {
     const inner = (diff <= -2 || diff >= 2) ? '<span>' + n + '</span>' : String(n);
     return '<span class="shape ' + kind + '">' + inner + '</span>';
   };
-  const totalCell = (i, holes) => {
+  const totalCell = (i, holes, extra, style) => {
     let sum = 0, any = false, picked = false;
     holes.forEach(h => {
       const v = viewNum(i, h);
@@ -4727,7 +4814,7 @@ function drawHole() {
       any = true;
       if (holeScores[i][h] === 'X') picked = true;
     });
-    return '<td class="tot">' + (any ? (picked ? '<span class="totx">' + sum + '<span class="xp">x</span></span>' : sum) : '') + '</td>';
+    return '<td class="tot' + (extra ? ' ' + extra : '') + '"' + (style || '') + '>' + (any ? (picked ? '<span class="totx">' + sum + '<span class="xp">x</span></span>' : sum) : '') + '</td>';
   };
   const boards = matchBoards();
   paintMatchPick();
@@ -4744,8 +4831,9 @@ function drawHole() {
     if (!column.length) return courseStrokeCount(p, h);
     return matchStrokeCount(p, h, column[0].sides.a.concat(column[0].sides.b));
   };
+  const sideMarks = matchSideMarks(column[0]);
   const sideTable = (holes, label) => {
-    const head = '<tr><th class="hno" aria-label="Hole">#</th><th class="hgap"></th><th class="parh">Par</th>' + holePlayers.map(p => cardWhoHtml(p)).join('') + '</tr>';
+    const head = '<tr><th class="hno" aria-label="Hole">#</th><th class="hgap"></th><th class="parh">Par</th>' + holePlayers.map((p, i) => { const box = sideBox(sideMarks[i], 't'); return cardWhoHtml(p, box.cls, box.style); }).join('') + '</tr>';
     const body = holes.map(h => {
       const par = courseData().par[h];
       const cells = holePlayers.map((p, i) => {
@@ -4753,19 +4841,21 @@ function drawHole() {
         const dots = dotHtml(strokeN(p, h));
         const body = score == null ? '' : shape(i, h);
         const missing = score == null && holeLeftBehind(h);
-        return '<td data-hole="' + h + '"' + (missing ? ' class="missing"' : '') + '><span class="stack">' + dots + body + '</span></td>';
+        const box = sideBox(sideMarks[i], '');
+        const cls = [missing ? 'missing' : '', box.cls].filter(Boolean).join(' ');
+        return '<td data-hole="' + h + '"' + (cls ? ' class="' + cls + '"' : '') + box.style + '><span class="stack">' + dots + body + '</span></td>';
       }).join('');
       const holeShape = '<span class="stack"><span class="dots"></span><span class="shape par">' + cardHoleLabel(h) + '</span></span>';
       const parShape = '<span class="stack"><span class="dots"></span><span class="shape par">' + par + '</span></span>';
       return '<tr data-hole="' + h + '" class="' + (h === holeNo ? 'current' : '') + '"><td class="hno" data-hole="' + h + '">' + holeShape + '</td><td class="hgap"></td><td class="par" data-hole="' + h + '">' + parShape + '</td>' + cells + '</tr>';
     }).join('');
-    const tot = holePlayers.map((p, i) => totalCell(i, holes)).join('');
+    const tot = holePlayers.map((p, i) => { const box = sideBox(sideMarks[i], 'b'); return totalCell(i, holes, box.cls, box.style); }).join('');
     const parTot = holes.reduce((n, h) => n + courseData().par[h], 0);
     return '<table class="scorecard">' + colgroup + head + body + '<tr class="totrow"><td class="tot nine-lab">' + label + '</td><td class="tot hgap"></td><td class="tot">' + parTot + '</td>' + tot + '</tr></table>';
   };
   const totalRow = () => {
     const holes = playedHoles();
-    const tot = holePlayers.map((p, i) => totalCell(i, holes)).join('');
+    const tot = holePlayers.map((p, i) => { const box = sideBox(sideMarks[i], 'tb'); return totalCell(i, holes, box.cls, box.style); }).join('');
     const parTot = holes.reduce((n, h) => n + (courseData().par[h] || 0), 0);
     return '<table class="scorecard grand">' + colgroup + '<tr class="totrow grand"><td class="tot nine-lab">Tot</td><td class="tot hgap"></td><td class="tot">' + parTot + '</td>' + tot + '</tr></table>';
   };
@@ -5150,13 +5240,29 @@ if (quitPanelEl) quitPanelEl.onclick = e => {
   if (act === 'apply') applyQuit();
 };
 const clearAllBtn = document.getElementById('clearAll');
+let clearAllArm = 0;
+let clearAllTimer = 0;
+function resetClearAll() {
+  clearAllArm = 0;
+  clearTimeout(clearAllTimer);
+  clearAllTimer = 0;
+  if (!clearAllBtn) return;
+  clearAllBtn.textContent = 'Clear all scores';
+  clearAllBtn.classList.remove('armed');
+}
 if (clearAllBtn) clearAllBtn.onclick = () => {
   if (!holePlayers.length) return;
+  const now = Date.now();
+  if (!clearAllArm || now - clearAllArm > 4000) {
+    clearAllArm = now;
+    clearAllBtn.textContent = 'Clear all scores? Tap again';
+    clearAllBtn.classList.add('armed');
+    clearTimeout(clearAllTimer);
+    clearAllTimer = setTimeout(resetClearAll, 4000);
+    return;
+  }
+  resetClearAll();
   const scored = holeScores.some(row => row && row.some(s => s != null));
-  const msg = scored
-    ? 'Clear all 18 holes and all presses on this card? The saved copy stays in Saved rounds.'
-    : 'Clear all 18 holes and all presses on this card?';
-  if (!window.confirm(msg)) return;
   if (scored) detachSavedRound();
   roundId = newRoundId();
   holeScores = holePlayers.map(freshScores);
@@ -5442,11 +5548,23 @@ function roundTeeNames(r) {
 function roundInitials(r) {
   return ((r && r.players) || []).map(p => p.id).filter(Boolean).join(' ');
 }
-function autoRoundName(r) {
-  return [roundDayOf(r), (r && r.course) || '', roundTeeNames(r)].filter(Boolean).join(' ');
+function shortMonthDay(iso, withYear) {
+  const s = String(iso || '').slice(0, 10);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return '';
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const day = months[Number(m[2]) - 1] + ' ' + Number(m[3]);
+  return withYear ? day + ', ' + m[1] : day;
+}
+function autoRoundName(r, withYear) {
+  const day = shortMonthDay(r && r.when, !!withYear);
+  return [day, (r && r.course) || '', roundInitials(r)].filter(Boolean).join(' · ');
 }
 function roundTitle(r) {
-  return (r && r.name) ? r.name : autoRoundName(r);
+  return (r && r.name) ? r.name : autoRoundName(r, false);
+}
+function savedRoundTitle(r) {
+  return (r && r.name) ? r.name : autoRoundName(r, true);
 }
 function liveRoundRecord() {
   return { name: roundName, when: (roundDate || '') + 'T12:00:00', course: currentCourse, players: holePlayers };
@@ -5499,7 +5617,7 @@ function drawSaved() {
     const net = r.ownerNet || '';
     const cls = net.charAt(0) === '−' || net.charAt(0) === '-' ? 'dn' : (net.charAt(0) === '+' ? 'up' : '');
     const stopLine = stopPhrase(r.roundStop);
-    html += '<button type="button" class="round-open" data-open="' + i + '"><span class="r1"><span class="title">' + esc(roundTitle(r) || 'Saved round') + '</span>' + (net ? '<span class="rnet ' + cls + '">' + esc(net) + '</span>' : '') + '</span><span class="r2">' + esc(roundInitials(r)) + '</span>' + (stopLine ? '<span class="r3">' + esc(stopLine) + '</span>' : '') + '</button>';
+    html += '<div class="round-item"><button type="button" class="round-open" data-open="' + i + '"><span class="r1"><span class="title">' + esc(savedRoundTitle(r) || 'Saved round') + '</span>' + (net ? '<span class="rnet ' + cls + '">' + esc(net) + '</span>' : '') + '</span><span class="r2">' + esc(roundInitials(r)) + '</span>' + (stopLine ? '<span class="r3">' + esc(stopLine) + '</span>' : '') + '</button><div class="round-tools"><button type="button" data-del="' + i + '">Delete</button><button type="button" data-export="' + i + '">Export</button><button type="button" data-rename="' + i + '">Rename</button></div></div>';
   });
   el.innerHTML = shown.length ? html : '<p>' + (items.length ? 'No rounds match.' : 'No saved rounds.') + '</p>';
 }
@@ -5507,7 +5625,58 @@ document.getElementById('savedList').onclick = e => {
   const open = e.target.closest('button[data-open]');
   const del = e.target.closest('button[data-del]');
   const exp = e.target.closest('button[data-export]');
+  const ren = e.target.closest('button[data-rename]');
   const list = roundArchive();
+  if (del) {
+    const i = Number(del.dataset.del);
+    const r = list[i];
+    if (!r) return;
+    const label = savedRoundTitle(r) || 'this round';
+    if (!window.confirm('Delete ' + label + ' from Saved rounds?')) return;
+    forgetYearRound(r);
+    list.splice(i, 1);
+    saveRoundArchive(list);
+    if (roundId && r.id === roundId) {
+      roundId = newRoundId();
+      roundName = '';
+    }
+    drawSaved();
+    return;
+  }
+  if (ren) {
+    const i = Number(ren.dataset.rename);
+    const r = list[i];
+    if (!r) return;
+    const item = ren.closest('.round-item');
+    const title = item && item.querySelector('.title');
+    if (!item || !title || item.querySelector('input.round-name-input')) return;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'round-name-input';
+    input.value = savedRoundTitle(r);
+    input.setAttribute('aria-label', 'Rename saved round');
+    title.hidden = true;
+    title.parentElement.insertBefore(input, title);
+    input.focus();
+    setTimeout(() => { try { input.select(); } catch (err) {} }, 30);
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      const value = String(input.value || '').trim();
+      input.remove();
+      title.hidden = false;
+      const auto = autoRoundName(r, true);
+      r.name = value && value !== auto ? value : '';
+      saveRoundArchive(list);
+      if (roundId && r.id === roundId) roundName = r.name || '';
+      drawSaved();
+      paintRoundDetail();
+    };
+    input.onblur = finish;
+    input.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); } };
+    return;
+  }
   if (exp) {
     const r = list[Number(exp.dataset.export)];
     if (!r) return;
@@ -5596,7 +5765,7 @@ function commitRoundName(value) {
   if (i >= 0) { list[i].name = roundName; saveRoundArchive(list); }
   persistSetup();
 }
-document.getElementById('roundName').onclick = () => {
+function beginRoundRename() {
   const btn = document.getElementById('roundName');
   if (!btn || btn.hidden) return;
   const input = document.createElement('input');
@@ -5619,7 +5788,10 @@ document.getElementById('roundName').onclick = () => {
   };
   input.onblur = finish;
   input.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); input.blur(); } };
-};
+}
+document.getElementById('roundName').onclick = beginRoundRename;
+const roundRenameBtn = document.getElementById('roundRename');
+if (roundRenameBtn) roundRenameBtn.onclick = beginRoundRename;
 document.getElementById('deleteRound').onclick = () => {
   const label = (document.getElementById('roundName') && document.getElementById('roundName').textContent) || 'this round';
   if (!window.confirm('Delete ' + label + ' from Saved rounds?')) return;
@@ -6572,13 +6744,28 @@ const cardEl = document.getElementById('card');
 const paperEl = document.getElementById('paperCard');
 if (cardEl) cardEl.onclick = onCardTap;
 if (paperEl) paperEl.onclick = onCardTap;
+const junkSummaryEl = document.getElementById('junkSummary');
+if (junkSummaryEl) junkSummaryEl.onclick = e => {
+  const btn = e.target.closest && e.target.closest('button[data-junk-player]');
+  if (!btn) return;
+  const id = btn.dataset.junkPlayer;
+  junkOpenPlayer = junkOpenPlayer === id ? '' : id;
+  try { drawHole(); } catch (err) {}
+};
 const matchPickEl = document.getElementById('matchPick');
 if (matchPickEl) matchPickEl.onclick = e => {
   const btn = e.target.closest('button');
   if (!btn) return;
   if (btn.dataset.pick) {
-    if (btn.dataset.pick === cardPick) return;
     cardPick = btn.dataset.pick;
+    if (cardPick === 'all') cardMatchName = '';
+    else if (cardPick === 'box') {
+      const teams = activeTeamNames();
+      if (teams.length) cardMatchName = teams[0];
+    } else {
+      const group = playerSideMatches(cardPick);
+      if (group.length) cardMatchName = group[0];
+    }
     try { drawHole(); } catch (err) {}
     return;
   }
