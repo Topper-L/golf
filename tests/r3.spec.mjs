@@ -2216,9 +2216,14 @@ test('a fresh round leaves every match Off, and All Matches is an explicit tap',
   await page.locator('#apply').click();
   const after = await page.evaluate(() => {
     const m = matchNames();
-    return m.team.concat(m.side).every(name => amounts[name] && amounts[name].on === true);
+    const names = m.team.concat(m.side);
+    return {
+      anyOn: names.some(name => amounts[name] && amounts[name].on),
+      first: names.every(name => amounts[name] && amounts[name].first === Number(document.getElementById('dFirst').value))
+    };
   });
-  expect(after).toBe(true);
+  expect(after.anyOn).toBe(false);
+  expect(after.first).toBe(true);
 });
 
 test('only a tapped team match is charged after a Goldberg setup', async ({ page }) => {
@@ -2397,30 +2402,84 @@ test('Junk grid counts carried Greenie/KP the same way Settle does', async ({ pa
   expect(died.detail).not.toContain('Greenie/KP');
 });
 
-test('All Matches is green only while every match is On', async ({ page }) => {
+test('All Matches copies setup values, stays Off, and is green only while they match', async ({ page }) => {
   await page.evaluate(() => {
     showScreen('setup');
+    document.getElementById('dFirst').value = '5';
+    document.getElementById('dSecond').value = '5';
+    document.getElementById('dOverall').value = '5';
+    document.getElementById('dPressF').value = '4';
+    document.getElementById('dPressB').value = '4';
+    document.getElementById('dDown').value = '2';
+    document.getElementById('dJunk').value = '3';
     players = [
       { name: 'Topper Larsen', initials: 'TL', tee: 'Blue', hcp: '0', box: false },
       { name: 'Ned S', initials: 'NS', tee: 'Blue', hcp: '0', box: false }
     ];
-    amounts = {};
+    amounts = { 'TL vs NS': { on: false, first: 0, second: 0, overall: 0, press: 0, pressFront: 0, pressBack: 0, pressDown: 1, pressMode: 'auto', autoPress: true, player: { TL: 0, NS: 0 }, offers: [] } };
     draw();
   });
   const apply = page.locator('#apply');
   await expect(apply).not.toHaveClass(/\bon\b/);
-  await expect(page.locator('.matchcard button[data-bet]')).toHaveText('Off');
   await apply.click();
+  await expect(page.locator('.matchcard button[data-bet]')).toHaveText('Off');
+  await expect(page.locator('#status')).toContainText('Matches stay as they are');
+  await expect(page.locator('#bets input[data-f="first"]')).toHaveValue('5');
+  await expect(page.locator('#bets input[data-f="pressDown"]')).toHaveValue('2');
   await expect(apply).toHaveClass(/\bon\b/);
   expect(await apply.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(231, 243, 236)');
   await apply.scrollIntoViewIfNeeded();
-  await shot(page, 'all-matches-on');
-  await page.locator('.matchcard button[data-bet]').click();
-  await expect(page.locator('.matchcard button[data-bet]')).toHaveText('Off');
+  await shot(page, 'all-matches-copied');
+  await page.locator('#bets input[data-f="first"]').fill('9');
+  await page.locator('#bets input[data-f="first"]').dispatchEvent('input');
   await expect(apply).not.toHaveClass(/\bon\b/);
-  expect(await apply.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe('rgb(231, 243, 236)');
-  await apply.scrollIntoViewIfNeeded();
-  await shot(page, 'all-matches-off');
+});
+
+test('every box match gets the setup Down of 2', async ({ page }) => {
+  await page.evaluate(() => {
+    showScreen('setup');
+    currentCourse = 'Wood Ranch';
+    ['dFirst', 'dSecond', 'dOverall', 'dPressF', 'dPressB'].forEach(id => { document.getElementById(id).value = '5'; });
+    document.getElementById('dDown').value = '2';
+    document.getElementById('dJunk').value = '3';
+    const s = addSetupFromForm('Five down', '');
+    players = ['TL', 'NG', 'AC', 'DK'].map(id => ({ name: id, initials: id, tee: 'Blue', hcp: '0', box: id === 'TL' || id === 'NG' }));
+    amounts = {};
+    draw();
+    pickSetup(s.id);
+    amounts[matchNames().team[0]].pressDown = 1;
+    players.forEach(p => { p.box = false; });
+    draw();
+  });
+  await page.locator('#apply').click();
+  await page.evaluate(() => {
+    players.push({ name: 'JL', initials: 'JL', tee: 'Blue', hcp: '0', box: false });
+    players[0].box = true;
+    players[1].box = true;
+    draw();
+  });
+  let downs = await page.evaluate(() => matchNames().team.map(n => amounts[n].pressDown));
+  expect(downs.length).toBe(3);
+  expect(downs.every(n => n === 2)).toBe(true);
+  await page.evaluate(() => {
+    players.forEach(p => { p.box = false; });
+    players[2].box = true;
+    players[3].box = true;
+    draw();
+  });
+  downs = await page.evaluate(() => matchNames().team.map(n => amounts[n].pressDown));
+  expect(downs.length).toBeGreaterThan(0);
+  expect(downs.every(n => n === 2)).toBe(true);
+  await page.evaluate(() => { amounts[matchNames().team[1]].pressDown = 1; draw(); });
+  await page.locator('#apply').click();
+  downs = await page.evaluate(() => matchNames().team.map(n => amounts[n].pressDown));
+  expect(downs.every(n => n === 2)).toBe(true);
+  const ons = await page.evaluate(() => matchNames().team.some(n => amounts[n].on));
+  expect(ons).toBe(false);
+  const card = page.locator('#bets .matchcard').nth(1);
+  await card.scrollIntoViewIfNeeded();
+  await expect(card.locator('input[data-f="pressDown"]')).toHaveValue('2');
+  await shot(page, 'box-down-two');
 });
 
 test('Next hole on the last hole opens the Card', async ({ page }) => {

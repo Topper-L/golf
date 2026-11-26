@@ -993,6 +993,7 @@ function drawBets() {
     if (el.dataset.p) amounts[el.dataset.bet].player[el.dataset.p] = Number(el.value);
     else amounts[el.dataset.bet][el.dataset.f] = Number(el.value);
     refreshSetupChrome();
+    paintAllMatches();
   });
   document.querySelectorAll('#bets select[data-cap]').forEach(el => el.onchange = () => {
     const bet = amounts[el.dataset.bet];
@@ -1596,18 +1597,24 @@ document.getElementById('bets').onclick = e => {
   btn.textContent = bet.on ? 'On' : 'Off';
   paintAllMatches();
 };
-function allMatchesOn() {
+function matchCarriesSetup(a, form) {
+  if (!a || !form || matchDiffers(a, form)) return false;
+  const junk = Number(form.junk) || 0;
+  const ids = players.filter(p => p.initials).map(p => String(p.initials).toUpperCase());
+  return ids.every(id => a.player && a.player[id] != null && sameNum(a.player[id], junk));
+}
+function paintAllMatches() {
+  const btn = document.getElementById('apply');
+  if (!btn) return;
   let names = [];
   try {
     const m = matchNames();
     names = m.team.concat(m.side);
-  } catch (e) { return false; }
-  if (!names.length) return false;
-  return names.every(name => amounts[name] && amounts[name].on === true);
-}
-function paintAllMatches() {
-  const btn = document.getElementById('apply');
-  if (btn) btn.classList.toggle('on', allMatchesOn());
+  } catch (e) { names = []; }
+  let form = null;
+  try { form = readFormMoney(); } catch (e) { form = null; }
+  const ready = names.length > 0 && !!form && names.every(name => matchCarriesSetup(amounts[name], form));
+  btn.classList.toggle('on', ready);
 }
 function blankBet(on) {
   return { on: !!on, first: 0, second: 0, overall: 0, press: 0, pressFront: 0, pressBack: 0, pressDown: 2, autoPress: true, pressMode: 'auto', player: {}, offers: [], mp18: false, mp: 0 };
@@ -2003,6 +2010,7 @@ function refreshSetupChrome() {
     paintDiverge();
     paintBetPanel();
     paintMatchCards();
+    paintAllMatches();
   } finally { chromeLock = false; }
 }
 function updateSelectedSetup() {
@@ -2290,7 +2298,7 @@ document.getElementById('newRound').onclick = () => {
   document.getElementById('status').textContent = 'New round. Add the players.';
 };
 document.getElementById('save').onclick = startHole;
-function copyBets(opts) {
+function copyBets() {
   syncPlayers();
   const values = {
     first: Number(document.getElementById('dFirst').value) || 0,
@@ -2306,30 +2314,37 @@ function copyBets(opts) {
   if (!(strokePct >= 0)) strokePct = 100;
   const names = matchNames();
   const list = names.team.concat(names.side);
-  if (!list.length) {
+  if (!list.length && !Object.keys(amounts).length) {
     document.getElementById('status').textContent = 'No matches yet. Add initials, then All Matches.';
     return;
   }
-  const turnOn = !!(opts && opts.turnOn);
-  list.forEach(name => {
+  const downRaw = document.getElementById('dDown').value;
+  const downNum = Number(downRaw);
+  values.pressDown = downRaw === '' || !isFinite(downNum) ? 2 : downNum;
+  const targets = list.slice();
+  Object.keys(amounts).forEach(name => { if (targets.indexOf(name) < 0) targets.push(name); });
+  targets.forEach(name => {
     if (!amounts[name]) amounts[name] = seedMatch(false);
-    if (turnOn) amounts[name].on = true;
-    amounts[name].first = values.first;
-    amounts[name].second = values.second;
-    amounts[name].overall = values.overall;
+    const bet = amounts[name];
+    const stayOn = !!bet.on;
+    bet.first = values.first;
+    bet.second = values.second;
+    bet.overall = values.overall;
     const cols = pressFields();
-    amounts[name].press = values.press;
-    amounts[name][cols[0]] = values.pressFirst;
-    if (cols[1] !== cols[0]) amounts[name][cols[1]] = values.pressSecond;
-    amounts[name].pressDown = values.pressDown;
-    amounts[name].pressMode = setupPressMode || 'auto';
-    amounts[name].autoPress = (setupPressMode || 'auto') === 'auto';
-    players.filter(p => p.initials).forEach(p => { p.junk = junk; amounts[name].player[String(p.initials).toUpperCase()] = junk; });
+    bet.press = values.press;
+    if (cols[0]) bet[cols[0]] = values.pressFirst;
+    if (cols[1] && cols[1] !== cols[0]) bet[cols[1]] = values.pressSecond;
+    bet.pressDown = values.pressDown;
+    bet.pressMode = setupPressMode || 'auto';
+    bet.autoPress = (setupPressMode || 'auto') === 'auto';
+    bet.on = stayOn;
+    if (!bet.player) bet.player = {};
+    players.filter(p => p.initials).forEach(p => { p.junk = junk; bet.player[String(p.initials).toUpperCase()] = junk; });
   });
   draw();
-  document.getElementById('status').textContent = 'Copied ' + values.first + ' / ' + values.second + ' / ' + values.overall + ', press ' + values.pressFirst + ' on the 1st 9 and ' + values.pressSecond + ' on the 2nd 9, at ' + values.pressDown + ' down, junk ' + junk + ' into ' + list.length + ' matches.' + (turnOn ? ' All of them are On.' : ' Each match stays Off until you tap it On.');
+  document.getElementById('status').textContent = 'Copied ' + values.first + ' / ' + values.second + ' / ' + values.overall + ', press ' + values.pressFirst + ' on the 1st 9 and ' + values.pressSecond + ' on the 2nd 9, at ' + values.pressDown + ' down, junk ' + junk + ' into ' + list.length + ' matches. Values were copied. Matches stay as they are.';
 }
-document.getElementById('apply').onclick = () => copyBets({ turnOn: true });
+document.getElementById('apply').onclick = () => copyBets();
 function noMoneyRound() {
   ['dFirst', 'dSecond', 'dOverall', 'dPressF', 'dPressB', 'dJunk'].forEach(id => {
     const el = document.getElementById(id);
