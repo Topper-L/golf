@@ -1242,8 +1242,11 @@ function junkGridHtml() {
         cells[i][t] += amt;
         if (amt) any = true;
       });
-      if (typeOn('greenie') && kpPays(i, h)) {
-        const amt = typeStake('greenie', bet, p.id);
+    }
+    if (typeOn('greenie')) {
+      const units = kpUnitsForPlayer(p.id);
+      if (units) {
+        const amt = units * typeStake('greenie', bet, p.id);
         cells[i].greenie += amt;
         if (amt) any = true;
       }
@@ -3116,6 +3119,8 @@ function junkPersonNets(a, b, junkOf) {
 }
 function junkHoleItems(i, matchIds) {
   const mk = holeMarks[i] || [];
+  const awards = kpAwards(matchIds);
+  const who = holePlayers[i] && holePlayers[i].id;
   const items = [];
   for (const h of playedHoles()) {
     if (!holeReady(matchIds, h)) continue;
@@ -3123,7 +3128,8 @@ function junkHoleItems(i, matchIds) {
     const units = grossBirdieUnits(i, h);
     const bits = [];
     if (units) bits.push(birdieName(units));
-    if (kpPays(i, h)) bits.push('KP');
+    const award = awards.find(a => a.h === h && a.id === who);
+    if (award) bits.push(award.units > 1 ? 'Greenie/KP ×' + award.units : 'Greenie/KP');
     MANUAL_JUNK.forEach(t => {
       const n = payingJunkCount(i, h, t, m[t]);
       if (!n) return;
@@ -3834,10 +3840,9 @@ function kpPays(i, h) {
   const gross = holeScores[i] && holeScores[i][h];
   return typeof gross === 'number' && gross <= par;
 }
-function kpForMatch(matchIds) {
-  const par3 = courseData().par.map((p,i) => p === 3 ? i : -1).filter(i => i >= 0);
-  const counts = {};
-  matchIds.forEach(id => counts[id] = 0);
+function kpAwards(matchIds) {
+  const par3 = courseData().par.map((p, i) => p === 3 ? i : -1).filter(i => i >= 0);
+  const awards = [];
   let carry = 0;
   par3.forEach(h => {
     if (segmentVoid(matchIds, segmentIndex(h))) return;
@@ -3857,11 +3862,40 @@ function kpForMatch(matchIds) {
         const yb = holePlayers[iy] && holePlayers[iy].box;
         return xb && !yb ? y : x;
       });
-      counts[best] += 1 + carry;
+      awards.push({ h: h, id: best, units: 1 + carry });
       carry = 0;
     } else carry += 1;
   });
+  return awards;
+}
+function kpForMatch(matchIds) {
+  const counts = {};
+  matchIds.forEach(id => { counts[id] = 0; });
+  kpAwards(matchIds).forEach(a => { counts[a.id] = (counts[a.id] || 0) + a.units; });
   return counts;
+}
+function kpMatchIds(playerId) {
+  let names = [];
+  try {
+    const m = matchNames();
+    names = m.team.concat(m.side);
+  } catch (e) { return null; }
+  for (let n = 0; n < names.length; n++) {
+    if (!matchIsOn(names[n])) continue;
+    const sides = sidesOf(names[n]);
+    const ids = sides.a.concat(sides.b);
+    if (ids.indexOf(playerId) >= 0) return ids;
+  }
+  return null;
+}
+function kpUnitsForPlayer(playerId) {
+  const ids = kpMatchIds(playerId);
+  if (ids) return kpForMatch(ids)[playerId] || 0;
+  let n = 0;
+  const i = holePlayers.findIndex(p => p.id === playerId);
+  if (i < 0) return 0;
+  playedHoles().forEach(h => { if (kpPays(i, h)) n += 1; });
+  return n;
 }
 function amountFor(name) {
   if (amounts[name]) return amounts[name];

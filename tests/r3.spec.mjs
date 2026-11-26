@@ -2332,3 +2332,67 @@ test('a round with nothing On is scores only', async ({ page }) => {
   });
   expect(sum).toBe(0);
 });
+
+test('Junk grid counts carried Greenie/KP the same way Settle does', async ({ page }) => {
+  const setup = (tlWinsLast) => page.evaluate((tlWinsLast) => {
+    const pars = courses['Wood Ranch'].par.slice();
+    const ids = ['TL', 'GS', 'SC', 'LB', 'AM'];
+    const names = ['Topper Larsen', 'Gina Smith', 'Sam Chen', 'Lee Brown', 'Amy Moore'];
+    currentCourse = 'Wood Ranch';
+    players = ids.map((id, i) => ({ name: names[i], initials: id, tee: 'Blue', hcp: '0', box: id === 'TL' || id === 'GS' }));
+    holePlayers = players.map(p => ({ id: p.initials, name: p.name, tee: 'Blue', hcp: '0', box: !!p.box }));
+    holeScores = holePlayers.map(() => pars.slice());
+    holeMarks = holePlayers.map(() => freshMarks());
+    holeMarks[1][2].KP = 1;
+    if (tlWinsLast) holeMarks[0][16].KP = 1;
+    const player = {};
+    ids.forEach(id => { player[id] = 3; });
+    amounts = {
+      'Box (TL+GS) vs SC+LB': { on: true, first: 0, second: 0, overall: 0, press: 0, pressFront: 0, pressBack: 0, pressDown: 2, autoPress: false, player: player, offers: [], mp18: false, mp: 0 }
+    };
+    junkTypes.greenie.on = true;
+    roundStop = null;
+    holeNo = 0;
+    startAt = 0;
+    playedThru = 17;
+    ninesPlayed = null;
+    roundId = 'kp-carry';
+    syncPlayedNines();
+    showScreen('junk');
+    drawHole();
+    const box = ['TL', 'GS', 'SC', 'LB'];
+    const counts = kpForMatch(box);
+    const heads = [...document.querySelectorAll('#junkSummary th')].map(th => th.textContent);
+    const col = heads.indexOf('Greenie / KP');
+    const cell = id => {
+      const row = [...document.querySelectorAll('#junkSummary tr')].find(tr => tr.querySelector('td') && tr.querySelector('td').textContent === id);
+      return row ? row.querySelectorAll('td')[col].textContent : '';
+    };
+    const bet = amountFor('Box (TL+GS) vs SC+LB');
+    return {
+      tl: cell('TL'),
+      gs: cell('GS'),
+      counts: counts,
+      settleTl: (counts.TL || 0) * typeStake('greenie', bet, 'TL'),
+      detail: junkHoleItems(0, box).join(', ')
+    };
+  }, tlWinsLast);
+
+  const carried = await setup(true);
+  expect(carried.counts.TL).toBe(3);
+  expect(carried.counts.GS).toBe(1);
+  expect(carried.settleTl).toBe(9);
+  expect(carried.tl).toBe('+$9');
+  expect(carried.gs).toBe('+$3');
+  expect(carried.detail).toContain('17 Greenie/KP ×3');
+  await page.locator('#junkSummary').scrollIntoViewIfNeeded();
+  await shot(page, 'junk-kp-after');
+
+  const died = await setup(false);
+  expect(died.counts.TL).toBe(0);
+  expect(died.counts.GS).toBe(1);
+  expect(died.settleTl).toBe(0);
+  expect(died.tl).toBe('$0');
+  expect(died.gs).toBe('+$3');
+  expect(died.detail).not.toContain('Greenie/KP');
+});
